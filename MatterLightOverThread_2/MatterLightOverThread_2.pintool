@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="ASCII"?>
+<device:XMLDevice xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:device="http://www.silabs.com/ss/hwconfig/document/device.ecore" name="pin_tool.EFR32MG24B010F1536IM40" partId="mcu.arm.efr32.mg24.efr32mg24b010f1536im40" contextId="com.silabs.sdk.stack.sisdk:2025.12.2._1076868104563987570">
+  <mode name="DefaultMode">
+    <property object="DefaultMode" propertyId="mode.diagramLocation" value="100, 100"/>
+    <property object="EUSART0" propertyId="ABModule.selectedRequirement" value="eusart%T%SL_UARTDRV_EUSART_VCOM%T%sl_uartdrv_eusart_vcom_config.h"/>
+    <property object="EUSART0" propertyId="ABPeripheral.included" value="true"/>
+    <property object="EUSART1" propertyId="ABModule.selectedRequirement" value="eusart%T%SL_SPIDRV_EUSART_RGB_DATA%T%sl_spidrv_eusart_rgb_data_config.h"/>
+    <property object="EUSART1" propertyId="ABPeripheral.included" value="true"/>
+    <property object="PA01" propertyId="pin.name" value=""/>
+    <property object="PA02" propertyId="pin.name" value=""/>
+    <property object="PA03" propertyId="pin.name" value=""/>
+    <property object="PA04" propertyId="pin.name" value=""/>
+    <property object="PA04" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PA05" propertyId="ABModule.selectedRequirement" value="gpio%T%SL_SIMPLE_BUTTON_BTN0%T%sl_simple_button_btn0_config.h"/>
+    <property object="PA05" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PA06" propertyId="pin.name" value=""/>
+    <property object="PA07" propertyId="pin.name" value=""/>
+    <property object="PA08" propertyId="pin.name" value=""/>
+    <property object="PB04" propertyId="pin.name" value=""/>
+    <property object="PB04" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PC00" propertyId="pin.name" value=""/>
+    <property object="PC00" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PC01" propertyId="pin.name" value=""/>
+    <property object="PC01" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PC02" propertyId="pin.name" value=""/>
+    <property object="PC02" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PC04" propertyId="pin.name" value=""/>
+    <property object="PC05" propertyId="pin.name" value=""/>
+    <property object="PC06" propertyId="pin.name" value=""/>
+    <property object="PC06" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PC07" propertyId="ABModule.selectedRequirement" value="gpio%T%SL_SIMPLE_LED_INST0%T%sl_simple_led_inst0_config.h"/>
+    <property object="PC07" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PD01" propertyId="pin.name" value=""/>
+    <property object="PD02" propertyId="pin.name" value=""/>
+    <property object="PD02" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PORTIO" propertyId="portio.eusart0.enable.rx" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.eusart0.enable.tx" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.eusart0.location.cts" value="2"/>
+    <property object="PORTIO" propertyId="portio.eusart0.location.rts" value="3"/>
+    <property object="PORTIO" propertyId="portio.eusart0.location.rx" value="6"/>
+    <property object="PORTIO" propertyId="portio.eusart0.location.tx" value="7"/>
+    <property object="PORTIO" propertyId="portio.eusart1.enable.rx" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.eusart1.enable.sclk" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.eusart1.enable.tx" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.eusart1.location.rx" value="16"/>
+    <property object="PORTIO" propertyId="portio.eusart1.location.sclk" value="17"/>
+    <property object="PORTIO" propertyId="portio.eusart1.location.tx" value="48"/>
+    <property object="PORTIO" propertyId="portio.iadc0.enable.scan0pos" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.iadc0.enable.scan10pos" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.iadc0.enable.scan11pos" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.iadc0.location.scan0pos" value="136"/>
+    <property object="PORTIO" propertyId="portio.iadc0.location.scan10pos" value="164"/>
+    <property object="PORTIO" propertyId="portio.iadc0.location.scan11pos" value="165"/>
+    <property object="PORTIO" propertyId="portio.timer1.enable.cc0" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.timer1.location.cc0" value="3"/>
+    <property object="PORTIO" propertyId="portio.timer1.location.cc1" value="32"/>
+    <property object="PORTIO" propertyId="portio.timer1.location.cc2" value="18"/>
+    <property object="PORTIO" propertyId="portio.timer3.enable.cc0" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.timer3.location.cc0" value="49"/>
+    <property object="PORTIO" propertyId="portio.timer4.enable.cc0" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.timer4.enable.cc1" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.timer4.enable.cc2" value="Enabled"/>
+    <property object="PORTIO" propertyId="portio.timer4.location.cc0" value="18"/>
+    <property object="PORTIO" propertyId="portio.timer4.location.cc1" value="19"/>
+    <property object="PORTIO" propertyId="portio.timer4.location.cc2" value="20"/>
+    <property object="PTI" propertyId="ABModule.selectedRequirement" value="pti%T%SL_RAIL_UTIL_PTI%T%sl_rail_util_pti_config.h"/>
+    <property object="PTI" propertyId="ABPeripheral.included" value="true"/>
+    <property object="TIMER1" propertyId="ABModule.selectedRequirement" value="timer%T%SL_PWM_W_PWM%T%sl_pwm_init_w_pwm_config.h"/>
+    <property object="TIMER1" propertyId="ABPeripheral.included" value="true"/>
+    <property object="TIMER1" propertyId="channel.0.name" value="OUTPUT"/>
+    <property object="TIMER1" propertyId="channel.1.name" value=""/>
+    <property object="TIMER1" propertyId="channel.2.name" value=""/>
+    <property object="TIMER2" propertyId="ABPeripheral.included" value="true"/>
+    <property object="TIMER3" propertyId="ABModule.selectedRequirement" value="timer%T%SL_PWM_W_LED0%T%sl_pwm_init_w_led0_config.h"/>
+    <property object="TIMER3" propertyId="ABPeripheral.included" value="true"/>
+    <property object="TIMER3" propertyId="channel.0.name" value="OUTPUT"/>
+    <property object="TIMER4" propertyId="ABModule.selectedRequirement" value="timer%T%SL_SIMPLE_RGB_PWM_LED_RGB_LED0%T%sl_simple_rgb_pwm_led_rgb_led0_config.h"/>
+    <property object="TIMER4" propertyId="ABPeripheral.included" value="true"/>
+    <property object="TIMER4" propertyId="channel.0.name" value="RED"/>
+    <property object="TIMER4" propertyId="channel.1.name" value="GREEN"/>
+    <property object="TIMER4" propertyId="channel.2.name" value="BLUE"/>
+  </mode>
+  <modeTransition>
+    <property object="RESET &#x2192; DefaultMode" propertyId="modeTransition.source" value="RESET"/>
+    <property object="RESET &#x2192; DefaultMode" propertyId="modeTransition.target" value="DefaultMode"/>
+  </modeTransition>
+</device:XMLDevice>

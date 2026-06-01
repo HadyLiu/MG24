@@ -1,0 +1,17 @@
+---
+workspace_name: "Li-Bat_MatterLight_EFR32MG24B010F1536IM40"
+label: "lighting-app-series-2-internal"
+quality: "production"
+package: "matter"
+description: "Solution containing both a bootloader and a Matter over Thread Lighting\
+  \ App Example"
+project:
+- id: "application"
+  path: "MatterLightOverThread_2/MatterLightOverThread_2.slcp"
+  output: "MatterLightOverThread_2"
+- id: "bootloader"
+  path: "Matter-Bootloader_2/Matter-Bootloader_2.slcp"
+  output: "Matter-Bootloader_2"
+post_build:
+  profile: ""
+  path: "Li-Bat_MatterLight_EFR32MG24B010F1536IM40.slpb"
