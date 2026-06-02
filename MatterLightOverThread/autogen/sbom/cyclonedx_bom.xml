@@ -10,7 +10,7 @@ referenced in this SBOM.)
 -->
 <bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
   <metadata>
-    <timestamp>2026-06-01T08:52:35Z</timestamp>
+    <timestamp>2026-06-02T03:22:51Z</timestamp>
     <authors>
       <author>
         <name>Silicon Laboratories, Inc.</name>
@@ -423,16 +423,6 @@ referenced in this SBOM.)
 	      </supplier>
           <licenses>
             <expression>Apache 2.0</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.matter:2.8.1:matter_drivers_series_2" type="library">
-          <name>Matter UART and Clock for Series 2 Boards</name>
-          <version>2.8.1</version>
-	      <supplier>
-	        <name>Silicon Laboratories Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
           </licenses>
         </component>
         <component bom-ref="silabs.matter:2.8.1:matter_syscall_stubs" type="library">
@@ -945,6 +935,26 @@ referenced in this SBOM.)
             <expression>Apache 2.0</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.matter:2.8.1:matter_rgb_leds" type="library">
+          <name>Matter RGB LED Support</name>
+          <version>2.8.1</version>
+	      <supplier>
+	        <name>Silicon Laboratories Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.matter:2.8.1:matter_drivers_series_2" type="library">
+          <name>Matter UART and Clock for Series 2 Boards</name>
+          <version>2.8.1</version>
+	      <supplier>
+	        <name>Silicon Laboratories Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
       </components>
     </component>
     <component bom-ref="silabs.simplicity_sdk:2025.12.2" type="library">
@@ -964,18 +974,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:clock_manager" type="library">
-          <name>Clock Manager</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init" type="library">
-          <name>Automatic Device Initialization</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:pwm" type="library">
+          <name>PWM</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -994,6 +994,26 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_button" type="library">
+          <name>Simple Button</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led" type="library">
+          <name>Simple RGB PWM LED</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:sl_main" type="library">
           <name>System Setup (sl_main)</name>
           <version>2025.12.2</version>
@@ -1004,8 +1024,28 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:spidrv_eusart" type="library">
+          <name>SPIDRV EUSART</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:led" type="library">
           <name>Generic LED API</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:pwm_core" type="library">
+          <name>PWM Core</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -1032,16 +1072,6 @@ referenced in this SBOM.)
 	      </supplier>
           <licenses>
             <expression>MSLA</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:clock_manager_init_hal_s2" type="library">
-          <name>Clock Manager Init HAL Series 2</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
           </licenses>
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:hal_system" type="library">
@@ -1384,6 +1414,16 @@ referenced in this SBOM.)
             </ancestors>
           </pedigree>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_pwm_led_core" type="library">
+          <name>Simple PWM LED Core</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:silabs_core_circular_queue" type="library">
           <name>Circular Queue</name>
           <version>2025.12.2</version>
@@ -1634,6 +1674,16 @@ referenced in this SBOM.)
             <expression>MSLA</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led_core" type="library">
+          <name>Simple RGB PWM LED</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:rail_lib" type="library">
           <name>RAIL Library, Core</name>
           <version>2025.12.2</version>
@@ -1824,6 +1874,16 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:button" type="library">
+          <name>Generic Button API</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:sl_assert" type="library">
           <name>Assert Functions</name>
           <version>2025.12.2</version>
@@ -1876,6 +1936,16 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:sl_core" type="library">
           <name>core</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_button_core" type="library">
+          <name>Simple Button Configuration</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -2674,6 +2744,16 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:spidrv_core" type="library">
+          <name>SPIDRV Core</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:cpp_support" type="library">
           <name>Toolchain: C++ Support</name>
           <version>2025.12.2</version>
@@ -3079,8 +3159,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led" type="library">
-          <name>Simple RGB PWM LED</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_lfrco" type="library">
+          <name>Low Frequency RC Oscillator (LFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -3089,8 +3169,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_pwm_led_core" type="library">
-          <name>Simple PWM LED Core</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_clocks" type="library">
+          <name>Clocks</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -3099,8 +3179,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led_core" type="library">
-          <name>Simple RGB PWM LED</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_dpll" type="library">
+          <name>Digital Phase-Locked Loop (DPLL)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -3109,8 +3189,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:spidrv_eusart" type="library">
-          <name>SPIDRV EUSART</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init" type="library">
+          <name>Automatic Device Initialization</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -3119,8 +3199,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:spidrv_core" type="library">
-          <name>SPIDRV Core</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfxo" type="library">
+          <name>High Frequency Crystal Oscillator (HFXO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -3129,48 +3209,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:pwm" type="library">
-          <name>PWM</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:pwm_core" type="library">
-          <name>PWM Core</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_button" type="library">
-          <name>Simple Button</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:button" type="library">
-          <name>Generic Button API</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_button_core" type="library">
-          <name>Simple Button Configuration</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfrco" type="library">
+          <name>High Frequency RC Oscillator (HFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>

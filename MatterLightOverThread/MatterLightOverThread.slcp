@@ -126,6 +126,9 @@ component:
   id: matter_provision_default
 - package: matter
   vendor: silabs
+  id: matter_rgb_leds
+- package: matter
+  vendor: silabs
   id: matter_scenes
 - package: matter
   vendor: silabs
@@ -153,10 +156,10 @@ component:
   id: EFR32MG24B010F1536IM40
 - package: simplicity_sdk
   vendor: silabs
-  id: clock_manager
+  id: device_init_hfrco
 - package: simplicity_sdk
   vendor: silabs
-  id: device_init
+  id: device_init_hfxo
 - package: simplicity_sdk
   instance:
   - Indic_led0

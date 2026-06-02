@@ -5,7 +5,7 @@
   "name" : "Silicon-Laboratories",
   "documentNamespace" : "https://silabs.com",
   "creationInfo" : {
-    "created" : "2026-06-01T08:52:35Z",
+    "created" : "2026-06-02T03:22:51Z",
     "creators" : [ "Tool: Silicon Labs Configuration Tooling" ]
   },
   "comment" : "TERMS OF USE - SILICON LABORATORIES INC.\n(With respect to Silicon Labs software components, this Software Bill of Materials (SBOM) is based upon Silicon Labs'\nreview and analysis of the code version when released.  It is provided \"AS IS\" and does not modify, change or alter\nthe terms or conditions of your use of Silicon Labs' software and/or SDKs based upon license terms and/or agreements\nassociated with this software or SDKs when distributed to you, received by you, or installed by you.  Further, no\nwarranties or obligations are created by this SBOM.  It is your obligation to comply with the terms of licenses\nreferenced in this SBOM.)",
@@ -337,14 +337,6 @@
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories Inc.",
     "licenseConcluded" : "Apache 2.0"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
-    "name" : "Matter UART and Clock for Series 2 Boards",
-    "versionInfo" : "2.8.1",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories Inc.",
-    "licenseConcluded" : "Zlib"
   }, {
     "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_syscall_stubs",
     "name" : "Utility",
@@ -754,6 +746,22 @@
     "supplier" : "Organization: Silicon Laboratories Inc.",
     "licenseConcluded" : "Apache 2.0"
   }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_rgb_leds",
+    "name" : "Matter RGB LED Support",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
+    "name" : "Matter UART and Clock for Series 2 Boards",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "name" : "Simplicity SDK Suite",
     "versionInfo" : "2025.12.2",
@@ -769,16 +777,8 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-clock_manager",
-    "name" : "Clock Manager",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
-    "name" : "Automatic Device Initialization",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm",
+    "name" : "PWM",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -793,6 +793,22 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button",
+    "name" : "Simple Button",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led",
+    "name" : "Simple RGB PWM LED",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_main",
     "name" : "System Setup (sl_main)",
     "versionInfo" : "2025.12.2",
@@ -801,8 +817,24 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_eusart",
+    "name" : "SPIDRV EUSART",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-led",
     "name" : "Generic LED API",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm_core",
+    "name" : "PWM Core",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -824,14 +856,6 @@
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-clock_manager_init_hal_s2",
-    "name" : "Clock Manager Init HAL Series 2",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-hal_system",
     "name" : "SYSTEM",
@@ -1103,6 +1127,14 @@
     } ],
     "comment" : "FreeRTOS kernel, Version 11.1.0"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_pwm_led_core",
+    "name" : "Simple PWM LED Core",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-silabs_core_circular_queue",
     "name" : "Circular Queue",
     "versionInfo" : "2025.12.2",
@@ -1302,6 +1334,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led_core",
+    "name" : "Simple RGB PWM LED",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-rail_lib",
     "name" : "RAIL Library, Core",
     "versionInfo" : "2025.12.2",
@@ -1454,6 +1494,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-button",
+    "name" : "Generic Button API",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_assert",
     "name" : "Assert Functions",
     "versionInfo" : "2025.12.2",
@@ -1496,6 +1544,14 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_core",
     "name" : "core",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button_core",
+    "name" : "Simple Button Configuration",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -2133,6 +2189,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_core",
+    "name" : "SPIDRV Core",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-cpp_support",
     "name" : "Toolchain: C++ Support",
     "versionInfo" : "2025.12.2",
@@ -2449,80 +2513,48 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led",
-    "name" : "Simple RGB PWM LED",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco",
+    "name" : "Low Frequency RC Oscillator (LFRCO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_pwm_led_core",
-    "name" : "Simple PWM LED Core",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_clocks",
+    "name" : "Clocks",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led_core",
-    "name" : "Simple RGB PWM LED",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_dpll",
+    "name" : "Digital Phase-Locked Loop (DPLL)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_eusart",
-    "name" : "SPIDRV EUSART",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
+    "name" : "Automatic Device Initialization",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_core",
-    "name" : "SPIDRV Core",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
+    "name" : "High Frequency Crystal Oscillator (HFXO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm",
-    "name" : "PWM",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm_core",
-    "name" : "PWM Core",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button",
-    "name" : "Simple Button",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-button",
-    "name" : "Generic Button API",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button_core",
-    "name" : "Simple Button Configuration",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "name" : "High Frequency RC Oscillator (HFRCO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -2696,10 +2728,6 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-libsecurechanneltypes",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
-    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
@@ -2906,16 +2934,20 @@
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-dnssd",
     "relationshipType" : "CONTAINS"
   }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_rgb_leds",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
+    "relationshipType" : "CONTAINS"
+  }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-clock_manager",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -2923,11 +2955,27 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_main",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_eusart",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-led",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm_core",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -2936,10 +2984,6 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-bluetooth_controller_libraries",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-clock_manager_init_hal_s2",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3071,6 +3115,10 @@
     "relationshipType" : "ANCESTOR_OF"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_pwm_led_core",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-silabs_core_circular_queue",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3167,6 +3215,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led_core",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-rail_lib",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3243,6 +3295,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-button",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_assert",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3264,6 +3320,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_core",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button_core",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3579,6 +3639,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_core",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-cpp_support",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3723,43 +3787,27 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_pwm_led_core",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_clocks",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_rgb_pwm_led_core",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_dpll",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_eusart",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_core",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-pwm_core",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-button",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_button_core",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
     "relationshipType" : "CONTAINS"
   } ]
 }

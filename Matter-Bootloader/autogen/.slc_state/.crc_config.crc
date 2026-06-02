@@ -9,6 +9,7 @@ btl_storage_slot_cfg.h=1777768938
 btl_storage_slot_cfg_default.h=509592195
 psa_crypto_config.h=508311426
 sl_core_config.h=-1854422791
+sl_device_init_lfrco_config.h=-250379575
 sl_fault_injection_hardening_cfg.h=797160938
 sl_mbedtls_device_config.h=-287029762
 sl_mbedtls_trustzone_config.h=-986216763

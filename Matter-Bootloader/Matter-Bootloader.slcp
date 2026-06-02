@@ -55,6 +55,9 @@ component:
   id: bootloader_token_management
 - package: simplicity_sdk
   vendor: silabs
+  id: device_init_lfrco
+- package: simplicity_sdk
+  vendor: silabs
   id: psa_crypto_config
 configuration:
 - name: SLOT0_ENABLE

@@ -3,7 +3,7 @@
   "specVersion" : "1.6",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-06-01T08:52:35Z",
+    "timestamp" : "2026-06-02T03:22:51Z",
     "authors" : [ {
       "name" : "Silicon Laboratories, Inc."
     } ],
@@ -500,18 +500,6 @@
       },
       "licenses" : [ {
         "expression" : "Apache 2.0"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.matter:2.8.1:matter_drivers_series_2",
-      "name" : "Matter UART and Clock for Series 2 Boards",
-      "version" : "2.8.1",
-      "supplier" : {
-        "name" : "Silicon Laboratories Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
       } ]
     }, {
       "scope" : "required",
@@ -1125,6 +1113,30 @@
       "licenses" : [ {
         "expression" : "Apache 2.0"
       } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.matter:2.8.1:matter_rgb_leds",
+      "name" : "Matter RGB LED Support",
+      "version" : "2.8.1",
+      "supplier" : {
+        "name" : "Silicon Laboratories Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.matter:2.8.1:matter_drivers_series_2",
+      "name" : "Matter UART and Clock for Series 2 Boards",
+      "version" : "2.8.1",
+      "supplier" : {
+        "name" : "Silicon Laboratories Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
     } ]
   }, {
     "scope" : "required",
@@ -1150,20 +1162,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:clock_manager",
-      "name" : "Clock Manager",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init",
-      "name" : "Automatic Device Initialization",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:pwm",
+      "name" : "PWM",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -1186,6 +1186,30 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_button",
+      "name" : "Simple Button",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led",
+      "name" : "Simple RGB PWM LED",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:sl_main",
       "name" : "System Setup (sl_main)",
       "version" : "2025.12.2",
@@ -1198,8 +1222,32 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:spidrv_eusart",
+      "name" : "SPIDRV EUSART",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:led",
       "name" : "Generic LED API",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:pwm_core",
+      "name" : "PWM Core",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -1230,18 +1278,6 @@
       },
       "licenses" : [ {
         "expression" : "MSLA"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:clock_manager_init_hal_s2",
-      "name" : "Clock Manager Init HAL Series 2",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
       } ]
     }, {
       "scope" : "required",
@@ -1646,6 +1682,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_pwm_led_core",
+      "name" : "Simple PWM LED Core",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:silabs_core_circular_queue",
       "name" : "Circular Queue",
       "version" : "2025.12.2",
@@ -1942,6 +1990,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led_core",
+      "name" : "Simple RGB PWM LED",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:rail_lib",
       "name" : "RAIL Library, Core",
       "version" : "2025.12.2",
@@ -2170,6 +2230,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:button",
+      "name" : "Generic Button API",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:sl_assert",
       "name" : "Assert Functions",
       "version" : "2025.12.2",
@@ -2232,6 +2304,18 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:sl_core",
       "name" : "core",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_button_core",
+      "name" : "Simple Button Configuration",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3186,6 +3270,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:spidrv_core",
+      "name" : "SPIDRV Core",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:cpp_support",
       "name" : "Toolchain: C++ Support",
       "version" : "2025.12.2",
@@ -3653,8 +3749,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led",
-      "name" : "Simple RGB PWM LED",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_lfrco",
+      "name" : "Low Frequency RC Oscillator (LFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3665,8 +3761,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_pwm_led_core",
-      "name" : "Simple PWM LED Core",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_clocks",
+      "name" : "Clocks",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3677,8 +3773,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_rgb_pwm_led_core",
-      "name" : "Simple RGB PWM LED",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_dpll",
+      "name" : "Digital Phase-Locked Loop (DPLL)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3689,8 +3785,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:spidrv_eusart",
-      "name" : "SPIDRV EUSART",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init",
+      "name" : "Automatic Device Initialization",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3701,8 +3797,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:spidrv_core",
-      "name" : "SPIDRV Core",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfxo",
+      "name" : "High Frequency Crystal Oscillator (HFXO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3713,56 +3809,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:pwm",
-      "name" : "PWM",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:pwm_core",
-      "name" : "PWM Core",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_button",
-      "name" : "Simple Button",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:button",
-      "name" : "Generic Button API",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_button_core",
-      "name" : "Simple Button Configuration",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfrco",
+      "name" : "High Frequency RC Oscillator (HFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."

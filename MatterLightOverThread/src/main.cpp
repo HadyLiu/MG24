@@ -18,6 +18,8 @@
  */
 
 #include "sl_component_catalog.h"
+//#include "sl_uartdrv_instances.h"
+//#include "uartdrv.h"
 // Use sl_system for projects upgraded to 2025.6, identified by the presence of SL_CATALOG_CUSTOM_MAIN_PRESENT
 #if defined(SL_CATALOG_CUSTOM_MAIN_PRESENT)
 #include "sl_system_init.h"
@@ -40,6 +42,8 @@ void app_init_early(void)
 // initialized.
 void app_init(void)
 {
+   // static const uint8_t kBootProbeUart[] = "[BOOT_PROBE_UARTDRV] app_init reached\r\n";
+   // UARTDRV_ForceTransmit(sl_uartdrv_eusart_vcom_handle, (uint8_t *) kBootProbeUart, sizeof(kBootProbeUart) - 1);
     SILABS_TRACE_END(chip::Tracing::Silabs::TimeTraceOperation::kSilabsInit);
     SILABS_TRACE_BEGIN(chip::Tracing::Silabs::TimeTraceOperation::kMatterInit);
     // Initialize the matter application. For example, create periodic timer(s) or

@@ -13,7 +13,7 @@ DocumentNamespace: https://silabs.com
 
 ## Creation Information
 Creator: Organization: Silicon Laboratories, Inc.
-Created: 2026-06-01T07:56:33Z
+Created: 2026-06-02T03:43:02Z
 ## Relationships
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-silabs.matter-2.8.1
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-silabs.simplicity_sdk-2025.12.2
@@ -122,6 +122,7 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.si
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_common
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-se_manager_mailbox
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-se_manager_config
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco
 
 ## Package Information
 PackageName: EFR32MG24B010F1536IM40
@@ -976,3 +977,14 @@ PackageSupplier: Organization: Silicon Laboratories, Inc.
 PackageLicenseConcluded: Zlib
 ## Relationships
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-se_manager_config CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: Low Frequency RC Oscillator (LFRCO)
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Zlib
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2

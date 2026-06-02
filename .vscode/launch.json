@@ -1,0 +1,31 @@
+{
+    "configurations": [
+        {
+            "name": "Li-Bat_MatterLight_EFR32MG24B010F1536IM40_silabs_debug:default_config",
+            "cwd": "${workspaceFolder}",
+            "type": "cortex-debug",
+            "request": "launch",
+            "serverpath": "/home/hadyliu/.silabs/slt/installs/archive/exx32-v6.0.32/JLinkGDBServerCLExe",
+            "servertype": "jlink",
+            "gdbPath": "/home/hadyliu/.silabs/slt/installs/archive/exx32-v6.0.32/arm-none-eabi-gdb",
+            "device": "EFR32MG24BxxxF1536",
+            "svdFile": "",
+            "runToEntryPoint": "main",
+            "rtos": "FreeRTOS",
+            "showDevDebugOutput": "raw",
+            "executable": "/home/hadyliu/SimplicityStudio/v6_workspace/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/MatterLightOverThread/cmake_gcc/build/base/MatterLightOverThread.out",
+            "preLaunchTask": "Li-Bat_MatterLight_EFR32MG24B010F1536IM40_silabs_debug:default_config_combined",
+            "breakAfterReset": true,
+            "serialNumber": "440350761",
+            "overrideLaunchCommands": [
+                "exec-file /home/hadyliu/SimplicityStudio/v6_workspace/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/MatterLightOverThread/cmake_gcc/build/base/MatterLightOverThread.out",
+                "symbol-file /home/hadyliu/SimplicityStudio/v6_workspace/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/MatterLightOverThread/cmake_gcc/build/base/MatterLightOverThread.out"
+            ],
+            "overrideResetCommands": [
+                "monitor reset",
+                "set $pc = __Vectors[1]",
+                "set $sp = __Vectors[0]"
+            ]
+        }
+    ]
+}
