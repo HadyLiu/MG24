@@ -3,8 +3,8 @@ parameters: []
 constants:
 - name: "workspace_name"
   value: "Li-Bat_MatterLight_EFR32MG24B010F1536IM40"
-- path: "MatterLightOverThread_2/MatterLightOverThread_2.slpb"
-- path: "Matter-Bootloader_2/Matter-Bootloader_2.slpb"
+- path: "MatterLightOverThread/MatterLightOverThread.slpb"
+- path: "Matter-Bootloader/Matter-Bootloader.slpb"
 steps:
 - task: "convert"
   output: "artifact/{{workspace_name}}-full.s37"

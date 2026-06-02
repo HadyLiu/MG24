@@ -8,10 +8,10 @@
     "configurePresets": [
       {
         "name": "project",
-        "displayName": "Configure Li-Bat_MatterLight_EFR32MG24B010F1536IM40",
+        "displayName": "Configure MatterLightOverThread",
         "generator": "Ninja Multi-Config",
         "binaryDir": "${sourceDir}/build",
-        "toolchainFile": "${sourceDir}/../MatterLightOverThread/cmake_gcc/toolchain.cmake",
+        "toolchainFile": "${sourceDir}/toolchain.cmake",
         "cacheVariables": {
           "CMAKE_CONFIGURATION_TYPES": "base"
         }
@@ -20,9 +20,10 @@
     "buildPresets": [
       {
         "name": "default_config",
-        "displayName": "Build Li-Bat_MatterLight_EFR32MG24B010F1536IM40",
+        "displayName": "Build MatterLightOverThread",
         "configurePreset": "project",
-        "configuration": "base"
+        "configuration": "base",
+        "targets": ["MatterLightOverThread"]
       }
     ],
     "workflowPresets": [
