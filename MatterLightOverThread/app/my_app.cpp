@@ -108,85 +108,8 @@ void my_custom_loop_app_process(void) {
 
 
 /**
- * @brief 📬 异步消费端：专门用来执行按键业务的收信办公室
- */
-//void MyButtonActionHandler(AppEvent * aEvent)
-//{
-//    if (aEvent->Type != AppEvent::kEventType_Button) return;
-//    SILABS_LOG("【MyButtonActionHandler】Enter button event handler");
-//    SILABS_LOG("Event Type: %d", aEvent->Type);
-//    uint8_t action = aEvent->CustomButtonEvent.Action;
-//    uint16_t count = aEvent->CustomButtonEvent.LongPressCount;
-//
-//    switch (action)
-//    {
-//        case AppEvent::kButtonAction_ShortPress:
-//            SILABS_LOG("【安全接收】收到事件邮件：单击！");
-//            // 在这里安全地执行你的业务，比如翻转 LED 状态： LightMgr().ToggleLight();
-//            break;
-//            
-//        case AppEvent::kButtonAction_DoublePress:
-//            SILABS_LOG("【安全接收】收到事件邮件：双击！！");
-//            // 执行双击对应的业务
-//            break;
-//            
-//        case AppEvent::kButtonAction_LongPressStart:
-//            SILABS_LOG("【安全接收】收到事件邮件：长按开始");
-//            break;
-//            
-//        case AppEvent::kButtonAction_LongPressing:
-//            SILABS_LOG("【安全接收】收到事件邮件：长按持续中... 当前计数 = %d", count);
-//            // 比如长按不放时，根据 count 的增加不断平滑调光
-//            break;
-//            
-//        default:
-//            break;
-//    }
-//}
-//
-
-/**
  * @brief 📬 异步消费端：成功寄居在其他业务文件中
  */
-//void MyButtonActionHandler(AppEvent * aEvent)
-//{
-//    SILABS_LOG("【MyButtonActionHandler】Enter button event handler");
-//    
-//    // 💡 核心修正：寄信时怎么强转过去，收信时就怎么强转回来！
-//    // 这样能 100% 保证读取到的 Action 和 ButtonIdx 绝对不会因为原厂 Padding 而错位
-//    AppButtonEvent* pBtnEvent = reinterpret_cast<AppButtonEvent*>(aEvent);
-//    
-//    // 从我们自己定义的、对称的结构体中安全拿数据
-//    uint8_t  button_idx       = pBtnEvent->ButtonEvent.ButtonIdx;
-//    uint8_t  action           = pBtnEvent->ButtonEvent.Action;
-//    uint16_t long_press_count = pBtnEvent->ButtonEvent.LongPressCount;
-//
-//    SILABS_LOG("【解包成功】Raw Action Value = %d, Button = %d", action, button_idx);
-//
-//    switch (action)
-//    {
-//        case AppButtonEvent::kButtonAction_ShortPress: // 0 或 1，取决于你定义的枚举值
-//            SILABS_LOG(" -> [业务日志] 确诊：单击！执行调光");
-//            break;
-//            
-//        case AppButtonEvent::kButtonAction_DoublePress:
-//            SILABS_LOG(" -> [业务日志] 确诊：双击！！执行换色");
-//            break;
-//            
-//        case AppButtonEvent::kButtonAction_LongPressStart:
-//            SILABS_LOG(" -> [业务日志] 确诊：长按开始");
-//            break;
-//            
-//        case AppButtonEvent::kButtonAction_LongPressing:
-//            SILABS_LOG(" -> [业务日志] 确诊：长按维持中... 计数 = %d", long_press_count);
-//            break;
-//            
-//        default:
-//            SILABS_LOG(" -> [警告] 收到未定义或错位的 Action 编号: %d", action);
-//            break;
-//    }
-//}
-
 
 void MyButtonActionHandler(AppEvent * aEvent)
 {
