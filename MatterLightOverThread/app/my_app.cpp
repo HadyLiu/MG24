@@ -102,10 +102,13 @@ void my_custom_loop_app_process(void) {
     if(g_time_clk - tick > 200)
     {   
         tick = g_time_clk;
-       // SILABS_LOG("tick=%d",tick);
+        SILABS_LOG("tick=%d",tick);
+        my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
+        my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
+        sl_pwm_start(&sl_pwm_w_led0);
+        sl_pwm_start(&sl_pwm_Indic_led0);
     }
 }
-
 
 /**
  * @brief 📬 异步消费端：成功寄居在其他业务文件中

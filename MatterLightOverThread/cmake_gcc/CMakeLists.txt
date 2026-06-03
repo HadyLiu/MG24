@@ -17,7 +17,7 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../app/my_app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/button.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_pwm_port.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_driver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/pinManage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/powerManage.cpp
