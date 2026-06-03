@@ -31,8 +31,23 @@ struct AppEvent : public BaseAppEvent
         kEventType_Light = BaseAppEvent::kEventType_Max + 1,
     };
 
+    enum AppButtonAction
+    {
+        kButtonAction_ShortPress = 0,   // 单击
+        kButtonAction_DoublePress,      // 双击
+        kButtonAction_LongPressStart,   // 长按开始触发
+        kButtonAction_LongPressing,     // 长按不放时的连续计数脉冲
+    };
+
     union
     {
+        struct
+        {
+            uint8_t ButtonIdx;
+            uint8_t Action;
+            uint16_t LongPressCount;
+        } CustomButtonEvent;
+
         struct
         {
             uint8_t Action;

@@ -3,7 +3,7 @@
   "specVersion" : "1.6",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-06-02T03:22:51Z",
+    "timestamp" : "2026-06-02T07:06:53Z",
     "authors" : [ {
       "name" : "Silicon Laboratories, Inc."
     } ],
@@ -396,6 +396,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.matter:2.8.1:matter_rgb_leds",
+      "name" : "Matter RGB LED Support",
+      "version" : "2.8.1",
+      "supplier" : {
+        "name" : "Silicon Laboratories Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.matter:2.8.1:matter_scenes",
       "name" : "Scenes Management Server Cluster",
       "version" : "2.8.1",
@@ -500,6 +512,18 @@
       },
       "licenses" : [ {
         "expression" : "Apache 2.0"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.matter:2.8.1:matter_drivers_series_2",
+      "name" : "Matter UART and Clock for Series 2 Boards",
+      "version" : "2.8.1",
+      "supplier" : {
+        "name" : "Silicon Laboratories Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
       } ]
     }, {
       "scope" : "required",
@@ -1113,30 +1137,6 @@
       "licenses" : [ {
         "expression" : "Apache 2.0"
       } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.matter:2.8.1:matter_rgb_leds",
-      "name" : "Matter RGB LED Support",
-      "version" : "2.8.1",
-      "supplier" : {
-        "name" : "Silicon Laboratories Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.matter:2.8.1:matter_drivers_series_2",
-      "name" : "Matter UART and Clock for Series 2 Boards",
-      "version" : "2.8.1",
-      "supplier" : {
-        "name" : "Silicon Laboratories Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
     } ]
   }, {
     "scope" : "required",
@@ -1152,6 +1152,30 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:EFR32MG24B010F1536IM40",
       "name" : "EFR32MG24B010F1536IM40",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfrco",
+      "name" : "High Frequency RC Oscillator (HFRCO)",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfxo",
+      "name" : "High Frequency Crystal Oscillator (HFXO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -1400,6 +1424,18 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:se_manager_crypto",
       "name" : "Crypto",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_lfrco",
+      "name" : "Low Frequency RC Oscillator (LFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -1706,6 +1742,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_clocks",
+      "name" : "Clocks",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:bluetooth_device_compatibility",
       "name" : "Device compatibility defines for Bluetooth features",
       "version" : "2025.12.2",
@@ -1908,6 +1956,18 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_peripheral",
       "name" : "Device Manager Peripheral",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_dpll",
+      "name" : "Digital Phase-Locked Loop (DPLL)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -2862,6 +2922,18 @@
     }, {
       "scope" : "required",
       "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init",
+      "name" : "Automatic Device Initialization",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:psa_se_driver",
       "name" : "PSA SE Driver Source Code",
       "version" : "2025.12.2",
@@ -3739,78 +3811,6 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_led",
       "name" : "Simple LED",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_lfrco",
-      "name" : "Low Frequency RC Oscillator (LFRCO)",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_clocks",
-      "name" : "Clocks",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_dpll",
-      "name" : "Digital Phase-Locked Loop (DPLL)",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init",
-      "name" : "Automatic Device Initialization",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfxo",
-      "name" : "High Frequency Crystal Oscillator (HFXO)",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfrco",
-      "name" : "High Frequency RC Oscillator (HFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."

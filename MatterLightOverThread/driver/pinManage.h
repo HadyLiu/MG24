@@ -23,22 +23,51 @@
 // PC07
 
 
-#define INDIC_R_LED_PORT SL_GPIO_PORT_A
+#define POWER_IN_DETECT_PORT (SL_GPIO_PORT_A)
+#define POWER_IN_DETECT_PIN 8
+
+#define INDIC_R_LED_PORT (SL_GPIO_PORT_A)
 #define INDIC_R_LED_PIN 4
 
-#define BAT_EN_PORT SL_GPIO_PORT_C
+#define BAT_EN_PORT (SL_GPIO_PORT_C)
 #define BAT_EN_PIN 0
 
-#define LAMP_STATUS_PORT SL_GPIO_PORT_C
+#define LAMP_STATUS_PORT (SL_GPIO_PORT_C)
 #define LAMP_STATUS_PIN 1
 
-#define CHARGE_SPEED_PORT SL_GPIO_PORT_C
+#define CHARGE_SPEED_PORT (SL_GPIO_PORT_C)
 #define CHARGE_SPEED_PIN 2
 
-#define CHARGE_EN_PORT SL_GPIO_PORT_C
+#define CHARGE_EN_PORT (SL_GPIO_PORT_C)
 #define CHARGE_EN_PIN 6
 
+extern void gpio_init(void);
 extern bool gpio_get_pin_value(sl_gpio_t gpio);
+
+extern void indic_r(bool state);
+extern void bat_en(bool state);
+extern void charge_speed_set(bool fast);
+extern void charge_en(bool state);
+extern bool charge_status_read(void);
+extern bool get_power_in_detect(void);
+
+#define INDIC_R_LED_ON() indic_r(true)
+#define INDIC_R_LED_OFF() indic_r(false)
+
+#define BAT_EN_ON() bat_en(true)
+#define BAT_EN_OFF() bat_en(false)
+
+#define CHARGE_EN_ON() charge_en(true)
+#define CHARGE_EN_OFF() charge_en(false)
+
+#define CHARGE_STATUS_READ() charge_status_read()
+
+// 快充：拉低引脚，慢充：保持开漏输出的引脚处于高电平状态
+#define CHARGE_SPEED_FAST() charge_speed_set(false)
+#define CHARGE_SPEED_SLOW() charge_speed_set(true)
+
+#define GET_POWER_IN_DETECT() get_power_in_detect()
+
 
 
 //#define INDIC_R_LED_ON() sl_gpio_set_pin(&INDIC_R_LED_PORT_PIN)

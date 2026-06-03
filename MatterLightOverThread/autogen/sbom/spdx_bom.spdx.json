@@ -5,7 +5,7 @@
   "name" : "Silicon-Laboratories",
   "documentNamespace" : "https://silabs.com",
   "creationInfo" : {
-    "created" : "2026-06-02T03:22:51Z",
+    "created" : "2026-06-02T07:06:53Z",
     "creators" : [ "Tool: Silicon Labs Configuration Tooling" ]
   },
   "comment" : "TERMS OF USE - SILICON LABORATORIES INC.\n(With respect to Silicon Labs software components, this Software Bill of Materials (SBOM) is based upon Silicon Labs'\nreview and analysis of the code version when released.  It is provided \"AS IS\" and does not modify, change or alter\nthe terms or conditions of your use of Silicon Labs' software and/or SDKs based upon license terms and/or agreements\nassociated with this software or SDKs when distributed to you, received by you, or installed by you.  Further, no\nwarranties or obligations are created by this SBOM.  It is your obligation to comply with the terms of licenses\nreferenced in this SBOM.)",
@@ -266,6 +266,14 @@
     "supplier" : "Organization: Silicon Laboratories Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_rgb_leds",
+    "name" : "Matter RGB LED Support",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_scenes",
     "name" : "Scenes Management Server Cluster",
     "versionInfo" : "2.8.1",
@@ -337,6 +345,14 @@
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories Inc.",
     "licenseConcluded" : "Apache 2.0"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
+    "name" : "Matter UART and Clock for Series 2 Boards",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Zlib"
   }, {
     "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_syscall_stubs",
     "name" : "Utility",
@@ -746,22 +762,6 @@
     "supplier" : "Organization: Silicon Laboratories Inc.",
     "licenseConcluded" : "Apache 2.0"
   }, {
-    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_rgb_leds",
-    "name" : "Matter RGB LED Support",
-    "versionInfo" : "2.8.1",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
-    "name" : "Matter UART and Clock for Series 2 Boards",
-    "versionInfo" : "2.8.1",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "name" : "Simplicity SDK Suite",
     "versionInfo" : "2025.12.2",
@@ -771,6 +771,22 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
     "name" : "EFR32MG24B010F1536IM40",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "name" : "High Frequency RC Oscillator (HFRCO)",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
+    "name" : "High Frequency Crystal Oscillator (HFXO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -938,6 +954,14 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-se_manager_crypto",
     "name" : "Crypto",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco",
+    "name" : "Low Frequency RC Oscillator (LFRCO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -1143,6 +1167,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_clocks",
+    "name" : "Clocks",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-bluetooth_device_compatibility",
     "name" : "Device compatibility defines for Bluetooth features",
     "versionInfo" : "2025.12.2",
@@ -1280,6 +1312,14 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_peripheral",
     "name" : "Device Manager Peripheral",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_dpll",
+    "name" : "Digital Phase-Locked Loop (DPLL)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -1917,6 +1957,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
+    "name" : "Automatic Device Initialization",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-psa_se_driver",
     "name" : "PSA SE Driver Source Code",
     "versionInfo" : "2025.12.2",
@@ -2512,54 +2560,6 @@
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco",
-    "name" : "Low Frequency RC Oscillator (LFRCO)",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_clocks",
-    "name" : "Clocks",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_dpll",
-    "name" : "Digital Phase-Locked Loop (DPLL)",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
-    "name" : "Automatic Device Initialization",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
-    "name" : "High Frequency Crystal Oscillator (HFXO)",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
-    "name" : "High Frequency RC Oscillator (HFRCO)",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
   } ],
   "relationships" : [ {
     "spdxElementId" : "SPDXRef-DOCUMENT",
@@ -2695,6 +2695,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_rgb_leds",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_scenes",
     "relationshipType" : "CONTAINS"
   }, {
@@ -2728,6 +2732,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-libsecurechanneltypes",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
@@ -2934,16 +2942,16 @@
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-dnssd",
     "relationshipType" : "CONTAINS"
   }, {
-    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
-    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_rgb_leds",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
-    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_drivers_series_2",
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3024,6 +3032,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-se_manager_crypto",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3123,6 +3135,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_clocks",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-bluetooth_device_compatibility",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3188,6 +3204,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_peripheral",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_dpll",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3503,6 +3523,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-psa_se_driver",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3784,30 +3808,6 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_lfrco",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_clocks",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_dpll",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
     "relationshipType" : "CONTAINS"
   } ]
 }

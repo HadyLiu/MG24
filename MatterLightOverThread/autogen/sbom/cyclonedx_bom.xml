@@ -10,7 +10,7 @@ referenced in this SBOM.)
 -->
 <bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
   <metadata>
-    <timestamp>2026-06-02T03:22:51Z</timestamp>
+    <timestamp>2026-06-02T07:06:53Z</timestamp>
     <authors>
       <author>
         <name>Silicon Laboratories, Inc.</name>
@@ -335,6 +335,16 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.matter:2.8.1:matter_rgb_leds" type="library">
+          <name>Matter RGB LED Support</name>
+          <version>2.8.1</version>
+	      <supplier>
+	        <name>Silicon Laboratories Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.matter:2.8.1:matter_scenes" type="library">
           <name>Scenes Management Server Cluster</name>
           <version>2.8.1</version>
@@ -423,6 +433,16 @@ referenced in this SBOM.)
 	      </supplier>
           <licenses>
             <expression>Apache 2.0</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.matter:2.8.1:matter_drivers_series_2" type="library">
+          <name>Matter UART and Clock for Series 2 Boards</name>
+          <version>2.8.1</version>
+	      <supplier>
+	        <name>Silicon Laboratories Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
           </licenses>
         </component>
         <component bom-ref="silabs.matter:2.8.1:matter_syscall_stubs" type="library">
@@ -935,26 +955,6 @@ referenced in this SBOM.)
             <expression>Apache 2.0</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.matter:2.8.1:matter_rgb_leds" type="library">
-          <name>Matter RGB LED Support</name>
-          <version>2.8.1</version>
-	      <supplier>
-	        <name>Silicon Laboratories Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.matter:2.8.1:matter_drivers_series_2" type="library">
-          <name>Matter UART and Clock for Series 2 Boards</name>
-          <version>2.8.1</version>
-	      <supplier>
-	        <name>Silicon Laboratories Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
       </components>
     </component>
     <component bom-ref="silabs.simplicity_sdk:2025.12.2" type="library">
@@ -966,6 +966,26 @@ referenced in this SBOM.)
       <components>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:EFR32MG24B010F1536IM40" type="library">
           <name>EFR32MG24B010F1536IM40</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfrco" type="library">
+          <name>High Frequency RC Oscillator (HFRCO)</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfxo" type="library">
+          <name>High Frequency Crystal Oscillator (HFXO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -1176,6 +1196,16 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:se_manager_crypto" type="library">
           <name>Crypto</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_lfrco" type="library">
+          <name>Low Frequency RC Oscillator (LFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -1434,6 +1464,16 @@ referenced in this SBOM.)
             <expression>MSLA</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_clocks" type="library">
+          <name>Clocks</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:bluetooth_device_compatibility" type="library">
           <name>Device compatibility defines for Bluetooth features</name>
           <version>2025.12.2</version>
@@ -1606,6 +1646,16 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_peripheral" type="library">
           <name>Device Manager Peripheral</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_dpll" type="library">
+          <name>Digital Phase-Locked Loop (DPLL)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -2404,6 +2454,16 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init" type="library">
+          <name>Automatic Device Initialization</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:psa_se_driver" type="library">
           <name>PSA SE Driver Source Code</name>
           <version>2025.12.2</version>
@@ -3151,66 +3211,6 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:simple_led" type="library">
           <name>Simple LED</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_lfrco" type="library">
-          <name>Low Frequency RC Oscillator (LFRCO)</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_clocks" type="library">
-          <name>Clocks</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_dpll" type="library">
-          <name>Digital Phase-Locked Loop (DPLL)</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init" type="library">
-          <name>Automatic Device Initialization</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfxo" type="library">
-          <name>High Frequency Crystal Oscillator (HFXO)</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfrco" type="library">
-          <name>High Frequency RC Oscillator (HFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>

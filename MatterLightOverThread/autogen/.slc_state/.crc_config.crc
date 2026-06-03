@@ -30,6 +30,7 @@ sl_clock_manager_oscillator_config.h=820953447
 sl_clock_manager_tree_config.h=32494621
 sl_core_config.h=-1854422791
 sl_device_init_dcdc_config.h=303593907
+sl_device_init_hfrco_config.h=634538358
 sl_gp_interface_config.h=1499708938
 sl_hfxo_manager_config.h=-1473786040
 sl_main_start_task_config.h=5881419

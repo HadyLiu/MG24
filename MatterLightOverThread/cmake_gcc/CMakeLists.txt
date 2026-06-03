@@ -15,9 +15,18 @@ include(MatterLightOverThread.cmake)
 add_executable(MatterLightOverThread
     # Add additional sources here
     ${CMAKE_CURRENT_SOURCE_DIR}/../app/my_app.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_driver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/pinManage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/powerManage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e_port.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/main_light_control.cpp
+    
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例
 )
 
 target_include_directories(MatterLightOverThread PUBLIC

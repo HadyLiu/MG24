@@ -10,7 +10,7 @@ referenced in this SBOM.)
 -->
 <bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
   <metadata>
-    <timestamp>2026-06-02T03:43:02Z</timestamp>
+    <timestamp>2026-06-02T07:06:53Z</timestamp>
     <authors>
       <author>
         <name>Silicon Laboratories, Inc.</name>
@@ -162,6 +162,16 @@ referenced in this SBOM.)
 	      </supplier>
           <licenses>
             <expression>MSLA</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_lfrco" type="library">
+          <name>Low Frequency RC Oscillator (LFRCO)</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
           </licenses>
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:psa_crypto_config" type="library">
@@ -825,16 +835,6 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:se_manager_config" type="library">
           <name>Config</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_lfrco" type="library">
-          <name>Low Frequency RC Oscillator (LFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>

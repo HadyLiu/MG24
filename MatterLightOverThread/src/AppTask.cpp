@@ -49,6 +49,9 @@
 #include <platform/CHIPDeviceLayer.h>
 #include <platform/silabs/tracing/SilabsTracingMacros.h>
 
+#include "PlatformManager.h"
+#include "sl_simple_button_instances.h"
+
 // 1. 定义我们自己的应用程序
 #include "../app/my_app.h"
 
@@ -100,6 +103,7 @@ CHIP_ERROR AppTask::AppInit()
     CHIP_ERROR err = CHIP_NO_ERROR;
     // 将自定义按键中断回调函数注册到芯片平台，以便在按键事件发生时能够正确地触发我们的状态机逻辑
     chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(MyCustomButtonInterruptHandler);
+    //SILABS_LOG("Custom button interrupt handler registered");
     //chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(AppTask::ButtonEventHandler);
 
     err = LightMgr().Init();
@@ -271,6 +275,7 @@ void AppTask::ButtonEventHandler(uint8_t button, uint8_t btnAction)
     button_event.Type               = AppEvent::kEventType_Button;
     button_event.ButtonEvent.Action = btnAction;
 
+    SILABS_LOG("Button %d %s", button, (btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed)) ? "pressed" : "released");
     if (button == APP_LIGHT_SWITCH && btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed))
     {
         button_event.Handler = LightActionEventHandler;

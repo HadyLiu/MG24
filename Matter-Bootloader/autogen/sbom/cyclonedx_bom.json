@@ -3,7 +3,7 @@
   "specVersion" : "1.6",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-06-02T03:43:02Z",
+    "timestamp" : "2026-06-02T07:06:53Z",
     "authors" : [ {
       "name" : "Silicon Laboratories, Inc."
     } ],
@@ -186,6 +186,18 @@
       },
       "licenses" : [ {
         "expression" : "MSLA"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_lfrco",
+      "name" : "Low Frequency RC Oscillator (LFRCO)",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
       } ]
     }, {
       "scope" : "required",
@@ -975,18 +987,6 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:se_manager_config",
       "name" : "Config",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_lfrco",
-      "name" : "Low Frequency RC Oscillator (LFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
