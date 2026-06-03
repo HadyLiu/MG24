@@ -47,6 +47,10 @@ void gpio_init(void)
     gpio.port = CHARGE_EN_PORT;
     gpio.pin = CHARGE_EN_PIN;
     sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_PUSH_PULL, PIN_LOW);
+
+    gpio.port = SL_SIMPLE_BUTTON_BTN0_PORT;
+    gpio.pin = SL_SIMPLE_BUTTON_BTN0_PIN;
+    sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_INPUT_PULL_FILTER, PIN_LOW);
 }
 
 

@@ -1,88 +1,52 @@
 #include "sm15135e.h"
-
 #include <string.h>
-
 #include "cmsis_os2.h"
 #include "spidrv.h"
 #include "sl_spidrv_instances.h"
-#include "sl_spidrv_eusart_rgb_data_config.h"
 
-// SPI encoding:
-// One SM15135E bit is encoded into 4 SPI bits at ~3.2MHz:
-//  - 0 -> 1000 (T0H ~312.5ns, T0L ~937.5ns)
-//  - 1 -> 1110 (T1H ~937.5ns, T1L ~312.5ns)
-// Keep SPI bitrate aligned with this mapping.
 #define SM15135E_SPI_SYMBOL_BITS  4u
-#define SM15135E_SPI_PATTERN_0    0x8u
-#define SM15135E_SPI_PATTERN_1    0xEu
+#define SM15135E_SPI_PATTERN_0    0x8u  // 1000
+#define SM15135E_SPI_PATTERN_1    0xEu  // 1110
 
-#define SM15135E_FRAME_BITS       80u
+// 💡 核心修改：升级为手册指定的 112 Bits
+#define SM15135E_FRAME_BITS       112u
 #define SM15135E_ENCODED_BITS     (SM15135E_FRAME_BITS * SM15135E_SPI_SYMBOL_BITS)
+// 🎯 (112 * 4 + 7) / 8 = 56 字节静态安全 DMA 缓冲区
 #define SM15135E_ENCODED_BYTES    ((SM15135E_ENCODED_BITS + 7u) / 8u)
 
-#define SM15135E_RESET_US         200u
 #define SM15135E_RESET_BUF_BYTES  128u
 
-// Granular isolation switches for SPI diagnosis:
-// Set to 1 to disable that specific SPI operation while keeping call flow intact.
-#define SM15135E_DISABLE_RESET_TX   0  // Lazy reset on first frame
-#define SM15135E_DISABLE_FRAME_TX   0  // Full SPI frame enabled
-
-// Static buffers for DMA operations (must persist during async SPI transfers).
-// Stack-allocated buffers are freed when functions return, causing DMA memory errors.
-static uint8_t sm15135e_reset_buf[SM15135E_RESET_BUF_BYTES];
+// 静态安全缓冲区，规避栈释放导致的 DMA 硬件报错
+static uint8_t sm15135e_reset_buf[SM15135E_RESET_BUF_BYTES] = {0};
 static uint8_t sm15135e_frame_buf[SM15135E_ENCODED_BYTES];
-static uint8_t sm15135e_send_bits_buf[32];  // Buffer for sm15135e_send_bits()
 
-static uint8_t sm15135e_mask5(uint8_t v)
-{
-  return (uint8_t)(v & 0x1Fu);
-}
-
-static uint8_t sm15135e_mask2(uint8_t v)
-{
-  return (uint8_t)(v & 0x03u);
-}
+static uint8_t sm15135e_mask5(uint8_t v) { return (uint8_t)(v & 0x1Fu); }
+static uint8_t sm15135e_mask2(uint8_t v) { return (uint8_t)(v & 0x03u); }
 
 static bool sm15135e_spi_inited = false;
 
 static void sm15135e_spi_init_once(void)
 {
-  if (sm15135e_spi_inited) {
-    return;
-  }
-
-  // SPI initialization always runs (safe, idempotent).
-  // Actual data transmission is controlled separately by isolation flags.
+  if (sm15135e_spi_inited) return;
   sl_spidrv_init_instances();
-  
-  // Ensure SPI peripheral is fully ready before sending data.
-  // Small delay after SPI init to let hardware settle.
-  osDelay(10);  // 10 ms delay
-  
+  osDelay(10); // 等待 EUSART/SPI 硬件总线时钟稳定
   sm15135e_spi_inited = true;
 }
 
-static void sm15135e_spi_append_symbol(uint8_t *buf,
-                                       size_t *bit_pos,
-                                       uint8_t symbol,
-                                       uint8_t symbol_bits)
+static void sm15135e_spi_append_symbol(uint8_t *buf, size_t *bit_pos, uint8_t symbol, uint8_t symbol_bits)
 {
   for (uint8_t i = 0; i < symbol_bits; ++i) {
     const uint8_t bit = (uint8_t)((symbol >> (symbol_bits - 1u - i)) & 0x1u);
     const size_t byte_index = (*bit_pos) / 8u;
     const uint8_t bit_index = (uint8_t)(7u - ((*bit_pos) % 8u));
     if (bit != 0u) {
-      buf[byte_index] = (uint8_t)(buf[byte_index] | (uint8_t)(1u << bit_index));
+      buf[byte_index] |= (uint8_t)(1u << bit_index);
     }
     (*bit_pos)++;
   }
 }
 
-static void sm15135e_spi_append_bits(uint8_t *buf,
-                                     size_t *bit_pos,
-                                     uint32_t value,
-                                     uint8_t bit_count)
+static void sm15135e_spi_append_bits(uint8_t *buf, size_t *bit_pos, uint32_t value, uint8_t bit_count)
 {
   for (uint8_t i = bit_count; i > 0u; --i) {
     const uint8_t bit = (uint8_t)((value >> (i - 1u)) & 0x1u);
@@ -91,161 +55,86 @@ static void sm15135e_spi_append_bits(uint8_t *buf,
   }
 }
 
-void sm15135e_init(void)
-{
-  // Initialize SPI and send reset pulse.
-  // Delay in sm15135e_spi_init_once() ensures hardware is ready.
-  sm15135e_spi_init_once();
-  sm15135e_send_reset();
-}
+//void sm15135e_init(void)
+//{
+//  sm15135e_spi_init_once();
+//  osDelay(2); // 额外挂起确保引脚处于稳定的 Idle 状态
+//  sm15135e_send_reset();
+//}
 
 void sm15135e_send_reset(void)
 {
   sm15135e_spi_init_once();
-
-#if SM15135E_DISABLE_RESET_TX
-  return;
-#endif
-
-  // Use static buffer (allocated once, persists during DMA transfer).
-  // DO NOT use stack-allocated buffer - DMA will access freed memory!
   memset(sm15135e_reset_buf, 0, sizeof(sm15135e_reset_buf));
-
-  // Send entire reset buffer once.
-  // Buffer is sized to provide >200µs of reset pulse at SPI bitrate.
-  // Do NOT split into multiple transfers - causes DMA conflicts.
+  // 🚀 通过 Silicon Labs LDMA 引擎异步发送 Reset 信号
   (void)SPIDRV_MTransmitB(sl_spidrv_eusart_rgb_data_handle, sm15135e_reset_buf, sizeof(sm15135e_reset_buf));
 }
 
-void sm15135e_send_bit(uint8_t bit)
+void sm15135e_init(void)
 {
-  sm15135e_send_bits(bit ? 1u : 0u, 1u);
-}
-
-void sm15135e_send_bits(uint32_t value, uint8_t bit_count)
-{
-#if SM15135E_DISABLE_FRAME_TX
-  (void)value;
-  (void)bit_count;
-  return;
-#endif
-
-  if (bit_count == 0u) {
-    return;
-  }
-
-  const size_t encoded_bits = (size_t)bit_count * SM15135E_SPI_SYMBOL_BITS;
-  const size_t encoded_bytes = (encoded_bits + 7u) / 8u;
-  if (encoded_bytes > sizeof(sm15135e_send_bits_buf)) {
-    return;
-  }
-
-  // Use static buffer (allocated once, persists during DMA transfer).
-  // DO NOT use stack-allocated buffer - DMA will access freed memory!
-  memset(sm15135e_send_bits_buf, 0, sizeof(sm15135e_send_bits_buf));
-
-  size_t bit_pos = 0;
-  sm15135e_spi_append_bits(sm15135e_send_bits_buf, &bit_pos, value, bit_count);
-  (void)SPIDRV_MTransmitB(sl_spidrv_eusart_rgb_data_handle, sm15135e_send_bits_buf, encoded_bytes);
+  sm15135e_spi_init_once();
+  osDelay(2); // 额外挂起确保引脚处于稳定的 Idle 状态
+  sm15135e_send_reset();
 }
 
 void sm15135e_send_frame(const sm15135e_pixel_t *p)
 {
-  if (p == NULL) {
-    return;
-  }
-
+  if (p == NULL) return;
   sm15135e_spi_init_once();
 
-#if SM15135E_DISABLE_FRAME_TX
-  return;
-#endif
-
-  // Use static buffer (allocated once, persists during DMA transfer).
-  // DO NOT use stack-allocated buffer - DMA will access freed memory!
+  // 清空硬件缓冲区，准备重新映射
   memset(sm15135e_frame_buf, 0, sizeof(sm15135e_frame_buf));
   size_t bit_pos = 0;
 
-  // Field order (MSB first):
-  // OUTR, OUTG, OUTB, OUTW, OUTY (16-bit each)
-  // gain R/G/B/W/Y (5-bit each)
-  // standby (2-bit)
-  // reserve (5-bit)
+  // 📝 严格对照 112位 手册数据高位先行映射：
+  // 1. 16bits 灰度数据 * 5 路 = 80 bits
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, p->r, 16u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, p->g, 16u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, p->b, 16u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, p->w, 16u);
-  sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, p->y, 16u);
+  sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, p->y, 16u); // 💡 新增的 Y 通道灰度
 
+  // 2. 5bits 电流增益 * 5 路 = 25 bits
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->gain_r), 5u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->gain_g), 5u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->gain_b), 5u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->gain_w), 5u);
-  sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->gain_y), 5u);
+  sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->gain_y), 5u); // 💡 新增的 Y 通增益
 
+  // 3. 2bits 待机选择位 + 5bits 保留位 = 7 bits
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask2(p->standby), 2u);
   sm15135e_spi_append_bits(sm15135e_frame_buf, &bit_pos, sm15135e_mask5(p->reserve), 5u);
 
+  // 🚀 触发 DMA 异步块传输发送这完整的 56 字节
   (void)SPIDRV_MTransmitB(sl_spidrv_eusart_rgb_data_handle, sm15135e_frame_buf, sizeof(sm15135e_frame_buf));
 }
 
 void sm15135e_send_chain(const sm15135e_pixel_t *pixels, size_t count)
 {
-  if ((pixels == NULL) || (count == 0u)) {
-    return;
-  }
-
-  // Send farthest device first, nearest device last.
+  if ((pixels == NULL) || (count == 0u)) return;
   for (size_t i = count; i > 0u; --i) {
     sm15135e_send_frame(&pixels[i - 1u]);
   }
 }
 
-void sm15135e_set_rgbwy(sm15135e_pixel_t *p,
-                        uint16_t r,
-                        uint16_t g,
-                        uint16_t b,
-                        uint16_t w,
-                        uint16_t y)
+void sm15135e_set_rgbwy(sm15135e_pixel_t *p, uint16_t r, uint16_t g, uint16_t b, uint16_t w, uint16_t y)
 {
-  if (p == NULL) {
-    return;
-  }
-
-  p->r = r;
-  p->g = g;
-  p->b = b;
-  p->w = w;
-  p->y = y;
+  if (p == NULL) return;
+  p->r = r; p->g = g; p->b = b; p->w = w; p->y = y;
 }
 
 void sm15135e_set_all_gain(sm15135e_pixel_t *p, uint8_t gain)
 {
-  if (p == NULL) {
-    return;
-  }
-
+  if (p == NULL) return;
   uint8_t g5 = sm15135e_mask5(gain);
-  p->gain_r = g5;
-  p->gain_g = g5;
-  p->gain_b = g5;
-  p->gain_w = g5;
-  p->gain_y = g5;
+  p->gain_r = g5; p->gain_g = g5; p->gain_b = g5; p->gain_w = g5; p->gain_y = g5;
 }
 
 void sm15135e_fill_default(sm15135e_pixel_t *p)
 {
-  if (p == NULL) {
-    return;
-  }
-
-  p->r = 0u;
-  p->g = 0u;
-  p->b = 0u;
-  p->w = 0u;
-  p->y = 0u;
-
-  sm15135e_set_all_gain(p, SM15135E_GAIN_60_7MA);
+  if (p == NULL) return;
+  p->r = 0u; p->g = 0u; p->b = 0u; p->w = 0u; p->y = 0u;
+  sm15135e_set_all_gain(p, SM15135E_GAIN_91_0MA); // 默认 60.7mA 电流
   p->standby = SM15135E_STANDBY_NORMAL;
-  p->reserve = 0x1Fu;
+  p->reserve = 0x1Fu; // 手册强烈建议全填 1
 }

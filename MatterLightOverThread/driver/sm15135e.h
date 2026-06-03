@@ -1,14 +1,7 @@
-#ifndef SM15135E_H
-#define SM15135E_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
-
-#include "sm15135e_port.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // Standby modes (2-bit field)
 #define SM15135E_STANDBY_NORMAL 0x0u
@@ -36,46 +29,29 @@ extern "C" {
 #define SM15135E_GAIN_188_5MA  0x12u
 #define SM15135E_GAIN_198_0MA  0x13u
 
+// 保留你原本的 STANDBY 和 GAIN 宏定义...
+
 typedef struct {
-  // 16-bit grayscale values (MSB first)
   uint16_t r;
   uint16_t g;
   uint16_t b;
   uint16_t w;
-  uint16_t y;
+  uint16_t y; // 💡 确保有第 5 路黄光/琥珀光灰度
 
-  // 5-bit current gain values
   uint8_t gain_r;
   uint8_t gain_g;
   uint8_t gain_b;
   uint8_t gain_w;
-  uint8_t gain_y;
+  uint8_t gain_y; // 💡 确保有第 5 路电流增益
 
-  // 2-bit standby field
   uint8_t standby;
-
-  // 5-bit reserve field
   uint8_t reserve;
 } sm15135e_pixel_t;
 
+// 调整导出函数，适配 5 路渐变参数
 void sm15135e_init(void);
-void sm15135e_send_reset(void);
-void sm15135e_send_bit(uint8_t bit);
-void sm15135e_send_bits(uint32_t value, uint8_t bit_count);
 void sm15135e_send_frame(const sm15135e_pixel_t *p);
-void sm15135e_send_chain(const sm15135e_pixel_t *pixels, size_t count);
-
-void sm15135e_set_rgbwy(sm15135e_pixel_t *p,
-                        uint16_t r,
-                        uint16_t g,
-                        uint16_t b,
-                        uint16_t w,
-                        uint16_t y);
+void sm15135e_set_rgbwy(sm15135e_pixel_t *p, uint16_t r, uint16_t g, uint16_t b, uint16_t w, uint16_t y);
 void sm15135e_set_all_gain(sm15135e_pixel_t *p, uint8_t gain);
 void sm15135e_fill_default(sm15135e_pixel_t *p);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // SM15135E_H

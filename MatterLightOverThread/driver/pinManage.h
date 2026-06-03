@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sl_simple_button_btn0_config.h"
 #include "sl_clock_manager.h"
 #include "sl_gpio.h"
 

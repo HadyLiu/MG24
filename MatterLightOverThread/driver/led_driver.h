@@ -3,11 +3,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "time.h"
 
-#ifdef __cplusplus
-extern "C" {
+#if defined(SL_CATALOG_KERNEL_PRESENT)
+#include <cmsis_os2.h>
 #endif
 
+#define LED_BRIGHTNESS_MIN 1
+#define LED_BRIGHTNESS_MAX 100
+#define LED_HW_MAX         1000
 #define LED_COLOR_COUNT    13
 
 typedef struct
@@ -57,6 +61,8 @@ typedef struct
     bool     fading;
 } led_ctrl_t;
 
+extern led_ctrl_t g_led;
+
 /* 初始化 */
 void LED_Init(void);
 
@@ -84,11 +90,12 @@ void LED_SaveState(uint8_t brightness, uint8_t color_index, bool is_on);
 /* 底层唯一输出接口：用户实现 */
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
 
-/* 获取系统毫秒：用户实现 */
-uint32_t LED_GetTickMs(void);
 
-#ifdef __cplusplus
-}
-#endif
+void led_calc_target_from_logic(bool is_on, uint8_t brightness_percent, uint8_t color_index,
+                               float *w, float *r, float *g, float *b);
+
+void led_start_fade_to_logic(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint32_t fade_ms);
+
+
 
 #endif

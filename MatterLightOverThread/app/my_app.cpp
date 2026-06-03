@@ -41,6 +41,10 @@ uint32_t g_time_clk=0;
 uint32_t g_time_detect_bat = 0;
 bool g_is_operation_in_progress = false;//耗时过长的操作正在进行中
 
+
+void write_led_example(void);
+void CheckTickResolution(void);
+
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
  */
@@ -51,14 +55,17 @@ void my_custom_init_app_process(void) {
 
     gpio_init(); // 初始化 GPIO 引脚
     SILABS_LOG("[app]gpio Init");
+    sm15135e_init();
+    SILABS_LOG("[app]sm15135e Init");
     MyCustomButtonInit(); // 初始化自定义按键服务 用于创建定时器和设置中断回调
     SILABS_LOG("[app]MyCustomButtonInit");
 
- 
     powerManage_adc_Init();
     SILABS_LOG("[app]powerManage_adc_Init");
     PowerManageInit(); // 初始化电源管理
     SILABS_LOG("[app]Power completed");
+
+    LED_Init(); // 初始化 LED 状态
 
 }
 
@@ -76,6 +83,8 @@ void my_custom_loop_app_process(void) {
 
     //电源管理 用于电源状态的切换
     PowerSwitchAssignment();
+
+    LED_Tick10ms(); // LED 驱动的定时器滴答函数，处理渐变效果和状态更新
 
     if(eg_PowerStatus == false)
     {
@@ -103,10 +112,14 @@ void my_custom_loop_app_process(void) {
     {   
         tick = g_time_clk;
         SILABS_LOG("tick=%d",tick);
-        my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
-        my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
-        sl_pwm_start(&sl_pwm_w_led0);
-        sl_pwm_start(&sl_pwm_Indic_led0);
+      //  CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
+       // my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
+       // my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
+       // sl_pwm_start(&sl_pwm_w_led0);
+       // sl_pwm_start(&sl_pwm_Indic_led0);
+
+       // write_led_example();
+        
     }
 }
 
@@ -130,11 +143,35 @@ void MyButtonActionHandler(AppEvent * aEvent)
         case AppButtonEvent::kButtonAction_ShortPress:
             SILABS_LOG(" -> [业务确诊] 按键 %d : 单击触发！", button_idx);
             // 这里写你的单击控制代码
+            ++g_led.key_cycle_level;
+            if(g_led.key_cycle_level >= 3)
+            {
+                g_led.key_cycle_level = 0;
+                g_led.is_on = 0;
+            }else
+            {
+                g_led.is_on = 1;
+                if(g_led.key_cycle_level == 1)
+                {
+                    g_led.brightness = LED_BRIGHTNESS_MAX;
+                }
+                else if(g_led.key_cycle_level == 2)
+                {
+                    g_led.brightness = (LED_BRIGHTNESS_MAX >> 1); // 50% 亮度
+                }
+            }
+            led_start_fade_to_logic(g_led.is_on, g_led.brightness, g_led.color_index, 400);
             break;
             
         case AppButtonEvent::kButtonAction_DoublePress:
             SILABS_LOG(" -> [业务确诊] 按键 %d : 双击触发！", button_idx);
             // 这里写你的双击控制代码
+            g_led.color_index++;
+            if(g_led.color_index >= LED_COLOR_COUNT)
+            {
+                g_led.color_index = 0;
+            }
+            led_start_fade_to_logic(g_led.is_on, g_led.brightness, g_led.color_index, 400);
             break;
             
         case AppButtonEvent::kButtonAction_LongPressStart:
@@ -149,4 +186,17 @@ void MyButtonActionHandler(AppEvent * aEvent)
             SILABS_LOG(" -> [未捕获] 动作编号: %d", action);
             break;
     }
+}
+
+
+void CheckTickResolution(void)
+{
+    // 获取系统内核定时器的频率（每秒有多少个 Tick）
+    uint32_t tick_per_second = osKernelGetSysTimerFreq();
+    
+    // 计算 1 个 Tick 是多少毫秒
+    uint32_t ms_per_tick = 1000 / tick_per_second;
+
+    SILABS_LOG("系统内核每秒 Tick 数: %d Hz", tick_per_second);
+    SILABS_LOG("因此 1 个 Tick = %d 毫秒", ms_per_tick);
 }

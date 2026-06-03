@@ -23,6 +23,7 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/powerManage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e_port.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/main_light_control.cpp
     
 

@@ -8,6 +8,7 @@
 #include "../driver/pinManage.h"
 #include "../driver/powerManage.h"
 #include "../driver/iadc_driver.h"
+#include "../driver/sm15135e.h"
 
 // 你的函数声明
 void my_custom_init_app_process(void);
