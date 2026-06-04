@@ -58,8 +58,6 @@
 #include "../driver/button.h"
 #include "../driver/pinManage.h"
 
-
-
 #ifdef SL_CATALOG_SIMPLE_LED_LED1_PRESENT
 #define LIGHT_LED 1
 #else
@@ -67,7 +65,7 @@
 #endif
 
 #define APP_FUNCTION_BUTTON 0
-#define APP_LIGHT_SWITCH 1
+#define APP_LIGHT_SWITCH    1
 
 using namespace chip;
 using namespace chip::app;
@@ -75,7 +73,8 @@ using namespace chip::app::Clusters;
 using namespace ::chip::DeviceLayer;
 using namespace ::chip::DeviceLayer::Silabs;
 
-namespace {
+namespace
+{
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
 RGBLEDWidget sLightLED; // Use RGBLEDWidget if RGB LED functionality is enabled
 #else
@@ -87,23 +86,27 @@ LEDWidget sLightLED; // Use LEDWidget for basic LED functionality
 // In this example, we defer the storage of the Level Control's CurrentLevel attribute and the Color Control's
 // CurrentHue and CurrentSaturation attributes for the LIGHT_ENDPOINT.
 DeferredAttribute gDeferredAttributeTable[] = {
-    DeferredAttribute(ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id)),
-    DeferredAttribute(ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id)),
-    DeferredAttribute(ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id))
-};
+    DeferredAttribute(
+        ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id)),
+    DeferredAttribute(
+        ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id)),
+    DeferredAttribute(
+        ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id))};
 } // namespace
 
 using namespace chip::TLV;
 using namespace ::chip::DeviceLayer;
 
-AppTask AppTask::sAppTask;
+AppTask    AppTask::sAppTask;
 CHIP_ERROR AppTask::AppInit()
 {
     CHIP_ERROR err = CHIP_NO_ERROR;
     // 将自定义按键中断回调函数注册到芯片平台，以便在按键事件发生时能够正确地触发我们的状态机逻辑
+    extern void inject_btn0_double_edge_interrupt_ext(void);
+    inject_btn0_double_edge_interrupt_ext();
     chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(MyCustomButtonInterruptHandler);
-    //SILABS_LOG("Custom button interrupt handler registered");
-    //chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(AppTask::ButtonEventHandler);
+    // SILABS_LOG("Custom button interrupt handler registered");
+    // chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(AppTask::ButtonEventHandler);
 
     err = LightMgr().Init();
     if (err != CHIP_NO_ERROR)
@@ -138,13 +141,11 @@ CHIP_ERROR AppTask::AppInit()
 }
 
 CHIP_ERROR AppTask::StartAppTask()
-{
-    return BaseApplication::StartAppTask(AppTaskMain);
-}
+{ return BaseApplication::StartAppTask(AppTaskMain); }
 
-void AppTask::AppTaskMain(void * pvParameter)
+void AppTask::AppTaskMain(void *pvParameter)
 {
-    AppEvent event;
+    AppEvent           event;
     osMessageQueueId_t sAppEventQueue = *(static_cast<osMessageQueueId_t *>(pvParameter));
 
     my_custom_init_app_process();
@@ -155,14 +156,15 @@ void AppTask::AppTaskMain(void * pvParameter)
     // This provider is typically set up by the CodegenDataModelProviderInstance constructor,
     // which is called in InitMatter within MatterConfig.cpp.
     // We use this as the base provider for deferred attribute persistence.
-    AttributePersistenceProvider * attributePersistence = GetAttributePersistenceProvider();
+    AttributePersistenceProvider *attributePersistence = GetAttributePersistenceProvider();
     VerifyOrDie(attributePersistence != nullptr);
 
     //  The DeferredAttributePersistenceProvider will persist the attribute value in non-volatile memory
     //  once it remains constant for SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS milliseconds.
     //  For all other attributes not listed in gDeferredAttributeTable, the default PersistenceProvider is used.
     sAppTask.pDeferredAttributePersister = new DeferredAttributePersistenceProvider(
-        *attributePersistence, Span<DeferredAttribute>(gDeferredAttributeTable, MATTER_ARRAY_SIZE(gDeferredAttributeTable)),
+        *attributePersistence,
+        Span<DeferredAttribute>(gDeferredAttributeTable, MATTER_ARRAY_SIZE(gDeferredAttributeTable)),
         System::Clock::Milliseconds32(SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS));
     VerifyOrDie(sAppTask.pDeferredAttributePersister != nullptr);
 
@@ -184,34 +186,34 @@ void AppTask::AppTaskMain(void * pvParameter)
     while (true)
     {
         // 修改定时器的等待方式为非阻塞，每隔10ms检查一次事件队列，同时执行my_custom_loop_app_process()函数
-        osStatus_t eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, 10);//osWaitForever);
+        osStatus_t eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, 10); // osWaitForever);
         while (eventReceived == osOK)
         {
             sAppTask.DispatchEvent(&event);
             eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, 0);
         }
-        //每隔10ms执行一次my_custom_loop_app_process()，你可以在这个函数中添加你自己的代码
+        // 每隔10ms执行一次my_custom_loop_app_process()，你可以在这个函数中添加你自己的代码
         my_custom_loop_app_process();
     }
 }
 
-void AppTask::LightActionEventHandler(AppEvent * aEvent)
+void AppTask::LightActionEventHandler(AppEvent *aEvent)
 {
-    bool initiated = false;
+    bool                      initiated = false;
     LightingManager::Action_t action;
-    int32_t actor;
-    uint8_t value  = aEvent->LightEvent.Value;
-    CHIP_ERROR err = CHIP_NO_ERROR;
+    int32_t                   actor;
+    uint8_t                   value = aEvent->LightEvent.Value;
+    CHIP_ERROR                err = CHIP_NO_ERROR;
 
     if (aEvent->Type == AppEvent::kEventType_Light)
     {
         action = static_cast<LightingManager::Action_t>(aEvent->LightEvent.Action);
-        actor  = aEvent->LightEvent.Actor;
+        actor = aEvent->LightEvent.Actor;
     }
     else if (aEvent->Type == AppEvent::kEventType_Button)
     {
         action = (LightMgr().IsLightOn()) ? LightingManager::OFF_ACTION : LightingManager::ON_ACTION;
-        actor  = AppEvent::kEventType_Button;
+        actor = AppEvent::kEventType_Button;
     }
     else
     {
@@ -230,14 +232,14 @@ void AppTask::LightActionEventHandler(AppEvent * aEvent)
 }
 
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
-void AppTask::LightControlEventHandler(AppEvent * aEvent)
+void AppTask::LightControlEventHandler(AppEvent *aEvent)
 {
-    uint8_t light_action                = aEvent->LightControlEvent.Action;
+    uint8_t                   light_action = aEvent->LightControlEvent.Action;
     RGBLEDWidget::ColorData_t colorData = aEvent->LightControlEvent.Value;
     // Get currentLevel attribute
     PlatformMgr().LockChipStack();
     Protocols::InteractionModel::Status status;
-    app::DataModel::Nullable<uint8_t> currentlevel;
+    app::DataModel::Nullable<uint8_t>   currentlevel;
     // Read currentlevel value
     status = LevelControl::Attributes::CurrentLevel::Get(LIGHT_ENDPOINT, currentlevel);
     PlatformMgr().UnlockChipStack();
@@ -249,32 +251,35 @@ void AppTask::LightControlEventHandler(AppEvent * aEvent)
     }
     switch (light_action)
     {
-    case LightingManager::COLOR_ACTION_XY: {
+    case LightingManager::COLOR_ACTION_XY:
+    {
         sLightLED.SetColorFromXY(colorData.xy.x, colorData.xy.y);
     }
     break;
-    case LightingManager::COLOR_ACTION_HSV: {
+    case LightingManager::COLOR_ACTION_HSV:
+    {
         sLightLED.SetColorFromHSV(colorData.hsv.h, colorData.hsv.s);
     }
     break;
-    case LightingManager::COLOR_ACTION_CT: {
+    case LightingManager::COLOR_ACTION_CT:
+    {
         sLightLED.SetColorFromCT(colorData.ct.ctMireds);
     }
     break;
-    default:
-        ChipLogProgress(NotSpecified, "LightMgr:Unknown");
-        break;
+    default: ChipLogProgress(NotSpecified, "LightMgr:Unknown"); break;
     }
 }
 #endif // (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED)
 
 void AppTask::ButtonEventHandler(uint8_t button, uint8_t btnAction)
 {
-    AppEvent button_event           = {};
-    button_event.Type               = AppEvent::kEventType_Button;
+    AppEvent button_event = {};
+    button_event.Type = AppEvent::kEventType_Button;
     button_event.ButtonEvent.Action = btnAction;
 
-    SILABS_LOG("Button %d %s", button, (btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed)) ? "pressed" : "released");
+    SILABS_LOG("Button %d %s", button,
+               (btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed)) ? "pressed" :
+                                                                                                  "released");
     if (button == APP_LIGHT_SWITCH && btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed))
     {
         button_event.Handler = LightActionEventHandler;
@@ -287,7 +292,7 @@ void AppTask::ButtonEventHandler(uint8_t button, uint8_t btnAction)
     }
 }
 
-void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor, uint8_t * aValue)
+void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor, uint8_t *aValue)
 {
     if (aAction == LightingManager::LEVEL_ACTION)
     {
@@ -335,22 +340,23 @@ void AppTask::ActionCompleted(LightingManager::Action_t aAction)
 void AppTask::PostLightActionRequest(int32_t aActor, LightingManager::Action_t aAction)
 {
     AppEvent event;
-    event.Type              = AppEvent::kEventType_Light;
-    event.LightEvent.Actor  = aActor;
+    event.Type = AppEvent::kEventType_Light;
+    event.LightEvent.Actor = aActor;
     event.LightEvent.Action = aAction;
-    event.Handler           = LightActionEventHandler;
+    event.Handler = LightActionEventHandler;
     PostEvent(&event);
 }
 
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
-void AppTask::PostLightControlActionRequest(int32_t aActor, LightingManager::Action_t aAction, RGBLEDWidget::ColorData_t * aValue)
+void AppTask::PostLightControlActionRequest(int32_t aActor, LightingManager::Action_t aAction,
+                                            RGBLEDWidget::ColorData_t *aValue)
 {
     AppEvent light_event;
-    light_event.Type                     = AppEvent::kEventType_Light;
-    light_event.LightControlEvent.Actor  = aActor;
+    light_event.Type = AppEvent::kEventType_Light;
+    light_event.LightControlEvent.Actor = aActor;
     light_event.LightControlEvent.Action = aAction;
-    light_event.LightControlEvent.Value  = *aValue;
-    light_event.Handler                  = LightControlEventHandler;
+    light_event.LightControlEvent.Value = *aValue;
+    light_event.Handler = LightControlEventHandler;
     PostEvent(&light_event);
 }
 #endif // (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED)

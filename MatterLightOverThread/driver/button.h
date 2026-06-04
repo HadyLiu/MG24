@@ -6,7 +6,7 @@
 /**
  * @brief 自定义按键事件结构体（严格保持原厂强转架构与内存对齐）
  */
-struct AppButtonEvent 
+struct AppButtonEvent
 {
     enum AppButtonEventType
     {
@@ -21,6 +21,7 @@ struct AppButtonEvent
         kButtonAction_DoublePress,      // 双击
         kButtonAction_LongPressStart,   // 长按开始触发
         kButtonAction_LongPressing,     // 长按不放时的连续计数脉冲
+        kButtonAction_LongPressRelease, // 长按松开（新增）
     };
 
     uint16_t Type; // 填入 kEventType_Button
@@ -28,8 +29,8 @@ struct AppButtonEvent
     // 💡 核心修正：扁平化结构，直接定义成员，彻底消除匿名 union 在新版 GCC 中的编译红线
     struct
     {
-        uint8_t ButtonIdx;       // 哪个按键
-        uint8_t Action;          // 填入上面的 AppButtonAction 动作
+        uint8_t  ButtonIdx;      // 哪个按键
+        uint8_t  Action;         // 填入上面的 AppButtonAction 动作
         uint16_t LongPressCount; // 如果是长按，记录当前是第几次脉冲
     } ButtonEvent;
 
@@ -53,5 +54,4 @@ void MyCustomButtonInterruptHandler(uint8_t button, uint8_t btnAction);
 /**
  * @brief 全局事件接收处理函数（异步消费队列中的按键信件）
  */
-void MyButtonActionHandler(AppEvent * aEvent);
-
+void MyButtonActionHandler(AppEvent *aEvent);

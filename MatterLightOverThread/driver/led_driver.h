@@ -11,54 +11,58 @@
 
 #define LED_BRIGHTNESS_MIN 1
 #define LED_BRIGHTNESS_MAX 100
-#define LED_HW_MAX         1000
+#define LED_HW_MAX         1023
 #define LED_COLOR_COUNT    13
 
 typedef struct
 {
-    uint8_t w;   // 0~100
-    uint8_t r;   // 0~100
-    uint8_t g;   // 0~100
-    uint8_t b;   // 0~100
+    uint16_t w; // 0~100
+    uint16_t r; // 0~100
+    uint16_t g; // 0~100
+    uint16_t b; // 0~100
 } led_color_t;
 
 typedef enum
 {
     LED_LEVEL_OFF = 0,
-    LED_LEVEL_50  = 50,
+    LED_LEVEL_50 = 50,
     LED_LEVEL_100 = 100,
 } led_key_level_t;
 
+// 🎯 新增：灯效模式枚举
+typedef enum
+{
+    LED_EFFECT_NONE = 0, // 无特效（走你原本的常规 Fade/静态 逻辑）
+    LED_EFFECT_BLINK,    // 闪烁模式
+    LED_EFFECT_BREATH,   // 呼吸模式
+    LED_EFFECT_HOLD      // 保持模式
+} led_effect_mode_t;
+
 typedef struct
 {
-    bool     is_on;              // 当前逻辑开关状态
-    uint8_t  brightness;         // 记忆亮度 1~100，默认100
-    uint8_t  color_index;        // 0~12，默认2
+    bool    is_on;       // 当前逻辑开关状态
+    uint8_t brightness;  // 记忆亮度 1~100，默认100
+    uint8_t color_index; // 0~12，默认2
 
-    bool     key_next_off;       // 若被 Matter/App 外部开灯，则下次短按优先关灯
-    uint8_t  key_cycle_level;    // 按键循环档位：0/50/100
+    bool    key_next_off;    // 若被 Matter/App 外部开灯，则下次短按优先关灯
+    uint8_t key_cycle_level; // 按键循环档位：0/50/100 按键亮度档位循环，0代表关灯
 
-    // 当前输出值（0~100）
-    float    cur_w;
-    float    cur_r;
-    float    cur_g;
-    float    cur_b;
-
-    // 渐变起始值
-    float    start_w;
-    float    start_r;
-    float    start_g;
-    float    start_b;
-
-    // 渐变目标值
-    float    target_w;
-    float    target_r;
-    float    target_g;
-    float    target_b;
+    // 🎯 变更：全部使用纯整数结构体单元
+    led_color_t cur_color;    // 当前实际输出的颜色值（已应用亮度缩放）
+    led_color_t start_color;  // 渐变起始颜色（已应用亮度缩放）
+    led_color_t target_color; // 渐变目标颜色（已应用亮度缩放）
 
     uint32_t fade_start_ms;
-    uint32_t fade_time_ms;
-    bool     fading;
+    uint32_t fade_time_ms; //
+    bool     fading;       // 是否正在渐变中
+
+    // 🎯 升级扩展：灯效控制上下文
+    led_effect_mode_t effect_mode;      // 当前灯效
+    uint32_t          effect_start_ms;  // 特效开始时间
+    uint32_t          effect_period_ms; // 特效总周期（毫秒）
+    uint32_t          effect_count;     // 剩余闪烁/呼吸次数（0代表无限循环）
+    bool              blink_toggle;     // 闪烁亮灭翻转标志
+    bool              hold_is_on;       // 保持模式的开关状态
 } led_ctrl_t;
 
 extern led_ctrl_t g_led;
@@ -75,8 +79,8 @@ void LED_KeyDoublePress(void);
 
 /* Matter/App 控制接口 */
 void LED_SetOnOff(bool on);
-void LED_SetBrightnessPercent(uint8_t percent);   // App 1~100
-void LED_SetColorIndex(uint8_t index);            // 0~12
+void LED_SetBrightnessPercent(uint8_t percent); // App 1~100
+void LED_SetColorIndex(uint8_t index);          // 0~12
 
 /* 状态读取 */
 bool    LED_IsOn(void);
@@ -89,13 +93,10 @@ void LED_SaveState(uint8_t brightness, uint8_t color_index, bool is_on);
 
 /* 底层唯一输出接口：用户实现 */
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
+void LED_Start_Fade_Logic(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint32_t fade_ms);
 
-
-void led_calc_target_from_logic(bool is_on, uint8_t brightness_percent, uint8_t color_index,
-                               float *w, float *r, float *g, float *b);
-
-void led_start_fade_to_logic(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint32_t fade_ms);
-
-
+void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint32_t period_ms, uint32_t count);
+void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint32_t period_ms, uint32_t count);
+void LED_StopEffect(void);
 
 #endif
