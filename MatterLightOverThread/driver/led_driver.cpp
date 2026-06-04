@@ -1,45 +1,48 @@
 #include "led_driver.h"
 
-#define LED_FADE_KEY_100_TO_50_MS    400
-#define LED_FADE_KEY_50_TO_0_MS      400
-#define LED_FADE_KEY_0_TO_100_MS     800
-#define LED_FADE_COLOR_SWITCH_MS     400
+#define LED_FADE_KEY_100_TO_50_MS 400
+#define LED_FADE_KEY_50_TO_0_MS   400
+#define LED_FADE_KEY_0_TO_100_MS  800
+#define LED_FADE_COLOR_SWITCH_MS  400
 
-#define LED_HW_MAX                   1000   // 最终输出给硬件的最大值，可改成PWM满量程
+#define LED_HW_MAX 1000 // 最终输出给硬件的最大值，可改成PWM满量程
 
 led_ctrl_t g_led;
 
 /* 出厂默认 color2（约2450K），亮度100% */
-static const led_color_t g_color_table[LED_COLOR_COUNT] =
-{
-    {100,   0,   0,   0},   // color0
-    { 40, 100,   0,   0},   // color1
-    { 40,   0,  23,  55},   // color2
-    { 32,   0,  23, 100},   // color3
-    {  0, 100,  18,   0},   // color4
-    {  0, 100,  10,   0},   // color5
-    {  0, 100,   0,   0},   // color6
-    {  0, 100,  10,   6},   // color7
-    {  0, 100,  24,  40},   // color8
-    {  0,  24,  24, 100},   // color9
-    {  0,  51,  83,  51},   // color10
-    {  0,  51, 100,  16},   // color11
-    {  0, 100,  32,   0},   // color12
+static const led_color_t g_color_table[LED_COLOR_COUNT] = {
+    {100, 0, 0, 0},   // color0
+    {40, 100, 0, 0},  // color1
+    {40, 0, 23, 55},  // color2
+    {32, 0, 23, 100}, // color3
+    {0, 100, 18, 0},  // color4
+    {0, 100, 10, 0},  // color5
+    {0, 100, 0, 0},   // color6
+    {0, 100, 10, 6},  // color7
+    {0, 100, 24, 40}, // color8
+    {0, 24, 24, 100}, // color9
+    {0, 51, 83, 51},  // color10
+    {0, 51, 100, 16}, // color11
+    {0, 100, 32, 0},  // color12
 };
 
-//static void led_sync_key_level_from_brightness(bool is_on, uint8_t brightness);
+// static void led_sync_key_level_from_brightness(bool is_on, uint8_t brightness);
 
 static uint8_t led_clamp_u8(uint8_t v, uint8_t min, uint8_t max)
 {
-    if (v < min) return min;
-    if (v > max) return max;
+    if (v < min)
+        return min;
+    if (v > max)
+        return max;
     return v;
 }
 
 static float led_clamp_f(float v, float min, float max)
 {
-    if (v < min) return min;
-    if (v > max) return max;
+    if (v < min)
+        return min;
+    if (v > max)
+        return max;
     return v;
 }
 
@@ -84,8 +87,8 @@ static void led_apply_output(float w, float r, float g, float b)
     LED_HW_SetWRGB(hw_w, hw_r, hw_g, hw_b);
 }
 
-void led_calc_target_from_logic(bool is_on, uint8_t brightness_percent, uint8_t color_index,
-                                       float *w, float *r, float *g, float *b)
+void led_calc_target_from_logic(bool is_on, uint8_t brightness_percent, uint8_t color_index, float *w, float *r,
+                                float *g, float *b)
 {
     if (!is_on)
     {
@@ -117,31 +120,29 @@ void led_start_fade_to_logic(bool is_on, uint8_t brightness_percent, uint8_t col
     g_led.is_on = is_on;
     g_led.brightness = brightness_percent;
     g_led.color_index = color_index;
-   // led_sync_key_level_from_brightness(g_led.is_on, g_led.brightness);
+    // led_sync_key_level_from_brightness(g_led.is_on, g_led.brightness);
 
     g_led.start_w = g_led.cur_w;
     g_led.start_r = g_led.cur_r;
     g_led.start_g = g_led.cur_g;
     g_led.start_b = g_led.cur_b;
 
-    led_calc_target_from_logic(g_led.is_on, g_led.brightness, g_led.color_index,
-                               &g_led.target_w, &g_led.target_r, &g_led.target_g, &g_led.target_b);
+    led_calc_target_from_logic(g_led.is_on, g_led.brightness, g_led.color_index, &g_led.target_w, &g_led.target_r,
+                               &g_led.target_g, &g_led.target_b);
 
     g_led.fade_start_ms = LED_GetTickMs();
     g_led.fade_time_ms = (fade_ms == 0) ? 1 : fade_ms;
     g_led.fading = true;
 }
 
-
-
 void LED_Init(void)
 {
     uint8_t brightness = 100;
     uint8_t color_index = 2;
-    bool is_on = true;
+    bool    is_on = true;
 
-    //获取记忆中的数据
-    //LED_LoadState(&brightness, &color_index, &is_on);
+    // 获取记忆中的数据
+    // LED_LoadState(&brightness, &color_index, &is_on);
 
     brightness = led_clamp_u8(brightness, 1, 100);
     color_index %= LED_COLOR_COUNT;
@@ -152,7 +153,7 @@ void LED_Init(void)
     g_led.key_next_off = false;
     g_led.fading = false;
 
-  //  led_sync_key_level_from_brightness(is_on, brightness);
+    //  led_sync_key_level_from_brightness(is_on, brightness);
 
     float w, r, g, b;
     led_calc_target_from_logic(g_led.is_on, g_led.brightness, g_led.color_index, &w, &r, &g, &b);
@@ -162,7 +163,9 @@ void LED_Init(void)
 void LED_Tick10ms(void)
 {
     if (!g_led.fading)
+    {
         return;
+    }
 
     uint32_t now = LED_GetTickMs();
     uint32_t elapsed = now - g_led.fade_start_ms;
