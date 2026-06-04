@@ -42,6 +42,7 @@ bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进�
 
 void write_led_example(void);
 void CheckTickResolution(void);
+void ResetMatterNetworkConfiguration(void);
 
 void check_interrupt_injection_status(uint8_t pin);
 /**
@@ -64,9 +65,10 @@ void my_custom_init_app_process(void)
     PowerManageInit(); // 初始化电源管理
     SILABS_LOG("[app]Power completed");
 
-    LED_Init();                  // 初始化 LED 状态
-    LED_SetBlink(50, 6, 800, 3); // 上电后闪烁提示，亮度 50%，颜色索引 3，周期 800ms，闪烁 3 次
-    // LED_SetBreath(50, 6, 3200, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
+    LED_Init(); // 初始化 LED 状态
+    // LED_SetBlink(50, 6, 800, 3); // 上电后闪烁提示，亮度 50%，颜色索引 3，周期 800ms，闪烁 3 次
+    //  LED_SetBreath(50, 6, 3200, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
+    // ResetMatterNetworkConfiguration(); // 初始化配网状态，设置好默认的灯效序列
 }
 
 /**
@@ -125,13 +127,72 @@ void my_custom_loop_app_process(void)
 }
 
 /**
+ * @brief 📬 重置matter配网
+ * @param  无
+ */
+void ResetMatterNetworkLightingEffects(void)
+{
+#define MixedLightingEffectsCount 4
+    static const MixedLightingEffects_t MixedLightingEffects_Start_Example[MixedLightingEffectsCount] = {
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 100, .color_index = 6, .fade_ms = 800, .count = 3},
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 100, .color_index = 6, .fade_ms = 2400, .count = 1},
+        {.fuction_mode = LED_EFFECT_HOLD, .is_on = false, .brightness = 100, .color_index = 2, .fade_ms = 2000, .count = 1},
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 100, .color_index = 2, .fade_ms = 400, .count = 2},
+    }; // 最后一个 NONE 代表特效序列结束
+
+    memcpy(g_mixed_effects, MixedLightingEffects_Start_Example, sizeof(MixedLightingEffects_Start_Example));
+    // 启动混合特效
+    Led_MixedLightingEffects_Start(MixedLightingEffectsCount, true, 100, 2);
+
+    // Your reset logic here
+    SILABS_LOG("开启配网等效的灯效提示...");
+    // 这里可以添加任何需要在重置时执行的清理代码，例如重置全局变量、清除持久化存储等
+}
+
+void ResetMatterNetworkConfiguration(void)
+{
+    // Your reset logic here
+    SILABS_LOG("[app]重置Matter网络配置...");
+    // 这里可以添加任何需要在重置时执行的清理代码，例如重置全局变量、清除持久化存储等
+    chip::DeviceLayer::ConfigurationMgr().InitiateFactoryReset();
+}
+
+/**
+ * @brief 📬 放弃配网：当用户选择放弃配网时调用，执行相关的清理和状态更新
+ * @param  无
+ */
+void GiveUpMatterNetworkConfiguration(void)
+{
+    // Your logic to give up network configuration here
+    SILABS_LOG("[app]Giving up on Matter network configuration...");
+    // 这里可以添加任何需要在放弃网络配置时执行的代码，例如重置网络状态
+    LED_StopMixedEffects(true, 100, 2);
+}
+
+/**
+ * @brief 📬 配网成功动画：当设备成功配对到网络后调用，执行一段特定的灯效动画来提示用户
+ */
+void TriggerPairingSuccessAnimation(void)
+{
+#define SuccessEffectsCount 1
+    static const MixedLightingEffects_t Success_Effects[SuccessEffectsCount] = {
+        // Step 0: 以 60% 亮度快速闪烁 2 次（亮 200ms，灭 200ms，周期 400ms，次数 2）
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 60, .color_index = 0, .fade_ms = 400, .count = 2},
+    };
+
+    memcpy(g_mixed_effects, Success_Effects, sizeof(Success_Effects));
+
+    // 启动混合灯效
+    Led_MixedLightingEffects_Start(SuccessEffectsCount, true, 100, 2);
+}
+
+/**
  * @brief 📬 异步消费端：成功寄居在其他业务文件中
  */
-
 void MyButtonActionHandler(AppEvent *aEvent)
 {
     SILABS_LOG("【MyButtonActionHandler】Enter button event handler");
-
+    static uint16_t save_history_long_press_count = 0; // 用于记录上一次长按事件的计数，帮助区分长按和长按松开
     // 💡 保持强转架构解包法：你怎么强转过去，我就怎么强转回来读，内存完美重合！
     AppButtonEvent *pBtnEvent = reinterpret_cast<AppButtonEvent *>(aEvent);
 
@@ -186,14 +247,31 @@ void MyButtonActionHandler(AppEvent *aEvent)
         break;
 
     case AppButtonEvent::kButtonAction_LongPressStart:
+    {
         SILABS_LOG(" -> [业务确诊] 按键 %d : 开始长按！", button_idx);
         break;
-
+    }
     case AppButtonEvent::kButtonAction_LongPressing:
+        if (long_press_count == 25) // 5000/200=25 代表每200ms触发一次长按事件
+        {
+            // 开启配网灯效
+            ResetMatterNetworkLightingEffects(); // 长按过程中触发重置配网
+        }
+        if (long_press_count == 50) // 10000/200=50 代表每200ms触发一次长按事件
+        {
+            // 清除配网信息 开启配网模式
+            ResetMatterNetworkConfiguration(); // 长按过程中触发重置配网
+        }
+        save_history_long_press_count = long_press_count; // 更新历史计数
         SILABS_LOG(" -> [业务确诊] 按键 %d : 长按中！ 脉冲计数 = %d", button_idx, long_press_count);
         break;
     case AppButtonEvent::kButtonAction_LongPressRelease:
-        SILABS_LOG(" -> [业务确诊] 按键 %d : 长按松开！ 脉冲计数 = %d", button_idx, long_press_count);
+        // 长按时间不足过程不重置配网，但未达到放弃配网的条件
+        if (save_history_long_press_count >= 25 && save_history_long_press_count < 50)
+        {
+            GiveUpMatterNetworkConfiguration(); // 长按过程中触发放弃配网
+        }
+        SILABS_LOG(" -> [业务确诊] 按键 %d : 长按松开！ 脉冲计数 = %d", button_idx, save_history_long_press_count);
         break;
 
     default: SILABS_LOG(" -> [未捕获] 动作编号: %d", action); break;

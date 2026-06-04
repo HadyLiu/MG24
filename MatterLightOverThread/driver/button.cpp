@@ -60,58 +60,10 @@ void MyCustomButtonInterruptHandler(uint8_t button, uint8_t btnAction)
     btn_event.Handler = MyButtonStateMachineHandler;
     AppTask::GetAppTask().PostEvent(reinterpret_cast<AppEvent *>(&btn_event));
 }
-
-// static void MyButtonStateMachineHandler(AppEvent *aEvent)
-//{
-//     AppButtonEvent *btn_event = reinterpret_cast<AppButtonEvent *>(aEvent);
-//     uint8_t         button = btn_event->ButtonEvent.ButtonIdx;
-//     uint8_t         action = btn_event->ButtonEvent.Action;
-//
-//     if (action == kInternalEdgePress)
-//     {
-//         s_my_last_button = button;
-//
-//         if (s_my_state == MY_BTN_STATE_IDLE)
-//         {
-//             s_my_state = MY_BTN_STATE_WAIT_RELEASE;
-//             s_my_long_cnt = 0;
-//             osTimerStart(s_my_timer_id, BTN_SCAN_PERIOD_MS);
-//         }
-//         else if (s_my_state == MY_BTN_STATE_WAIT_DOUBLE)
-//         {
-//             osTimerStop(s_my_timer_id);
-//             s_my_state = MY_BTN_STATE_IDLE;
-//
-//             AppButtonEvent final_event;
-//             final_event.Type = AppButtonEvent::kEventType_Button;
-//             final_event.ButtonEvent.ButtonIdx = button;
-//             final_event.ButtonEvent.Action = AppButtonEvent::kButtonAction_DoublePress;
-//             final_event.ButtonEvent.LongPressCount = 0;
-//             final_event.Handler = MyButtonActionHandler;
-//             AppTask::GetAppTask().PostEvent(reinterpret_cast<AppEvent *>(&final_event));
-//         }
-//     }
-//     else if (action == kInternalEdgeRelease)
-//     {
-//         s_my_last_button = button;
-//
-//         if (s_my_state == MY_BTN_STATE_WAIT_RELEASE)
-//         {
-//             osTimerStop(s_my_timer_id);
-//
-//             if (s_my_long_cnt < TICKS_FOR_LONG_START)
-//             {
-//                 s_my_state = MY_BTN_STATE_WAIT_DOUBLE;
-//                 osTimerStart(s_my_timer_id, DOUBLE_CLICK_GAP_MS);
-//             }
-//             else
-//             {
-//                 s_my_state = MY_BTN_STATE_IDLE;
-//             }
-//         }
-//     }
-// }
-
+/**
+ * @brief 🎯 按键状态机处理函数（运行在任务上下文，安全处理复杂逻辑
+ *       包括单击/双击判定、长按计时与触发、以及长按松开事件的精准发送）
+ */
 static void MyButtonStateMachineHandler(AppEvent *aEvent)
 {
     AppButtonEvent *btn_event = reinterpret_cast<AppButtonEvent *>(aEvent);
@@ -198,11 +150,14 @@ static void MyButtonTimerCallback(void *argument)
             btn_event.ButtonEvent.LongPressCount = 1;
             AppTask::GetAppTask().PostEvent(reinterpret_cast<AppEvent *>(&btn_event));
         }
-        else if (s_my_long_cnt > TICKS_FOR_LONG_START
-                 && ((s_my_long_cnt - TICKS_FOR_LONG_START) % TICKS_FOR_PULSE == 0))
+        else if (s_my_long_cnt > TICKS_FOR_LONG_START && ((s_my_long_cnt - TICKS_FOR_LONG_START) % TICKS_FOR_PULSE == 0))
         {
             btn_event.ButtonEvent.Action = AppButtonEvent::kButtonAction_LongPressing;
             btn_event.ButtonEvent.LongPressCount = ((s_my_long_cnt - TICKS_FOR_LONG_START) / TICKS_FOR_PULSE) + 1;
+            if (btn_event.ButtonEvent.LongPressCount >= 250)
+            {
+                btn_event.ButtonEvent.LongPressCount = 250; // 防止溢出，最大记录250次脉冲，即50000ms的长按时间
+            }
             AppTask::GetAppTask().PostEvent(reinterpret_cast<AppEvent *>(&btn_event));
         }
     }

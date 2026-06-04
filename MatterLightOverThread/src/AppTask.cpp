@@ -86,16 +86,14 @@ LEDWidget sLightLED; // Use LEDWidget for basic LED functionality
 // In this example, we defer the storage of the Level Control's CurrentLevel attribute and the Color Control's
 // CurrentHue and CurrentSaturation attributes for the LIGHT_ENDPOINT.
 DeferredAttribute gDeferredAttributeTable[] = {
-    DeferredAttribute(
-        ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id)),
-    DeferredAttribute(
-        ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id)),
-    DeferredAttribute(
-        ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id))};
+    DeferredAttribute(ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id)),
+    DeferredAttribute(ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id)),
+    DeferredAttribute(ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id))};
 } // namespace
 
 using namespace chip::TLV;
 using namespace ::chip::DeviceLayer;
+void MatterEventHandler(const ChipDeviceEvent *event, intptr_t arg);
 
 AppTask    AppTask::sAppTask;
 CHIP_ERROR AppTask::AppInit()
@@ -135,6 +133,8 @@ CHIP_ERROR AppTask::AppInit()
     }
 #endif // QR_CODE_ENABLED
 #endif
+    // 添加matter配网成功回调事件
+    PlatformMgr().AddEventHandler(MatterEventHandler, reinterpret_cast<intptr_t>(nullptr));
 
     BaseApplication::InitCompleteCallback(err);
     return err;
@@ -163,8 +163,7 @@ void AppTask::AppTaskMain(void *pvParameter)
     //  once it remains constant for SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS milliseconds.
     //  For all other attributes not listed in gDeferredAttributeTable, the default PersistenceProvider is used.
     sAppTask.pDeferredAttributePersister = new DeferredAttributePersistenceProvider(
-        *attributePersistence,
-        Span<DeferredAttribute>(gDeferredAttributeTable, MATTER_ARRAY_SIZE(gDeferredAttributeTable)),
+        *attributePersistence, Span<DeferredAttribute>(gDeferredAttributeTable, MATTER_ARRAY_SIZE(gDeferredAttributeTable)),
         System::Clock::Milliseconds32(SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS));
     VerifyOrDie(sAppTask.pDeferredAttributePersister != nullptr);
 
@@ -243,8 +242,7 @@ void AppTask::LightControlEventHandler(AppEvent *aEvent)
     // Read currentlevel value
     status = LevelControl::Attributes::CurrentLevel::Get(LIGHT_ENDPOINT, currentlevel);
     PlatformMgr().UnlockChipStack();
-    VerifyOrReturn(Protocols::InteractionModel::Status::Success == status,
-                   ChipLogError(NotSpecified, "Failed to get CurrentLevel attribute"));
+    VerifyOrReturn(Protocols::InteractionModel::Status::Success == status, ChipLogError(NotSpecified, "Failed to get CurrentLevel attribute"));
     if (status == Protocols::InteractionModel::Status::Success && !currentlevel.IsNull())
     {
         sLightLED.SetLevel(currentlevel.Value());
@@ -277,9 +275,7 @@ void AppTask::ButtonEventHandler(uint8_t button, uint8_t btnAction)
     button_event.Type = AppEvent::kEventType_Button;
     button_event.ButtonEvent.Action = btnAction;
 
-    SILABS_LOG("Button %d %s", button,
-               (btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed)) ? "pressed" :
-                                                                                                  "released");
+    SILABS_LOG("Button %d %s", button, (btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed)) ? "pressed" : "released");
     if (button == APP_LIGHT_SWITCH && btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonPressed))
     {
         button_event.Handler = LightActionEventHandler;
@@ -348,8 +344,7 @@ void AppTask::PostLightActionRequest(int32_t aActor, LightingManager::Action_t a
 }
 
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
-void AppTask::PostLightControlActionRequest(int32_t aActor, LightingManager::Action_t aAction,
-                                            RGBLEDWidget::ColorData_t *aValue)
+void AppTask::PostLightControlActionRequest(int32_t aActor, LightingManager::Action_t aAction, RGBLEDWidget::ColorData_t *aValue)
 {
     AppEvent light_event;
     light_event.Type = AppEvent::kEventType_Light;
@@ -371,5 +366,30 @@ void AppTask::UpdateClusterState(intptr_t context)
     if (status != Protocols::InteractionModel::Status::Success)
     {
         SILABS_LOG("ERR: updating on/off %x", to_underlying(status));
+    }
+}
+
+// 在 AppTask.cpp 的匿名空间或适当位置声明静态回调函数
+void MatterEventHandler(const ChipDeviceEvent *event, intptr_t arg)
+{
+    switch (event->Type)
+    {
+    // 🎯 核心事件：配网完成（手机成功将设备加入家庭网络）
+    case DeviceEventType::kCommissioningComplete:
+        SILABS_LOG("🎯 Matter Connection Established: Commissioning Complete!");
+
+        // 运行配对成功特效
+        extern void TriggerPairingSuccessAnimation(void);
+        TriggerPairingSuccessAnimation();
+        break;
+
+    // 辅助判定事件：手机通过蓝牙与设备建立安全会话连接（处于扫码配对中间状态）
+    case DeviceEventType::kCHIPoBLEConnectionEstablished:
+    {
+        SILABS_LOG("BLE connection established with phone.");
+        break;
+    }
+
+    default: break;
     }
 }
