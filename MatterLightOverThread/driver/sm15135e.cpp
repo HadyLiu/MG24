@@ -19,13 +19,15 @@
 
 #define sm15135e_mask5(v) (uint8_t)(v & 0x1Fu)
 
-// ⚡⚡⚡ 无分支无跳转宏：通过纯算术合并图案 ⚡⚡⚡
-// bh 和 bl 必须是严格的 0 或 1。
-// 映射单个逻辑位：0x08u | (bit << 2u) | (bit << 1u)
-// bh（高位）转换后整体左移 4 位，再与 bl（低位）相或
-#define PACK_SPI_BYTE_PURE(bh, bl)                                                                                     \
-    ((uint8_t)(((0x08u | ((uint8_t)(bh) << 2u) | ((uint8_t)(bh) << 1u)) << 4u)                                         \
-               | (0x08u | ((uint8_t)(bl) << 2u) | ((uint8_t)(bl) << 1u))))
+// spi 查表函数值
+static const uint8_t SPI_PACK_LUT[2][2] = {
+    // bl = 0, bl = 1
+    {0x88, 0x8E}, // bh = 0
+    {0xE8, 0xEE}, // bh = 1
+};
+
+// 改为查表
+#define PACK_SPI_BYTE_PURE(bh, bl) (SPI_PACK_LUT[bh][bl])
 
 typedef union
 {
