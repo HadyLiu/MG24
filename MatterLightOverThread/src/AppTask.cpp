@@ -53,6 +53,7 @@
 #include "sl_simple_button_instances.h"
 
 // 1. 定义我们自己的应用程序
+#include "AppMatterHandlers.h"
 #include "../app/my_app.h"
 
 #include "../driver/button.h"
@@ -93,7 +94,6 @@ DeferredAttribute gDeferredAttributeTable[] = {
 
 using namespace chip::TLV;
 using namespace ::chip::DeviceLayer;
-void MatterEventHandler(const ChipDeviceEvent *event, intptr_t arg);
 
 AppTask    AppTask::sAppTask;
 CHIP_ERROR AppTask::AppInit()
@@ -133,8 +133,9 @@ CHIP_ERROR AppTask::AppInit()
     }
 #endif // QR_CODE_ENABLED
 #endif
-    // 添加matter配网成功回调事件
-    PlatformMgr().AddEventHandler(MatterEventHandler, reinterpret_cast<intptr_t>(nullptr));
+
+    // 注册你的配网成功事件监听
+    RegisterDeviceEventListener();
 
     BaseApplication::InitCompleteCallback(err);
     return err;
@@ -266,6 +267,8 @@ void AppTask::LightControlEventHandler(AppEvent *aEvent)
     break;
     default: ChipLogProgress(NotSpecified, "LightMgr:Unknown"); break;
     }
+    extern void MyColorEventHandlerBridge(uint8_t action, void *valueData);
+    MyColorEventHandlerBridge(aEvent->LightControlEvent.Action, &(aEvent->LightControlEvent.Value));
 }
 #endif // (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED)
 
@@ -312,6 +315,9 @@ void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor,
             sAppTask.mSyncClusterToButtonAction = true;
         }
     }
+    // 🎯 仅加这一行：把参数直接丢给你的自定义文件
+    extern void MyActionInitiatedBridge(int aAction, uint8_t *aValue);
+    MyActionInitiatedBridge(static_cast<int>(aAction), aValue);
 }
 
 void AppTask::ActionCompleted(LightingManager::Action_t aAction)
@@ -366,30 +372,5 @@ void AppTask::UpdateClusterState(intptr_t context)
     if (status != Protocols::InteractionModel::Status::Success)
     {
         SILABS_LOG("ERR: updating on/off %x", to_underlying(status));
-    }
-}
-
-// 在 AppTask.cpp 的匿名空间或适当位置声明静态回调函数
-void MatterEventHandler(const ChipDeviceEvent *event, intptr_t arg)
-{
-    switch (event->Type)
-    {
-    // 🎯 核心事件：配网完成（手机成功将设备加入家庭网络）
-    case DeviceEventType::kCommissioningComplete:
-        SILABS_LOG("🎯 Matter Connection Established: Commissioning Complete!");
-
-        // 运行配对成功特效
-        extern void TriggerPairingSuccessAnimation(void);
-        TriggerPairingSuccessAnimation();
-        break;
-
-    // 辅助判定事件：手机通过蓝牙与设备建立安全会话连接（处于扫码配对中间状态）
-    case DeviceEventType::kCHIPoBLEConnectionEstablished:
-    {
-        SILABS_LOG("BLE connection established with phone.");
-        break;
-    }
-
-    default: break;
     }
 }

@@ -22,17 +22,20 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/pinManage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/powerManage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/matter_interfacing.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/main_light_control.cpp
     
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/AppMatterHandlers.cpp
 )
+
 
 target_include_directories(MatterLightOverThread PUBLIC
     # Add additional include paths here
     #${CMAKE_CURRENT_SOURCE_DIR}/../app
+    #${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_compile_definitions(MatterLightOverThread PUBLIC

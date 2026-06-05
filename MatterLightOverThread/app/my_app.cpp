@@ -5,37 +5,6 @@
 #include "AppConfig.h"
 #include "AppEvent.h"
 
-#include "LEDWidget.h"
-#if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
-#include "RGBLEDWidget.h"
-#endif //(defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
-
-#include <app/persistence/AttributePersistenceProviderInstance.h>
-#include <app/persistence/DefaultAttributePersistenceProvider.h>
-#include <app/persistence/DeferredAttributePersistenceProvider.h>
-
-#include <app-common/zap-generated/attributes/Accessors.h>
-#include <app/clusters/on-off-server/on-off-server.h>
-#include <app/server/Server.h>
-#include <app/util/attribute-storage.h>
-#include <setup_payload/OnboardingCodesUtil.h>
-
-#include <assert.h>
-
-#include <platform/silabs/platformAbstraction/SilabsPlatform.h>
-
-#include <setup_payload/QRCodeSetupPayloadGenerator.h>
-#include <setup_payload/SetupPayload.h>
-
-#include <lib/support/CodeUtils.h>
-
-#include <lib/support/Span.h>
-#include <platform/CHIPDeviceLayer.h>
-#include <platform/silabs/tracing/SilabsTracingMacros.h>
-
-// 加载 iadc
-#include "../driver/iadc_driver.h"
-
 uint32_t g_time_clk = 0;
 uint32_t g_time_detect_bat = 0;
 bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进行中
@@ -303,7 +272,7 @@ void check_interrupt_injection_status(uint8_t pin)
     bool rise_enabled = (GPIO->EXTIRISE & mask) != 0;
     bool fall_enabled = (GPIO->EXTIFALL & mask) != 0;
 
-    ("\r\n=== 🔍 硬件中断通道 %d 状态体检 ===\r\n", int_no);
+    SILABS_LOG("\r\n=== 🔍 硬件中断通道 %d 状态体检 ===\r\n", int_no);
     SILABS_LOG("上升沿触发 (Rising Edge): %s\r\n", rise_enabled ? "【已开启 🟢】" : "【未开启 ❌】");
     SILABS_LOG("下降沿触发 (Falling Edge): %s\r\n", fall_enabled ? "【已开启 🟢】" : "【未开启 ❌】");
 
