@@ -8,8 +8,54 @@
 #include "LightingManager.h"
 #include "RGBLEDWidget.h"
 
+#include "../driver/led_driver.h" // 引入 LED 驱动的头文件，获取 led_ctrl_t 定义和 LED_Start_Fade_RGBW 函数声明
+
 using namespace chip;
 using namespace chip::DeviceLayer;
+
+void MyCalculatedRGB(uint16_t chipX, uint16_t chipY)
+{
+    // 1. 还原为标准的 0.0 ~ 1.0 的 CIE 坐标
+    float x = (float)chipX / 65536.0f;
+    float y = (float)chipY / 65536.0f;
+    float z = 1.0f - x - y;
+
+    // 2. 这里的 Y 顺应亮度，暂设为 1.0 满亮度
+    float Y = 1.0f;
+    float X = (y > 0) ? (x * Y) / y : 0;
+    float Z = (y > 0) ? (z * Y) / y : 0;
+
+    // 3. 使用标准的 sRGB 逆转换矩阵（无视官方指示灯色域）
+    float r = 3.2406f * X - 1.5372f * Y - 0.4986f * Z;
+    float g = -0.9689f * X + 1.8758f * Y + 0.0415f * Z;
+    float b = 0.0557f * X - 0.2040f * Y + 1.0570f * Z;
+
+    // 4. 约束并放大到 0-255 硬件空间
+    int R = (r < 0) ? 0 : ((r > 1) ? 255 : (int)(r * 255));
+    int G = (g < 0) ? 0 : ((g > 1) ? 255 : (int)(g * 255));
+    int B = (b < 0) ? 0 : ((b > 1) ? 255 : (int)(b * 255));
+
+    uint16_t led_r = (uint16_t)(R << 2);
+    uint16_t led_g = (uint16_t)(G << 2);
+    uint16_t led_b = (uint16_t)(B << 2);
+    if (R >= 255)
+    {
+        led_r = 1023;
+    }
+    if (G >= 255)
+    {
+        led_g = 1023;
+    }
+    if (B >= 255)
+    {
+        led_b = 1023;
+    }
+
+    SILABS_LOG("====> [我的独立转换] 绕过系统限界后的纯正 RGB: R:%d | G:%d | B:%d <====\n", R, G, B);
+    // TODO: 送入你的 sm15135e 硬件驱动
+    LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, (led_color_t){.w = 0, .r = led_r, .g = led_g, .b = led_b},
+                        LED_FADE_COLOR_SWITCH_MS); // 示例：直接全亮白色，实际应使用 R/G/B 值控制
+}
 
 // =================================================================
 // 🎯 承接：开关与亮度数据
@@ -56,7 +102,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
         uint16_t y = colorData->xy.y;
 
         SILABS_LOG("====> [色彩模式 - XY] X: %d, Y: %d <====\n", x, y);
-
+        MyCalculatedRGB(x, y); // 计算并输出 RGB 值，绕过官方色域限制
         // 🎯 TODO: 在此调用你的 RGB 驱动 (例如 sm15135e 或 led_pwm_port)
         // 示例：sm15135e_set_xy(x, y);
         break;
@@ -102,15 +148,22 @@ void Upload_Temperature_Data(int16_t local_temp_hundredths)
 }
 
 // ================= 3. 设备识别 (Identify) =================
-void OnIdentifyStart(Identify *identify)
-{ /* LED 闪烁 */
-}
-void OnIdentifyStop(Identify *identify)
-{ /* LED 停止 */
+// 修正后的回调函数
+void OnIdentifyStart(::Identify *identify)
+{
+    //
+    SILABS_LOG("\r\n====> [设备识别] Identify Start Triggered! <====\r\n");
 }
 
-static Identify gIdentify = {EndpointId(1), OnIdentifyStart, OnIdentifyStop, app::Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
+void OnIdentifyStop(::Identify *identify)
+{
+    //
+    SILABS_LOG("\r\n====> [设备识别] Identify Stop Triggered! <====\r\n");
+}
 
+// 静态初始化结构体
+static Identify gIdentify = {chip::EndpointId(1), OnIdentifyStart, OnIdentifyStop,
+                             chip::app::Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
 // ================= 4. 配网成功通知 =================
 static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
 {
@@ -137,4 +190,10 @@ static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
 }
 
 void RegisterDeviceEventListener(void)
-{ PlatformMgr().AddEventHandler(OnMatterDeviceEvent, reinterpret_cast<intptr_t>(nullptr)); }
+{
+    // 注册 Matter 设备事件监听器，关注配网完成等关键事件
+    PlatformMgr().AddEventHandler(OnMatterDeviceEvent, reinterpret_cast<intptr_t>(nullptr));
+
+    // 注册 Identify 事件回调，处理设备识别请求
+    (void)gIdentify;
+}

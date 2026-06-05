@@ -9,6 +9,11 @@
 #include <cmsis_os2.h>
 #endif
 
+#define LED_FADE_KEY_100_TO_50_MS 400
+#define LED_FADE_KEY_50_TO_0_MS   400
+#define LED_FADE_KEY_0_TO_100_MS  800
+#define LED_FADE_COLOR_SWITCH_MS  400
+
 #define LED_BRIGHTNESS_MIN 1
 #define LED_BRIGHTNESS_MAX 100
 #define LED_HW_MAX         1023
@@ -38,6 +43,13 @@ typedef enum
     LED_EFFECT_HOLD      // 保持模式
 } led_effect_mode_t;
 
+// 🎯 新增：区分当前的色彩来源是颜色表索引还是自定义 RGBW
+typedef enum
+{
+    LED_SOURCE_COLOR_INDEX = 0,
+    LED_SOURCE_CUSTOM_RGBW
+} led_color_source_t;
+
 typedef struct
 {
     bool    is_on;       // 当前逻辑开关状态
@@ -45,6 +57,10 @@ typedef struct
     uint8_t color_index; // 0~12，默认2
 
     bool key_next_off; // 若被 Matter/App 外部开灯，则下次短按优先关灯
+
+    // 🎯 新增：色彩来源管理
+    led_color_source_t color_source; // 标记当前色彩来源
+    led_color_t        custom_raw;   // 用于缓存未经亮度缩放的自定义原始 RGBW，供呼吸/闪烁灯效使用
 
     // 🎯 变更：全部使用纯整数结构体单元
     led_color_t cur_color;    // 当前实际输出的颜色值（已应用亮度缩放）
@@ -110,7 +126,8 @@ void LED_SaveState(uint8_t brightness, uint8_t color_index, bool is_on);
 
 /* 底层唯一输出接口：用户实现 */
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
-void LED_Start_Fade_Logic(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms);
+void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms);
+void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms);
 void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
 void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
 void LED_SetHold(bool is_on, uint8_t brightness, uint8_t color_index, uint16_t fade_ms);

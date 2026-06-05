@@ -1,10 +1,5 @@
 #include "led_driver.h"
 
-#define LED_FADE_KEY_100_TO_50_MS 400
-#define LED_FADE_KEY_50_TO_0_MS   400
-#define LED_FADE_KEY_0_TO_100_MS  800
-#define LED_FADE_COLOR_SWITCH_MS  400
-
 led_ctrl_t g_led;
 
 /* 出厂默认 color2（约2450K），亮度100% */
@@ -95,33 +90,47 @@ static uint32_t led_map_app_percent_to_output_scale_14bit(uint16_t app_percent)
 }
 
 /**
- * @brief 纯整数逻辑状态目标值计算
- * @param is_on 逻辑开关状态
+ * @brief 对原始颜色进行亮度缩放（纯整数逻辑）
+ * @param raw_color 原始颜色（通常是全亮度下的颜色）
  * @param brightness_percent 亮度百分比 1~100
- * @param color_index 颜色索引 0~12
- * @return 计算得到的目标颜色值（已应用亮度缩放）
+ * @return 缩放后的颜色值
+ */
+static led_color_t led_scale_color(led_color_t raw_color, uint8_t brightness_percent)
+{
+    led_color_t target = {0, 0, 0, 0};
+
+    // 限制亮度边界并转换为 14-bit 缩放因子
+    brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
+    uint32_t scale_10240 = led_map_app_percent_to_output_scale_14bit(brightness_percent);
+
+    // 纯整数等比缩放公式：target = (原始值 * scale_10240) >> 14
+    target.w = (uint16_t)(((uint32_t)raw_color.w * scale_10240) >> 14);
+    target.r = (uint16_t)(((uint32_t)raw_color.r * scale_10240) >> 14);
+    target.g = (uint16_t)(((uint32_t)raw_color.g * scale_10240) >> 14);
+    target.b = (uint16_t)(((uint32_t)raw_color.b * scale_10240) >> 14);
+
+    return target;
+}
+
+/**
+ * @brief 纯整数逻辑状态目标值计算
  */
 static led_color_t led_calc_target_from_logic_struct(bool is_on, uint8_t brightness_percent, uint8_t color_index)
 {
     led_color_t target = {0, 0, 0, 0};
+
+    // 1. 灯灭状态直接返回全 0
     if (!is_on)
     {
         return target;
     }
-    brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
+
+    // 2. 限制颜色索引边界并获取基础颜色
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
+    led_color_t base_color = g_color_table[color_index];
 
-    // 拿到放大 10000 倍的亮度比例
-    uint32_t scale_10240 = led_map_app_percent_to_output_scale_14bit(brightness_percent);
-
-    // 纯整数等比缩放
-    // 缩放公式：target = (原始值 * scale_10240) >> 14
-    target.w = (uint16_t)(((uint32_t)g_color_table[color_index].w * scale_10240) >> 14); // 右移14位相当于除以10000再乘以10240
-    target.r = (uint16_t)(((uint32_t)g_color_table[color_index].r * scale_10240) >> 14); // 右移14位相当于除以10000再乘以10240
-    target.g = (uint16_t)(((uint32_t)g_color_table[color_index].g * scale_10240) >> 14); // 右移14位相当于除以10000再乘以10240
-    target.b = (uint16_t)(((uint32_t)g_color_table[color_index].b * scale_10240) >> 14); // 右移14位相当于除以10000再乘以10240
-
-    return target;
+    // 3. 调用独立的亮度缩放函数
+    return led_scale_color(base_color, brightness_percent);
 }
 
 /**
@@ -131,12 +140,14 @@ static led_color_t led_calc_target_from_logic_struct(bool is_on, uint8_t brightn
  * @param color_index 颜色索引 0~12
  * @param fade_ms 渐变时间（毫秒）
  */
-void LED_Start_Fade_Logic(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms)
+void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms)
 {
     g_led.effect_mode = LED_EFFECT_NONE;
     brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
     color_index = color_index % LED_COLOR_COUNT;
 
+    // 🎯 明确指示色彩来源为：索引表
+    g_led.color_source = LED_SOURCE_COLOR_INDEX;
     g_led.is_on = is_on;
     g_led.brightness = brightness_percent;
     g_led.color_index = color_index;
@@ -147,6 +158,64 @@ void LED_Start_Fade_Logic(bool is_on, uint8_t brightness_percent, uint8_t color_
     g_led.fade_start_ms = LED_GetTickMs();
     g_led.fade_time_ms = (fade_ms == 0) ? 1 : fade_ms;
     g_led.fading = true;
+}
+
+/**
+ * @brief 从逻辑状态计算目标颜色值，并启动渐变（自定义 RGBW 版本）
+ * @param is_on 逻辑开关状态
+ * @param brightness_percent 亮度百分比 1~100
+ * @param r 原始红色值 0~100（未应用亮度缩放）
+ * @param g 原始绿色值 0~100（未应用亮度缩放）
+ * @param b 原始蓝色值 0~100（未应用亮度缩放）
+ * @param w 原始白色值 0~100（未应用亮度缩放）
+ * @param fade_ms 渐变时间（毫秒）
+ * 注意：此函数会将输入的 RGBW 作为原始色彩值进行亮度缩放，并且会覆盖当前的颜色索引状态，因此在调用前请确保
+ */
+void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms)
+{
+    g_led.effect_mode = LED_EFFECT_NONE;
+    brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
+
+    // 🎯 明确指示色彩来源为：自定义外部色彩输入，并备份原始色彩值
+    g_led.color_source = LED_SOURCE_CUSTOM_RGBW;
+    g_led.custom_raw = custom_raw;
+
+    g_led.is_on = is_on;
+    g_led.brightness = brightness_percent;
+    // 不再篡改 g_led.color_index，保留其原本状态值，防止逻辑冲突
+
+    g_led.start_color = g_led.cur_color;
+
+    if (!g_led.is_on)
+    {
+        g_led.target_color = (led_color_t){0, 0, 0, 0};
+    }
+    else
+    {
+        g_led.target_color = led_scale_color(g_led.custom_raw, g_led.brightness);
+    }
+
+    g_led.fade_start_ms = LED_GetTickMs();
+    g_led.fade_time_ms = (fade_ms == 0) ? 1 : fade_ms;
+    g_led.fading = true;
+}
+
+/**
+ * @brief 停止当前的灯效（闪烁/呼吸/保持），并恢复到正常的逻辑状态输出
+ * 注意：如果当前色彩来源是自定义 RGBW，则优先恢复到 custom_raw 定义的颜色，而不是颜色表索引对应的颜色，以保证用户自定义输入
+ */
+void LED_StopEffect(void)
+{
+    g_led.effect_mode = LED_EFFECT_NONE;
+    if (g_led.color_source == LED_SOURCE_CUSTOM_RGBW)
+    {
+        // 🎯 修改点：改为直接传入备份的结构体 g_led.custom_raw
+        LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
+    }
+    else
+    {
+        LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+    }
 }
 
 /**
@@ -180,12 +249,6 @@ static uint16_t get_breath_scale_1023(uint32_t ms_in_cycle, uint32_t period_ms)
         break;
     }
     return value;
-}
-
-void LED_StopEffect(void)
-{
-    g_led.effect_mode = LED_EFFECT_NONE;
-    LED_Start_Fade_Logic(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
 }
 
 /**
@@ -323,11 +386,18 @@ static void led_execute_mixed_index(uint8_t index)
     {
         LED_SetHold(on, bri, color, ms);
     }
-    else // 无特效 / 结束
+    else // 结束
     {
-        // 如果混合特效中配置了 0 (NONE)，直接视为本段特效结束，切回常规常规
         g_led.mix_lighting_effects = false;
-        LED_Start_Fade_Logic(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+        if (g_led.color_source == LED_SOURCE_CUSTOM_RGBW)
+        {
+            // 🎯 修改点：改为直接传入备份的结构体 g_led.custom_raw
+            LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
+        }
+        else
+        {
+            LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+        }
     }
 }
 
@@ -364,7 +434,7 @@ void LED_StopMixedEffects(bool is_on, uint8_t brightness, uint8_t color_index)
 
     // 3. 重新平滑地过渡回当前的色温/常规颜色 (例如使用 400ms 渐变时间)
     // g_led.is_on, g_led.brightness, g_led.color_index 存储的是设备常规下的状态
-    LED_Start_Fade_Logic(is_on, brightness, color_index, LED_FADE_COLOR_SWITCH_MS);
+    LED_Start_Fade_Color_Index(is_on, brightness, color_index, LED_FADE_COLOR_SWITCH_MS);
 }
 
 void led_mixed_lighting_effects_service(void)
@@ -384,7 +454,7 @@ void led_mixed_lighting_effects_service(void)
         g_led.is_on = g_led.mix_end_is_on;
         g_led.brightness = g_led.mix_end_brightness;
         g_led.color_index = g_led.mix_end_color_index;
-        LED_Start_Fade_Logic(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+        LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
         return;
     }
 
@@ -417,11 +487,10 @@ void LED_Init(void)
 
     // led_color_t target_color = led_calc_target_from_logic_struct(is_on, brightness, color_index);
     // led_apply_output_struct(target_color);
-    LED_Start_Fade_Logic(is_on, brightness, color_index, LED_FADE_COLOR_SWITCH_MS); // 上电时使用渐变效果切到目标状态
+    LED_Start_Fade_Color_Index(is_on, brightness, color_index, LED_FADE_COLOR_SWITCH_MS); // 上电时使用渐变效果切到目标状态
 }
-
 /**
- * @brief LED状态机主循环，建议每10ms调用一次
+ * @brief LED状态机服务函数，建议每10ms调用一次
  */
 void LED_Tick10ms(void)
 {
@@ -429,26 +498,23 @@ void LED_Tick10ms(void)
     do
     {
         // -----------------------------------------------------------------
-        // 特效灯效整数状态机
+        // 特效灯效状态机
         // -----------------------------------------------------------------
         if (g_led.effect_mode != LED_EFFECT_NONE)
         {
             uint32_t now = LED_GetTickMs();
             uint32_t elapsed = now - g_led.effect_start_ms;
 
-            // 1. 判断当前单步特效是否彻底完结
             bool effect_done = false;
             if (g_led.effect_mode == LED_EFFECT_HOLD)
             {
-                // HOLD 模式: 到了指定的超时时间就算结束
                 if (g_led.effect_count > 0 && elapsed >= g_led.effect_period_ms)
                 {
                     effect_done = true;
                 }
             }
-            else // BLINK 或 BREATH 模式
+            else
             {
-                // 🎯 核心改进：基于总耗时进行精准边界对齐，消除 Tick 10ms 带来的截断闪烁
                 if (g_led.effect_count > 0)
                 {
                     uint32_t target_total_ms = (uint32_t)g_led.effect_count * g_led.effect_period_ms;
@@ -459,32 +525,42 @@ void LED_Tick10ms(void)
                 }
             }
 
-            // 2. 特效结束后，驱动路由跳转
             if (effect_done)
             {
                 if (g_led.mix_lighting_effects == true)
                 {
-                    led_mixed_lighting_effects_service(); // 步进切换至下一个特效
+                    led_mixed_lighting_effects_service();
                 }
                 else
                 {
-                    LED_StopEffect(); // 独立运行结束
+                    LED_StopEffect();
                 }
                 break;
             }
 
-            // 3. 运行中特效刷新色彩波形
+            // 🎯 核心改动：动态选择基础色彩
+            led_color_t base_raw_color;
+            if (g_led.color_source == LED_SOURCE_CUSTOM_RGBW)
+            {
+                base_raw_color = g_led.custom_raw;
+            }
+            else
+            {
+                uint8_t idx = led_clamp_u8(g_led.color_index, 0, LED_COLOR_COUNT - 1);
+                base_raw_color = g_color_table[idx];
+            }
+
             if (g_led.effect_mode == LED_EFFECT_BLINK)
             {
                 uint32_t ms_in_cycle = elapsed % g_led.effect_period_ms;
                 if (ms_in_cycle < (g_led.effect_period_ms >> 1))
                 {
-                    g_led.cur_color = led_calc_target_from_logic_struct(true, g_led.brightness, g_led.color_index);
+                    // 依据来源对基础色做缩放
+                    g_led.cur_color = led_scale_color(base_raw_color, g_led.brightness);
                 }
                 else
                 {
-                    led_color_t dark_color = {0, 0, 0, 0};
-                    g_led.cur_color = dark_color;
+                    g_led.cur_color = (led_color_t){0, 0, 0, 0};
                 }
                 led_change = true;
             }
@@ -496,21 +572,18 @@ void LED_Tick10ms(void)
                 uint32_t out_scale_14bit = led_map_app_percent_to_output_scale_14bit(bri);
                 uint64_t total_scale = (uint64_t)out_scale_14bit * breath_scale_1023;
 
-                g_led.cur_color.w = (uint16_t)(((uint64_t)g_color_table[g_led.color_index].w * total_scale) >> 24);
-                g_led.cur_color.r = (uint16_t)(((uint64_t)g_color_table[g_led.color_index].r * total_scale) >> 24);
-                g_led.cur_color.g = (uint16_t)(((uint64_t)g_color_table[g_led.color_index].g * total_scale) >> 24);
-                g_led.cur_color.b = (uint16_t)(((uint64_t)g_color_table[g_led.color_index].b * total_scale) >> 24);
+                // 依据动态选择的 base_raw_color 运算，不再写死查表
+                g_led.cur_color.w = (uint16_t)(((uint64_t)base_raw_color.w * total_scale) >> 24);
+                g_led.cur_color.r = (uint16_t)(((uint64_t)base_raw_color.r * total_scale) >> 24);
+                g_led.cur_color.g = (uint16_t)(((uint64_t)base_raw_color.g * total_scale) >> 24);
+                g_led.cur_color.b = (uint16_t)(((uint64_t)base_raw_color.b * total_scale) >> 24);
                 led_change = true;
-            }
-            else if (g_led.effect_mode == LED_EFFECT_HOLD)
-            {
-                // HOLD 模式只需等时间自然截止，运行期间不重刷颜色，避免闪烁
             }
             break;
         }
 
         // -----------------------------------------------------------------
-        // 常规 Fading 线性渐变逻辑（常规无特效控制）
+        // 常规 Fading 线性渐变逻辑
         // -----------------------------------------------------------------
         if (g_led.fading)
         {

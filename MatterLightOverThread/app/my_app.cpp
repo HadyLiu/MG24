@@ -195,7 +195,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
             g_led.brightness = 0;
         }
         SILABS_LOG("is_On=%d, brightness=%d", g_led.is_on, g_led.brightness);
-        LED_Start_Fade_Logic(g_led.is_on, g_led.brightness, g_led.color_index, 400);
+        LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, 400);
         break;
 
     case AppButtonEvent::kButtonAction_DoublePress:
@@ -212,7 +212,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
             g_led.color_index = 0;
         }
         SILABS_LOG("color_index=%d", g_led.color_index);
-        LED_Start_Fade_Logic(g_led.is_on, g_led.brightness, g_led.color_index, 400);
+        LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, 400);
         break;
 
     case AppButtonEvent::kButtonAction_LongPressStart:
