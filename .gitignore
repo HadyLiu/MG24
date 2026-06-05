@@ -2,3 +2,4 @@ Doc
 Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake/build
 Matter-Bootloader/cmake_gcc/build
 MatterLightOverThread/cmake_gcc/build
+core.[0-9]*
