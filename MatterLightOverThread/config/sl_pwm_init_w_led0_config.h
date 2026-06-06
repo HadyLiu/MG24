@@ -54,7 +54,7 @@ extern "C"
 
 // <o SL_PWM_W_LED0_FREQUENCY> PWM frequency [Hz]
 // <i> Default: 10000
-#define SL_PWM_W_LED0_FREQUENCY 10000
+#define SL_PWM_W_LED0_FREQUENCY 32000
 
 // <o SL_PWM_W_LED0_POLARITY> Polarity
 // <PWM_ACTIVE_HIGH=> Active high

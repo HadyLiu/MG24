@@ -293,6 +293,7 @@ void AppTask::ButtonEventHandler(uint8_t button, uint8_t btnAction)
 
 void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor, uint8_t *aValue)
 {
+    bool lightOn = true;
     if (aAction == LightingManager::LEVEL_ACTION)
     {
         VerifyOrReturn(aValue != nullptr);
@@ -301,7 +302,7 @@ void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor,
     else
     {
         // Action initiated, update the light led
-        bool lightOn = aAction == LightingManager::ON_ACTION;
+        lightOn = aAction == LightingManager::ON_ACTION;
         SILABS_LOG("Turning light %s", (lightOn) ? "On" : "Off")
 
         sLightLED.Set(lightOn);
@@ -316,8 +317,8 @@ void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor,
         }
     }
     // 🎯 仅加这一行：把参数直接丢给你的自定义文件
-    extern void MyActionInitiatedBridge(int aAction, uint8_t *aValue);
-    MyActionInitiatedBridge(static_cast<int>(aAction), aValue);
+    extern void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lighOn);
+    MyActionInitiatedBridge(static_cast<int>(aAction), aValue, lightOn);
 }
 
 void AppTask::ActionCompleted(LightingManager::Action_t aAction)

@@ -1,6 +1,7 @@
 #include "AppMatterHandlers.h"
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app/clusters/identify-server/identify-server.h>
+#include <app/clusters/color-control-server/color-control-server.h>
 
 #include "AppConfig.h"
 
@@ -8,10 +9,70 @@
 #include "LightingManager.h"
 #include "RGBLEDWidget.h"
 
-#include "../driver/led_driver.h" // 引入 LED 驱动的头文件，获取 led_ctrl_t 定义和 LED_Start_Fade_RGBW 函数声明
+// 重置网络的核心函数声明
+#include <app/server/Server.h>
+#include <platform/CHIPDeviceLayer.h>
+#include <setup_payload/SetupPayload.h>
+#include <platform/CHIPDeviceLayer.h>
+#include <app/server/Server.h> // 必须明确包含此头文件，解决 Server 未定义问题
+
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+#include <platform/OpenThread/GenericThreadStackManagerImpl_OpenThread.h>
+#endif
+
+// 引入 OpenThread 原生 API 所需的头文件
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+#include <openthread/instance.h>
+#include <openthread/dataset.h>
+#include <platform/OpenThread/OpenThreadUtils.h>
+#endif
+
+#include "../driver/led_driver.h"     // 引入 LED 驱动的头文件，获取 led_ctrl_t 定义和 LED_Start_Fade_RGBW 函数声明
+#include "../driver/ledModeConvert.h" // 引入 LED 模式转换的头文件，获取 MyCalculatedRGB 函数声明
 
 using namespace chip;
 using namespace chip::DeviceLayer;
+
+/**
+ * @brief 将 0-255 的 RGB 转换为 10位(0-1023) 硬件值并写入 LED 驱动
+ * @param W 白色通道值 (0 ~ 255)
+ * @param R 红色通道值 (0 ~ 255)
+ * @param G 绿色通道值 (0 ~ 255)
+ * @param B 蓝色通道值 (0 ~ 255)
+ */
+void Apply_LED_Hardware_RGB(uint8_t W, uint8_t R, uint8_t G, uint8_t B)
+{
+    // 放大到 10 位硬件空间 (0-255 << 2 = 0-1020)
+    uint16_t led_w = (uint16_t)(W << 2);
+    uint16_t led_r = (uint16_t)(R << 2);
+    uint16_t led_g = (uint16_t)(G << 2);
+    uint16_t led_b = (uint16_t)(B << 2);
+
+    // 边界防呆，确保满载时达到 1023
+    if (W >= 255)
+    {
+        led_w = 1023;
+    }
+    if (R >= 255)
+    {
+        led_r = 1023;
+    }
+    if (G >= 255)
+    {
+        led_g = 1023;
+    }
+    if (B >= 255)
+    {
+        led_b = 1023;
+    }
+
+    SILABS_LOG("====> [我的独立转换] 绕过系统限界后的纯正 RGBW: W:%d | R:%d | G:%d | B:%d <====\n", W, R, G, B);
+
+    // 送入 sm15135e 硬件驱动
+    led_color_t color = {.w = led_w, .r = led_r, .g = led_g, .b = led_b};
+    g_led.change_origin = StateChangeOrigin::MATTER_APP; // 标记当前色彩来源为自定义 RGBW
+    LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, color, LED_FADE_COLOR_SWITCH_MS);
+}
 
 void MyCalculatedRGB(uint16_t chipX, uint16_t chipY)
 {
@@ -35,49 +96,64 @@ void MyCalculatedRGB(uint16_t chipX, uint16_t chipY)
     int G = (g < 0) ? 0 : ((g > 1) ? 255 : (int)(g * 255));
     int B = (b < 0) ? 0 : ((b > 1) ? 255 : (int)(b * 255));
 
-    uint16_t led_r = (uint16_t)(R << 2);
-    uint16_t led_g = (uint16_t)(G << 2);
-    uint16_t led_b = (uint16_t)(B << 2);
-    if (R >= 255)
-    {
-        led_r = 1023;
-    }
-    if (G >= 255)
-    {
-        led_g = 1023;
-    }
-    if (B >= 255)
-    {
-        led_b = 1023;
-    }
-
-    SILABS_LOG("====> [我的独立转换] 绕过系统限界后的纯正 RGB: R:%d | G:%d | B:%d <====\n", R, G, B);
-    // TODO: 送入你的 sm15135e 硬件驱动
-    LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, (led_color_t){.w = 0, .r = led_r, .g = led_g, .b = led_b},
-                        LED_FADE_COLOR_SWITCH_MS); // 示例：直接全亮白色，实际应使用 R/G/B 值控制
+    Apply_LED_Hardware_RGB(0, R, G, B); // 白色通道 W 固定为 0，实际应用中可根据需要调整
 }
 
 // =================================================================
 // 🎯 承接：开关与亮度数据
 // =================================================================
-void MyActionInitiatedBridge(int aAction, uint8_t *aValue)
+void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
 {
+    SILABS_LOG("====> [matter] 收到行动请求: %d <====\n", aAction);
+
+    //  判断是否是开关
+    if (aAction == LightingManager::ON_ACTION || aAction == LightingManager::OFF_ACTION)
+    {
+        if (aAction == LightingManager::ON_ACTION)
+        {
+            g_led.is_on = true;
+            // 防呆保护：如果历史记录的旧亮度太低或为0，默认恢复到 50% 或者是 100% 亮度，防止开灯不亮
+            if (g_led.history_brightness <= 1)
+            {
+                g_led.history_brightness = 100;
+            }
+            g_led.brightness = g_led.history_brightness;
+        }
+        else if (aAction == LightingManager::OFF_ACTION)
+        {
+            g_led.is_on = false;
+            // 只有当当前亮度大于 1 时，才值得记录为历史亮度
+            if (g_led.brightness >= 1)
+            {
+                g_led.history_brightness = g_led.brightness;
+            }
+            g_led.brightness = 0; // 关灯逻辑
+        }
+
+        SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", g_led.is_on ? "ON" : "OFF", g_led.brightness);
+
+        // 如果没有有效的色彩缓存，从当前色表中提出来恢复
+        if (g_led.custom_raw.w == 0 && g_led.custom_raw.r == 0 && g_led.custom_raw.g == 0 && g_led.custom_raw.b == 0)
+        {
+            g_led.custom_raw = g_color_table[g_led.color_index];
+        }
+
+        // 🎯 核心修复点：明确地把全局同步更新后的状态和亮度塞入渐变控制器
+        g_led.change_origin = StateChangeOrigin::MATTER_APP; // 标记来源
+        LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
+    }
     // 1. 判断是否是亮度
-    if (aAction == 2) // 2 对应 LightingManager::LEVEL_ACTION
+    if (aAction == LightingManager::LEVEL_ACTION) //&& g_led.is_on == true)
     {
         if (aValue != nullptr)
         {
             uint8_t brightness = *aValue;
-            SILABS_LOG("====> [我的独立文件] 亮度: %d <====\n", brightness);
-            // TODO: 执行你的驱动 iadc_driver 或 led_driver
+            SILABS_LOG("====> [matter] 亮度: %d <====\n", brightness);
+
+            uint16_t out_brightness = (uint16_t)(brightness * LED_BRIGHTNESS_MAX) >> 8; // 将 0-255 映射到 0-100
+            SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, g_led.is_on ? "ON" : "OFF");
+            LED_Start_Fade_RGBW(g_led.is_on, out_brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
         }
-    }
-    // 2. 判断是否是开关
-    else
-    {
-        bool is_on = (aAction == 0); // 0 对应 LightingManager::ON_ACTION
-        SILABS_LOG("====> [我的独立文件] 开关: %s <====\n", is_on ? "ON" : "OFF");
-        // TODO: 执行你的驱动 main_light_control
     }
 }
 
@@ -90,80 +166,217 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
     {
         return;
     }
+
     // 将泛型指针强转为官方标准颜色数据结构体
     auto *colorData = reinterpret_cast<RGBLEDWidget::ColorData_t *>(valueData);
 
-    switch (action)
+    // 显式将 uint8_t 强转为官方的 Action_t 枚举，提高代码可读性
+    switch (static_cast<LightingManager::Action_t>(action))
     {
-    // 模式 1：CIE 1931 XY 颜色模式 (最常见的生态下发模式，如 Apple Home)
-    case LightingManager::COLOR_ACTION_XY: // 对应枚举值 4
+    // =========================================================================
+    // 模式 1：HSV 颜色模式 (对应官方枚举值 3)
+    // Google Home, Alexa 或本地彩光触发
+    // =========================================================================
+    case LightingManager::COLOR_ACTION_HSV:
     {
-        uint16_t x = colorData->xy.x;
-        uint16_t y = colorData->xy.y;
+        uint8_t hue = colorData->hsv.h;        // 色调 (0-254)
+        uint8_t saturation = colorData->hsv.s; // 饱和度 (0-254)
 
-        SILABS_LOG("====> [色彩模式 - XY] X: %d, Y: %d <====\n", x, y);
-        MyCalculatedRGB(x, y); // 计算并输出 RGB 值，绕过官方色域限制
-        // 🎯 TODO: 在此调用你的 RGB 驱动 (例如 sm15135e 或 led_pwm_port)
-        // 示例：sm15135e_set_xy(x, y);
+        SILABS_LOG("====> [色彩模式 - HSV] 行动ID: %d | Hue: %d, Saturation: %d <====\n", action, hue, saturation);
+
+        // 🎯 TODO: 在此调用你的 HSV 转 RGB 驱动
+        // 示例：led_driver_set_hsv(hue, saturation);
+        uint8_t r, g, b;
+        LedDriver_ConvertHsvToRgb(hue, saturation, 254, &r, &g, &b); // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
+        Apply_LED_Hardware_RGB(0, r, g, b);                          // 白色通道 W 固定为 0，实际应用中可根据需要调整
         break;
     }
 
-    // 模式 2：Color Temperature (冷暖色温模式)
-    case LightingManager::COLOR_ACTION_CT: // 对应枚举值 6
+    // =========================================================================
+    // 模式 2：Color Temperature (冷暖色温模式，对应官方枚举值 4)
+    // =========================================================================
+    case LightingManager::COLOR_ACTION_CT:
     {
         uint16_t mireds = colorData->ct.ctMireds;
 
         // 物理色温（Kelvin）与 Mireds 的标准换算公式
         uint32_t kelvin = (mireds > 0) ? (1000000 / mireds) : 0;
 
-        SILABS_LOG("====> [色彩模式 - 色温] Mireds: %d, 绝对色温: %d K <====\n", mireds, kelvin);
+        SILABS_LOG("====> [色彩模式 - 色温] 行动ID: %d | Mireds: %d, 绝对色温: %d K <====\n", action, mireds, kelvin);
 
         // 🎯 TODO: 在此调用你的双色温驱动控制冷暖比例
         // 示例：main_light_control_set_ct(kelvin);
         break;
     }
 
-    // 模式 3：HSV 颜色模式 (色调与饱和度，部分生态如 Google Home 或特定的本地按键触发)
-    case LightingManager::COLOR_ACTION_HSV: // 对应枚举值 5
+    // =========================================================================
+    // 模式 3：CIE 1931 XY 颜色模式 (对应官方枚举值 5)
+    // Apple Home 等生态下发的绝对坐标模式
+    // =========================================================================
+    case LightingManager::COLOR_ACTION_XY:
     {
-        uint8_t hue = colorData->hsv.h;        // 色调 (Hue)
-        uint8_t saturation = colorData->hsv.s; // 饱和度 (Saturation)
+        uint16_t x = colorData->xy.x;
+        uint16_t y = colorData->xy.y;
 
-        SILABS_LOG("====> [色彩模式 - HSV] Hue: %d, Saturation: %d <====\n", hue, saturation);
+        SILABS_LOG("====> [色彩模式 - XY] 行动ID: %d | X: %d, Y: %d <====\n", action, x, y);
 
-        // 🎯 TODO: 在此调用你的 HSV 转 RGB 驱动
-        // 示例：led_driver_set_hsv(hue, saturation);
+        MyCalculatedRGB(x, y); // 计算并输出 RGB 值
+
+        // 🎯 TODO: 在此调用你的 XY/RGB 驱动
+        // 示例：sm15135e_set_xy(x, y);
         break;
     }
 
-    default: SILABS_LOG("====> [色彩模式 - 未知] Action ID: %d <====\n", action); break;
+    // =========================================================================
+    // 其他非色彩 Action 过滤（如 ON_ACTION, OFF_ACTION, LEVEL_ACTION 等）
+    // =========================================================================
+    default:
+        // 这里不需要报错，因为开关、亮度事件通常由别的 Handler（如 MyOnOffEventHandlerBridge）处理
+        break;
     }
 }
 
 // ================= 2. 上传数据 =================
-void Upload_Temperature_Data(int16_t local_temp_hundredths)
+/**
+ * @brief 本地上报回环阻断标志：true 表示当前属性写入来自本地同步，不应再反向触发控制链
+ */
+static bool g_bypass_zcl_callback = false;
+
+bool IsMatterReportBypassEnabled(void)
 {
-    EndpointId targetEndpoint = 1;
-    app::Clusters::TemperatureMeasurement::Attributes::MeasuredValue::Set(targetEndpoint, local_temp_hundredths);
+    return g_bypass_zcl_callback;
 }
 
+/**
+ * @brief 在 Matter 线程执行 OnOff 属性写入
+ */
+static void Safe_Upload_OnOff_Callback(intptr_t context)
+{
+    const bool           is_on = (context != 0);
+    chip::EndpointId     targetEndpoint = 1;
+    static uint8_t       last_reported_onoff = 0xFF;
+    const uint8_t        onoff_value = is_on ? 1 : 0;
+
+    if (onoff_value == last_reported_onoff)
+    {
+        return;
+    }
+
+    g_bypass_zcl_callback = true;
+    chip::Protocols::InteractionModel::Status status = chip::app::Clusters::OnOff::Attributes::OnOff::Set(targetEndpoint, is_on);
+    g_bypass_zcl_callback = false;
+
+    if (status == chip::Protocols::InteractionModel::Status::Success)
+    {
+        last_reported_onoff = onoff_value;
+        SILABS_LOG("====> [matter async report] 开关上报成功: %s <====\n", is_on ? "ON" : "OFF");
+    }
+    else
+    {
+        SILABS_LOG("====> [matter async report] 开关上报失败: 状态码 0x%02X <====\n", static_cast<uint8_t>(status));
+    }
+}
+
+void Upload_Matter_OnOff(bool is_on)
+{
+    CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(Safe_Upload_OnOff_Callback, is_on ? 1 : 0);
+    if (err != CHIP_NO_ERROR)
+    {
+        SILABS_LOG("====> [matter async report] 开关上报投递失败: 0x%" CHIP_ERROR_FORMAT " <====\n", err.Format());
+    }
+}
+
+// void Upload_Matter_Brightness(uint8_t driver_brightness_percent)
+//{
+//  static uint8_t   last_reported_level = 0xFF;
+//  chip::EndpointId targetEndpoint = 1;
+//
+//  uint8_t matter_level = (uint8_t)((uint16_t)driver_brightness_percent * 254 / 100);
+//
+//  if (matter_level == last_reported_level)
+//{
+//     return;
+// }
+//
+//// 获取锁
+// chip::DeviceLayer::PlatformMgr().LockChipStack();
+// auto status = chip::app::Clusters::LevelControl::Attributes::CurrentLevel::Set(targetEndpoint, matter_level);
+// chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+//
+// if (status == chip::Protocols::InteractionModel::Status::Success)
+//{
+//    SILABS_LOG("====> [matter report] 亮度上报成功: %d%% -> Matter Value: %d <====\n", driver_brightness_percent, matter_level);
+//    last_reported_level = matter_level;
+//}
+//}
+// 1. 运行在 Matter 主线程环境下的安全回调函数
+static void Safe_Upload_Brightness_Callback(intptr_t context)
+{
+    uint8_t          driver_brightness_percent = static_cast<uint8_t>(context);
+    chip::EndpointId targetEndpoint = 1;
+
+    if (driver_brightness_percent > 100)
+    {
+        driver_brightness_percent = 100;
+    }
+
+    // 转换成 Matter 的 0~254 标准值
+    uint8_t matter_level = (uint8_t)((uint16_t)driver_brightness_percent * 254 / 100);
+
+    // 线程本地静态变量防重复轰炸
+    static uint8_t last_reported_level = 0xFF;
+    if (matter_level == last_reported_level)
+    {
+        return;
+    }
+
+    // 🎯 2. 此时这里也可以正确识别它，不再报错
+    g_bypass_zcl_callback = true;
+
+    // 写入属性数据库
+    chip::Protocols::InteractionModel::Status status = chip::app::Clusters::LevelControl::Attributes::CurrentLevel::Set(targetEndpoint, matter_level);
+
+    // 解除阻断
+    g_bypass_zcl_callback = false;
+
+    if (status == chip::Protocols::InteractionModel::Status::Success)
+    {
+        SILABS_LOG("====> [matter async report] 纯数据上报成功（未触发LEVEL_ACTION）: %d%% <====\n", driver_brightness_percent);
+        last_reported_level = matter_level;
+    }
+}
+
+// 2. 供驱动层调用的公开接口
+void Upload_Matter_Brightness(uint8_t driver_brightness_percent)
+{
+    if (driver_brightness_percent > 100)
+    {
+        driver_brightness_percent = 100;
+    }
+    // 投递到 Matter 线程
+    CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(Safe_Upload_Brightness_Callback, static_cast<intptr_t>(driver_brightness_percent));
+    if (err != CHIP_NO_ERROR)
+    {
+        SILABS_LOG("====> [matter async report] 亮度上报投递失败: 0x%" CHIP_ERROR_FORMAT " <====\n", err.Format());
+    }
+}
 // ================= 3. 设备识别 (Identify) =================
 // 修正后的回调函数
-void OnIdentifyStart(::Identify *identify)
-{
-    //
-    SILABS_LOG("\r\n====> [设备识别] Identify Start Triggered! <====\r\n");
-}
-
-void OnIdentifyStop(::Identify *identify)
-{
-    //
-    SILABS_LOG("\r\n====> [设备识别] Identify Stop Triggered! <====\r\n");
-}
+// void OnIdentifyStart(::Identify *identify)
+//{
+//    //
+//    SILABS_LOG("\r\n====> [设备识别] Identify Start Triggered! <====\r\n");
+//}
+//
+// void OnIdentifyStop(::Identify *identify)
+//{
+//    //
+//    SILABS_LOG("\r\n====> [设备识别] Identify Stop Triggered! <====\r\n");
+//}
 
 // 静态初始化结构体
-static Identify gIdentify = {chip::EndpointId(1), OnIdentifyStart, OnIdentifyStop,
-                             chip::app::Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
+// static Identify gIdentify = {chip::EndpointId(1), OnIdentifyStart, OnIdentifyStop,
+//                            chip::app::Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
 // ================= 4. 配网成功通知 =================
 static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
 {
@@ -195,5 +408,208 @@ void RegisterDeviceEventListener(void)
     PlatformMgr().AddEventHandler(OnMatterDeviceEvent, reinterpret_cast<intptr_t>(nullptr));
 
     // 注册 Identify 事件回调，处理设备识别请求
-    (void)gIdentify;
+    //(void)gIdentify;
+}
+
+///**
+// * @brief 重置网络的核心函数，供异步调用
+// */
+// static void DoSoftNetworkResetHandler(intptr_t arg)
+//{
+//    ChipLogProgress(DeviceLayer, "=============================================");
+//    ChipLogProgress(DeviceLayer, "[SoftReset] 开始执行在线网络重置（不重启）...");
+//    ChipLogProgress(DeviceLayer, "=============================================");
+//
+//    // =================【新增：提取并打印上一次的配网数据】=================
+//    ChipLogProgress(DeviceLayer, "------ [历史数据备份] 正在读取旧网络配置 ------");
+//
+//    // 1.1 尝试读取旧的 Matter Fabric 信息
+//    bool hasFabrics = false;
+//    for (const auto & fabricInfo : chip::Server::GetInstance().GetFabricTable())
+//    {
+//        if (fabricInfo.GetFabricIndex() != chip::kUndefinedFabricIndex)
+//        {
+//            hasFabrics = true;
+//            ChipLogProgress(DeviceLayer, "  [Matter旧数据] Fabric Index: 0x%X", fabricInfo.GetFabricIndex());
+//            ChipLogProgress(DeviceLayer, "  [Matter旧数据] 网关节点 ID: 0x" ChipLogFormatX64, ChipLogValueX64(fabricInfo.GetNodeId()));
+//            ChipLogProgress(DeviceLayer, "  [Matter旧数据] 生态 Fabric ID: 0x" ChipLogFormatX64, ChipLogValueX64(fabricInfo.GetFabricId()));
+//        }
+//    }
+//
+//    // 1.2 尝试读取旧的 Thread Dataset 参数
+// #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+//    otInstance *otInst = chip::DeviceLayer::ThreadStackMgrImpl().OTInstance();
+//    if (otInst != nullptr)
+//    {
+//        otOperationalDataset dataset;
+//        if (otDatasetGetActive(otInst, &dataset) == OT_ERROR_NONE)
+//        {
+//            if (dataset.mComponents.mIsNetworkNamePresent) {
+//                ChipLogProgress(DeviceLayer, "  [Thread旧数据] 网络名称: %s", dataset.mNetworkName.m8);
+//            }
+//            if (dataset.mComponents.mIsPanIdPresent) {
+//                ChipLogProgress(DeviceLayer, "  [Thread旧数据] PAN ID: 0x%04X", dataset.mPanId);
+//            }
+//            if (dataset.mComponents.mIsChannelPresent) {
+//                ChipLogProgress(DeviceLayer, "  [Thread旧数据] 无线通道: %d", dataset.mChannel);
+//            }
+//        }
+//    }
+// #endif
+//    ChipLogProgress(DeviceLayer, "--------------------------------------------");
+//
+//    // =================【修改：带安全保护的 Fabric 清除】=================
+//    // 2. 移除所有 Fabric 绑定关系
+//    if (hasFabrics)
+//    {
+//        // 只有真正存在有效网关绑定时才执行删除，防止空转崩溃重启
+//        chip::Server::GetInstance().GetFabricTable().DeleteAllFabrics();
+//        ChipLogProgress(DeviceLayer, "[SoftReset] Matter Fabrics 已全部清除");
+//    }
+//    else
+//    {
+//        ChipLogProgress(DeviceLayer, "[SoftReset] 设备处于未配网状态，跳过 Fabric 清除（安全拦截）");
+//    }
+//
+//    // 3. 使用更兼容的 OpenThread 原生机制清除网络数据
+// #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+//    if (otInst != nullptr)
+//    {
+//        ChipLogProgress(DeviceLayer, "[SoftReset] 正在通过空数据集重置 Thread 状态...");
+//
+//        // 强行把 OpenThread 状态机降级，停止尝试连接
+//        otThreadSetEnabled(otInst, false);
+//        otIp6SetEnabled(otInst, false);
+//
+//        // 初始化一个结构体全为 0 的空数据集
+//        otOperationalDataset emptyDataset;
+//        std::memset(&emptyDataset, 0, sizeof(emptyDataset));
+//
+//        // 显式声明这个数据集没有任何有效组件
+//        emptyDataset.mComponents.mIsNetworkKeyPresent = false;
+//        emptyDataset.mComponents.mIsExtendedPanIdPresent = false;
+//        emptyDataset.mComponents.mIsPanIdPresent = false;
+//        emptyDataset.mComponents.mIsChannelPresent = false;
+//        emptyDataset.mComponents.mIsActiveTimestampPresent = false;
+//
+//        // 把这个完全无意义的空数据集应用进去，强行覆盖掉 NVM 中的旧配网数据
+//        otDatasetSetActive(otInst, &emptyDataset);
+//
+//        ChipLogProgress(DeviceLayer, "[SoftReset] OpenThread 原生 Dataset 覆盖清除成功！");
+//    }
+//    else
+//    {
+//        ChipLogError(DeviceLayer, "[SoftReset] 错误：无法获取 OpenThread 实例句柄！");
+//    }
+// #endif
+//
+//    // 4. 重新开启蓝牙广播，让设备可以被重新搜索
+//    chip::DeviceLayer::ConnectivityMgr().SetBLEAdvertisingEnabled(true);
+//    ChipLogProgress(DeviceLayer, "[SoftReset] 蓝牙配网广播已重新开启，等待新配网...");
+//
+//    ChipLogProgress(DeviceLayer, "=============================================");
+//    ChipLogProgress(DeviceLayer, "[SoftReset] 在线网络重置完成！设备保持在线。");
+//    ChipLogProgress(DeviceLayer, "=============================================");
+//}
+
+/**
+ * @brief 重置网络的外部接口函数，供按键长按回调等调用
+ * @note 此函数是线程安全的，可以在任意上下文（如 FreeRTOS 其他任务）中调用 ，判断Fabric是否存在，避免空转崩溃重启
+ * @note 该函数会将重置请求投递到 Matter 的主事件循环线程中异步执行，确保线程安全
+ * @note 配网失败的防御机制：在核心重置函数中增加了对 Fail-Safe
+ * 状态的强制解除和配网状态机的重置，确保即使处于配网失败的中间态也能安全退出，避免死锁和重启
+ */
+static void DoSoftNetworkResetHandler(intptr_t arg)
+{
+    ChipLogProgress(DeviceLayer, "=============================================");
+    ChipLogProgress(DeviceLayer, "[SoftReset] 开始执行在线网络重置（不重启）...");
+    ChipLogProgress(DeviceLayer, "=============================================");
+
+    // =================================================================
+    // 1. 强行重置配网窗口状态
+    // =================================================================
+    ChipLogProgress(DeviceLayer, "[SoftReset] 正在关闭并复位配网状态机...");
+
+    // 无论当前配网是成功、失败、还是进行到中途，强行关闭配网窗口。
+    // 这在 Matter 栈内部会自动释放与该配网周期关联的临时会话和未闭合的握手通道。
+    chip::Server::GetInstance().GetCommissioningWindowManager().CloseCommissioningWindow();
+
+    // =================================================================
+    // 2. 安全检查：仅在真正配过网时才删除 Fabric
+    // =================================================================
+    bool hasFabrics = false;
+    for (const auto &fabricInfo : chip::Server::GetInstance().GetFabricTable())
+    {
+        if (fabricInfo.GetFabricIndex() != chip::kUndefinedFabricIndex)
+        {
+            hasFabrics = true;
+            ChipLogProgress(DeviceLayer, "  [Matter旧数据] 发现激活的 Fabric Index: 0x%X", fabricInfo.GetFabricIndex());
+        }
+    }
+
+    if (hasFabrics)
+    {
+        // 只有配过网才删除，防止未配网或配网失败中途空转导致内部迭代器断言 Crash
+        chip::Server::GetInstance().GetFabricTable().DeleteAllFabrics();
+        ChipLogProgress(DeviceLayer, "[SoftReset] Matter Fabrics 已全部清除");
+    }
+    else
+    {
+        ChipLogProgress(DeviceLayer, "[SoftReset] 未发现有效已激活 Fabric，跳过清除（安全拦截成功）。");
+    }
+
+    // =================================================================
+    // 3. 使用 OpenThread 原生底层机制清除 Thread 状态
+    // =================================================================
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+    otInstance *otInst = chip::DeviceLayer::ThreadStackMgrImpl().OTInstance();
+    if (otInst != nullptr)
+    {
+        ChipLogProgress(DeviceLayer, "[SoftReset] 正在清空 OpenThread 数据集...");
+        // 显式让底层状态机断开连接，不向旧网关发送分离通知，直接抹除
+        otThreadSetEnabled(otInst, false);
+        otIp6SetEnabled(otInst, false);
+
+        // 使用全 0 结构体覆盖，彻底洗干净 NVM 里的 Thread 凭证
+        otOperationalDataset emptyDataset;
+        std::memset(&emptyDataset, 0, sizeof(emptyDataset));
+        emptyDataset.mComponents.mIsNetworkKeyPresent = false;
+        emptyDataset.mComponents.mIsExtendedPanIdPresent = false;
+        emptyDataset.mComponents.mIsPanIdPresent = false;
+        emptyDataset.mComponents.mIsChannelPresent = false;
+        emptyDataset.mComponents.mIsActiveTimestampPresent = false;
+
+        otDatasetSetActive(otInst, &emptyDataset);
+        ChipLogProgress(DeviceLayer, "[SoftReset] OpenThread 数据集已强制覆盖清空");
+    }
+#endif
+
+    // =================================================================
+    // 4. 重新开启蓝牙广播，拉回初始配网状态
+    // =================================================================
+    chip::DeviceLayer::ConnectivityMgr().SetBLEAdvertisingEnabled(true);
+    ChipLogProgress(DeviceLayer, "[SoftReset] 蓝牙配网广播已重新开启，等待新配网...");
+
+    ChipLogProgress(DeviceLayer, "=============================================");
+    ChipLogProgress(DeviceLayer, "[SoftReset] 在线网络重置完成！设备状态已安全归零。");
+    ChipLogProgress(DeviceLayer, "=============================================");
+}
+
+/**
+ * @brief 供外部（如按键长按回调）调用的接口函数
+ * @note 此函数是线程安全的，可以在任意上下文（如 FreeRTOS 其他任务）中调用
+ */
+void TriggerNetworkResetWithoutReboot(void)
+{
+    // 将重置业务投递到 Matter 的主事件循环线程中异步执行，确保线程安全
+    CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(DoSoftNetworkResetHandler, 0);
+
+    if (err != CHIP_NO_ERROR)
+    {
+        ChipLogError(DeviceLayer, "[SoftReset] 投递重置任务失败: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+    else
+    {
+        ChipLogProgress(DeviceLayer, "[SoftReset] 已成功成功将重置请求发送至 Matter 线程");
+    }
 }

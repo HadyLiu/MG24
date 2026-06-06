@@ -24,6 +24,7 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/main_light_control.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/ledModeConvert.cpp
     
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例

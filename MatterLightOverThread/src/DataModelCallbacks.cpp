@@ -21,6 +21,7 @@
  */
 
 #include "AppConfig.h"
+#include "AppMatterHandlers.h"
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
 #include "RGBLEDWidget.h"
 #endif //(defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
@@ -44,64 +45,76 @@
 using namespace ::chip;
 using namespace ::chip::app::Clusters;
 
-void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath & attributePath, uint8_t type, uint16_t size,
-                                       uint8_t * value)
+void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath &attributePath, uint8_t type, uint16_t size, uint8_t *value)
 {
     [[maybe_unused]] EndpointId endpointId = attributePath.mEndpointId;
-    ClusterId clusterId                    = attributePath.mClusterId;
-    AttributeId attributeId                = attributePath.mAttributeId;
+    ClusterId                   clusterId = attributePath.mClusterId;
+    AttributeId                 attributeId = attributePath.mAttributeId;
     ChipLogProgress(Zcl, "Cluster callback: " ChipLogFormatMEI, ChipLogValueMEI(clusterId));
 
     if (clusterId == OnOff::Id && attributeId == OnOff::Attributes::OnOff::Id)
     {
+        // 抑制本地上报属性 -> 回调再次触发控制的回环
+        if (IsMatterReportBypassEnabled())
+        {
+            ChipLogProgress(Zcl, "Skip OnOff callback due to local report bypass");
+            return;
+        }
+
 #ifdef SL_MATTER_ENABLE_AWS
         ChipLogProgress(Zcl, "sending light state update");
-        MatterAwsSendMsg("light/state", (const char *) (value ? (*value ? "on" : "off") : "invalid"));
+        MatterAwsSendMsg("light/state", (const char *)(value ? (*value ? "on" : "off") : "invalid"));
 #endif // SL_MATTER_ENABLE_AWS
-        LightMgr().InitiateAction(AppEvent::kEventType_Light, *value ? LightingManager::ON_ACTION : LightingManager::OFF_ACTION,
-                                  value);
+        LightMgr().InitiateAction(AppEvent::kEventType_Light, *value ? LightingManager::ON_ACTION : LightingManager::OFF_ACTION, value);
     }
     // WIP Apply attribute change to Light
     else if (clusterId == LevelControl::Id)
     {
-        ChipLogProgress(Zcl, "Level Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                        ChipLogValueMEI(attributeId), type, *value, size);
+        ChipLogProgress(Zcl, "Level Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
+                        *value, size);
 
         if (attributeId == LevelControl::Attributes::CurrentLevel::Id && value != nullptr)
         {
+            // 抑制本地上报属性 -> 回调再次触发控制的回环
+            if (IsMatterReportBypassEnabled())
+            {
+                ChipLogProgress(Zcl, "Skip Level callback due to local report bypass");
+                return;
+            }
+
             LightMgr().InitiateAction(AppEvent::kEventType_Light, LightingManager::LEVEL_ACTION, value);
         }
     }
     // WIP Apply attribute change to Light
     if (clusterId == ColorControl::Id)
     {
-        ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                        ChipLogValueMEI(attributeId), type, *value, size);
+        ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
+                        *value, size);
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
 
         if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentX::Id)
         {
-            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                            ChipLogValueMEI(attributeId), type, *value, size);
+            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
+                            *value, size);
 
             LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId, value);
         }
         else if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentY::Id)
         {
-            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                            ChipLogValueMEI(attributeId), type, *value, size);
+            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
+                            *value, size);
             LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId, value);
         }
         if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentHue::Id)
         {
-            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                            ChipLogValueMEI(attributeId), type, *value, size);
+            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
+                            *value, size);
             LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_HSV, attributeId, value);
         }
         else if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentSaturation::Id)
         {
-            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                            ChipLogValueMEI(attributeId), type, *value, size);
+            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
+                            *value, size);
             LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_HSV, attributeId, value);
         }
         else if (attributeId == ColorControl::Attributes::ColorTemperatureMireds::Id)
@@ -117,8 +130,8 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath & 
     }
     else if (clusterId == Identify::Id)
     {
-        ChipLogProgress(Zcl, "Identify attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
-                        ChipLogValueMEI(attributeId), type, *value, size);
+        ChipLogProgress(Zcl, "Identify attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type, *value,
+                        size);
     }
 #ifdef SL_CATALOG_ZIGBEE_ZCL_FRAMEWORK_CORE_PRESENT
     MultiProtocolDataModel::WriteMatterAttributeValueToZigbee(endpointId, clusterId, attributeId, value, type);

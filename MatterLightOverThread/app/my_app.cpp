@@ -5,6 +5,8 @@
 #include "AppConfig.h"
 #include "AppEvent.h"
 
+#include "../include/AppMatterHandlers.h"
+
 uint32_t g_time_clk = 0;
 uint32_t g_time_detect_bat = 0;
 bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进行中
@@ -96,7 +98,7 @@ void my_custom_loop_app_process(void)
 }
 
 /**
- * @brief 📬 重置matter配网
+ * @brief 📬 重置matter配网，灯效启动
  * @param  无
  */
 void ResetMatterNetworkLightingEffects(void)
@@ -118,12 +120,16 @@ void ResetMatterNetworkLightingEffects(void)
     // 这里可以添加任何需要在重置时执行的清理代码，例如重置全局变量、清除持久化存储等
 }
 
+/**
+ * @brief 📬 重置matter配网：当用户长按达到重置条件时调用，执行相关的重置逻辑
+ * @param  无
+ */
 void ResetMatterNetworkConfiguration(void)
 {
     // Your reset logic here
     SILABS_LOG("[app]重置Matter网络配置...");
     // 这里可以添加任何需要在重置时执行的清理代码，例如重置全局变量、清除持久化存储等
-    chip::DeviceLayer::ConfigurationMgr().InitiateFactoryReset();
+    TriggerNetworkResetWithoutReboot(); // 执行在线网络重置的核心逻辑
 }
 
 /**
@@ -162,6 +168,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
 {
     SILABS_LOG("【MyButtonActionHandler】Enter button event handler");
     static uint16_t save_history_long_press_count = 0; // 用于记录上一次长按事件的计数，帮助区分长按和长按松开
+
     // 💡 保持强转架构解包法：你怎么强转过去，我就怎么强转回来读，内存完美重合！
     AppButtonEvent *pBtnEvent = reinterpret_cast<AppButtonEvent *>(aEvent);
 
@@ -174,7 +181,16 @@ void MyButtonActionHandler(AppEvent *aEvent)
     case AppButtonEvent::kButtonAction_ShortPress:
         SILABS_LOG(" -> [业务确诊] 按键 %d : 单击触发！", button_idx);
         // 这里写你的单击控制代码
-
+        // 如果当前状态变化来源是远程下发
+        if (g_led.change_origin == StateChangeOrigin::MATTER_APP && g_led.is_on == 1) // 并且灯当前是开的
+        {
+            SILABS_LOG("当前LED由远程控制打开，单击事件优先关灯");
+            g_led.is_on = 0;
+            g_led.brightness = 0;
+            g_led.change_origin = StateChangeOrigin::LOCAL_KEY; // 标记状态变化来源为本地按键
+            LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+            break;
+        }
         if (g_led.is_on == 0 || g_led.brightness == 0)
         {
             g_led.is_on = 1;
@@ -194,6 +210,12 @@ void MyButtonActionHandler(AppEvent *aEvent)
             g_led.is_on = 0;
             g_led.brightness = 0;
         }
+        // 标记状态变化来源为本地按键
+        g_led.change_origin = StateChangeOrigin::LOCAL_KEY;
+        extern void Upload_Matter_OnOff(bool is_on);
+        extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
+        Upload_Matter_OnOff(g_led.is_on);           // 上报开关状态
+        Upload_Matter_Brightness(g_led.brightness); // 上报亮度状态
         SILABS_LOG("is_On=%d, brightness=%d", g_led.is_on, g_led.brightness);
         LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, 400);
         break;
@@ -211,6 +233,12 @@ void MyButtonActionHandler(AppEvent *aEvent)
         {
             g_led.color_index = 0;
         }
+        // 标记状态变化来源为本地按键
+        g_led.change_origin = StateChangeOrigin::LOCAL_KEY;
+        extern void Upload_Matter_OnOff(bool is_on);
+        extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
+        Upload_Matter_OnOff(g_led.is_on);           // 上报开关状态
+        Upload_Matter_Brightness(g_led.brightness); // 上报亮度状态
         SILABS_LOG("color_index=%d", g_led.color_index);
         LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, 400);
         break;
@@ -241,6 +269,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
             GiveUpMatterNetworkConfiguration(); // 长按过程中触发放弃配网
         }
         SILABS_LOG(" -> [业务确诊] 按键 %d : 长按松开！ 脉冲计数 = %d", button_idx, save_history_long_press_count);
+        // 🧼 善后清理：手终于松开了，把重置旗标清空，允许下一次长按重置
         break;
 
     default: SILABS_LOG(" -> [未捕获] 动作编号: %d", action); break;

@@ -1,9 +1,10 @@
 #include "led_driver.h"
+#include "AppConfig.h"
 
 led_ctrl_t g_led;
 
 /* 出厂默认 color2（约2450K），亮度100% */
-static const led_color_t g_color_table[LED_COLOR_COUNT] = {
+const led_color_t g_color_table[LED_COLOR_COUNT] = {
     //   W,    R,    G,    B
     {1023, 0, 0, 0},     // color0:  W100% R0%   G0%   B0%
     {409, 1023, 0, 0},   // color1:  W40%  R100% G0%   B0%
@@ -92,7 +93,7 @@ static uint32_t led_map_app_percent_to_output_scale_14bit(uint16_t app_percent)
 /**
  * @brief 对原始颜色进行亮度缩放（纯整数逻辑）
  * @param raw_color 原始颜色（通常是全亮度下的颜色）
- * @param brightness_percent 亮度百分比 1~100
+ * @param brightness_percent 亮度百分比 0~100
  * @return 缩放后的颜色值
  */
 static led_color_t led_scale_color(led_color_t raw_color, uint8_t brightness_percent)
@@ -100,7 +101,7 @@ static led_color_t led_scale_color(led_color_t raw_color, uint8_t brightness_per
     led_color_t target = {0, 0, 0, 0};
 
     // 限制亮度边界并转换为 14-bit 缩放因子
-    brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
+    brightness_percent = led_clamp_u8(brightness_percent, 0, 100);
     uint32_t scale_10240 = led_map_app_percent_to_output_scale_14bit(brightness_percent);
 
     // 纯整数等比缩放公式：target = (原始值 * scale_10240) >> 14
@@ -136,15 +137,15 @@ static led_color_t led_calc_target_from_logic_struct(bool is_on, uint8_t brightn
 /**
  * @brief 从逻辑状态计算目标颜色值，并启动渐变
  * @param is_on 逻辑开关状态
- * @param brightness_percent 亮度百分比 1~100
+ * @param brightness_percent 亮度百分比 0~100
  * @param color_index 颜色索引 0~12
  * @param fade_ms 渐变时间（毫秒）
  */
 void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms)
 {
     g_led.effect_mode = LED_EFFECT_NONE;
-    brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
-    color_index = color_index % LED_COLOR_COUNT;
+    brightness_percent = led_clamp_u8(brightness_percent, 0, 100);
+    color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
 
     // 🎯 明确指示色彩来源为：索引表
     g_led.color_source = LED_SOURCE_COLOR_INDEX;
@@ -174,7 +175,7 @@ void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t 
 void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms)
 {
     g_led.effect_mode = LED_EFFECT_NONE;
-    brightness_percent = led_clamp_u8(brightness_percent, 1, 100);
+    brightness_percent = led_clamp_u8(brightness_percent, 0, 100);
 
     // 🎯 明确指示色彩来源为：自定义外部色彩输入，并备份原始色彩值
     g_led.color_source = LED_SOURCE_CUSTOM_RGBW;
@@ -185,10 +186,11 @@ void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t cus
     // 不再篡改 g_led.color_index，保留其原本状态值，防止逻辑冲突
 
     g_led.start_color = g_led.cur_color;
-
-    if (!g_led.is_on)
+    if (is_on == false)
     {
-        g_led.target_color = (led_color_t){0, 0, 0, 0};
+        g_led.brightness = 0;
+        g_led.target_color = (led_color_t){.w = 0, .r = 0, .g = 0, .b = 0};
+        SILABS_LOG("====> [led_driver] 目标状态: OFF，直接设定目标颜色为全0 <====\n");
     }
     else
     {
@@ -284,7 +286,7 @@ void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t period_ms, 
     {
         period_ms = 100;
     }
-    brightness = led_clamp_u8(brightness, 1, 100);
+    brightness = led_clamp_u8(brightness, 0, 100);
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
 
     g_led.brightness = brightness;
@@ -346,7 +348,7 @@ void LED_SetHold(bool is_on, uint8_t brightness, uint8_t color_index, uint16_t f
     }
 
     // 限幅保护
-    brightness = led_clamp_u8(brightness, 1, 100);
+    brightness = led_clamp_u8(brightness, 0, 100);
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
 
     // 🎯 更新灯效运行期间的临时上下文状态
@@ -474,14 +476,15 @@ void LED_Init(void)
     // 获取记忆中的数据
     // LED_LoadState(&brightness, &color_index, &is_on);
 
-    brightness = led_clamp_u8(brightness, 1, 100);
+    brightness = led_clamp_u8(brightness, 0, 100);
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
-
     g_led.is_on = is_on;
-    g_led.brightness = brightness;
+    g_led.history_brightness = g_led.brightness = brightness;
     g_led.color_index = color_index;
-    g_led.key_next_off = false;
+    g_led.change_origin = StateChangeOrigin::UNKNOWN;
     g_led.fading = false;
+
+    g_led.custom_raw = g_color_table[color_index];
 
     //  led_sync_key_level_from_brightness(is_on, brightness);
 
@@ -494,6 +497,7 @@ void LED_Init(void)
  */
 void LED_Tick10ms(void)
 {
+    // led_change 标志用于指示本次 Tick 是否计算出了新的颜色值需要应用到硬件，避免不必要的重复输出
     bool led_change = false;
     do
     {
@@ -568,7 +572,7 @@ void LED_Tick10ms(void)
             {
                 uint32_t ms_in_cycle = elapsed % g_led.effect_period_ms;
                 uint16_t breath_scale_1023 = get_breath_scale_1023(ms_in_cycle, g_led.effect_period_ms);
-                uint8_t  bri = led_clamp_u8(g_led.brightness, 1, 100);
+                uint8_t  bri = led_clamp_u8(g_led.brightness, 0, 100);
                 uint32_t out_scale_14bit = led_map_app_percent_to_output_scale_14bit(bri);
                 uint64_t total_scale = (uint64_t)out_scale_14bit * breath_scale_1023;
 
@@ -594,10 +598,57 @@ void LED_Tick10ms(void)
             {
                 led_change = true;
                 g_led.cur_color = g_led.target_color;
-                g_led.fading = false;
+
+                if (g_led.fading)
+                {
+                    g_led.fading = false; // 👈 拦截下一轮 Tick，确保后续 10ms 绝不会再进来
+
+                    // 🎯 核心修复点 2：只有当改变来源【不是】来自 Matter 控制时（比如按键触发、传感器触发），才向网关上报
+                    if (g_led.change_origin != StateChangeOrigin::MATTER_APP)
+                    {
+                        extern void Upload_Matter_OnOff(bool is_on);
+                        extern void Upload_Matter_Brightness(uint8_t brightness);
+
+                        // 🎯 核心修复点 3：上报当前的开关状态和亮度值，确保云端状态与设备实际状态保持一致
+                        // Upload_Matter_OnOff(g_led.is_on);
+                        // Upload_Matter_Brightness(g_led.brightness);
+
+                        // if (g_led.is_on == false || g_led.brightness == 0)
+                        //{
+                        //     // 如果是彻底关灯，上报一次关
+                        //     Upload_Matter_OnOff(false);
+                        //     Upload_Matter_Brightness(0);
+                        // }
+                        // else
+                        //{
+                        //  如果灯原本就是开着的，仅仅是短按切换亮度（如 100% -> 50%）：
+                        //  🚨 绝对不要调用 Upload_Matter_OnOff(true)！只上报亮度！、
+                        // Upload_Matter_OnOff(g_led.is_on); // 这里可以选择不调用，因为如果之前就是开着的，状态没变，云端可能也不需要重复上报开
+                        // Upload_Matter_Brightness(g_led.brightness);
+                        SILABS_LOG("LED Tick: Brightness changed to %d%%, reporting brightness without toggling OnOff\n", g_led.brightness);
+                        // }
+
+                        if (g_led.color_source == LED_SOURCE_COLOR_INDEX)
+                        {
+                            if (g_led.color_index == 2) // 举例：当前是出厂默认 color2 (2450K)
+                            {
+                                // Upload_Matter_Color_As_CT(2450); // 上报色温
+                            }
+                            else if (g_led.color_index >= 4)
+                            {
+                                // 纯彩色状态，将驱动里的 RGB 转成 HSV 算好后上报
+                                uint8_t h_254 = 0;
+                                uint8_t s_254 = 0;
+                                // YourRgbToHsv(g_led.cur_color.r, g_led.cur_color.g, g_led.cur_color.b, &h_254, &s_254);
+                                // Upload_Matter_Color_As_HSV(h_254, s_254);
+                            }
+                        }
+                    }
+                }
                 break;
             }
-
+            // SILABS_LOG("LED Tick: is_on=%d, bri=%d, color_idx=%d, effect=%d, fading=%d, elapsed=%dms\n", g_led.is_on, g_led.brightness,
+            //            g_led.color_index, g_led.effect_mode, g_led.fading, elapsed);
             led_color_t intermediate_color;
             intermediate_color.w =
                 g_led.start_color.w + (int32_t)(g_led.target_color.w - g_led.start_color.w) * (int32_t)elapsed / (int32_t)g_led.fade_time_ms;
@@ -615,6 +666,9 @@ void LED_Tick10ms(void)
 
     if (led_change)
     {
+        // SILABS_LOG("LED Tick: is_on=%d, bri=%d, color_idx=%d, effect=%d, fading=%d, cur_color={W:%d R:%d G:%d B:%d}\n", g_led.is_on,
+        // g_led.brightness,
+        //            g_led.color_index, g_led.effect_mode, g_led.fading, g_led.cur_color.w, g_led.cur_color.r, g_led.cur_color.g, g_led.cur_color.b);
         led_apply_output_struct(g_led.cur_color);
     }
 }

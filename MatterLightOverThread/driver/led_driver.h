@@ -50,13 +50,24 @@ typedef enum
     LED_SOURCE_CUSTOM_RGBW
 } led_color_source_t;
 
+enum class StateChangeOrigin : uint8_t
+{
+    UNKNOWN = 0, // 未知来源（初始化默认）
+    LOCAL_KEY,   // 本地物理按键触发
+    MATTER_APP,  // 外部 Matter / App 远程下发触发
+    AUTO_TIMER   // 定时器或其他自动化逻辑触发（预留扩展）
+};
+
 typedef struct
 {
-    bool    is_on;       // 当前逻辑开关状态
-    uint8_t brightness;  // 记忆亮度 1~100，默认100
-    uint8_t color_index; // 0~12，默认2
+    bool    is_on;              // 当前逻辑开关状态
+    uint8_t brightness;         // 记忆亮度 0~100，默认100
+    uint8_t history_brightness; // 历史亮度，用于短按时的亮度切换逻辑
+    uint8_t color_index;        // 0~12，默认0
 
-    bool key_next_off; // 若被 Matter/App 外部开灯，则下次短按优先关灯
+    // 若被 Matter/App 外部开灯，则下次短按优先关灯
+    // 🎯 核心修改：用枚举替代原有的 bool key_next_off;
+    StateChangeOrigin change_origin;
 
     // 🎯 新增：色彩来源管理
     led_color_source_t color_source; // 标记当前色彩来源
@@ -97,6 +108,7 @@ typedef struct
     uint16_t count;
 } MixedLightingEffects_t;
 
+extern const led_color_t      g_color_table[LED_COLOR_COUNT];
 extern MixedLightingEffects_t g_mixed_effects[5];
 extern led_ctrl_t             g_led;
 
