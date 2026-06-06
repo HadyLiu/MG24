@@ -57,7 +57,7 @@ extern "C"
 extern void gpio_init(void);
 extern bool gpio_get_pin_value(sl_gpio_t gpio);
 
-extern void indic_r(bool state);
+extern void indic_r_led(bool state);
 extern void bat_en(bool state);
 extern void charge_speed_set(bool fast);
 extern void charge_en(bool state);
@@ -66,8 +66,8 @@ extern bool get_power_in_detect(void);
 
 extern void inject_btn0_double_edge_interrupt_ext(void);
 
-#define INDIC_R_LED_ON()  indic_r(true)
-#define INDIC_R_LED_OFF() indic_r(false)
+#define INDIC_R_LED_ON()  indic_r_led(true)
+#define INDIC_R_LED_OFF() indic_r_led(false)
 
 #define BAT_EN_ON()  bat_en(true)
 #define BAT_EN_OFF() bat_en(false)

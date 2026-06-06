@@ -8,7 +8,6 @@
 #endif
 
 extern sl_pwm_instance_t sl_pwm_w_led0;
-extern sl_pwm_instance_t sl_pwm_Indic_led0;
 
 /**
  * @brief 按照千分比(0~1000)设置PWM占空比
@@ -54,6 +53,32 @@ uint16_t my_pwm_get_duty_cycle_10bit_resolution(sl_pwm_instance_t *pwm)
     return (uint16_t)((compare * 1023) / top);
 }
 
+void LED_W_SetDuty(uint16_t w)
+{
+    if (w == 0)
+    {
+        sl_pwm_stop(&sl_pwm_w_led0);
+    }
+    else
+    {
+        my_pwm_set_duty_cycle_10bit_resolution(&sl_pwm_w_led0, w);
+        sl_pwm_start(&sl_pwm_w_led0);
+    }
+}
+
+void Indic_SetDuty(uint16_t w_led)
+{
+    if (w_led == 0)
+    {
+        sl_pwm_stop(&sl_pwm_Indic_led0);
+    }
+    else
+    {
+        my_pwm_set_duty_cycle_10bit_resolution(&sl_pwm_Indic_led0, w_led);
+        sl_pwm_start(&sl_pwm_Indic_led0);
+    }
+}
+
 sm15135e_pixel_t my_led;
 
 /**
@@ -66,15 +91,9 @@ sm15135e_pixel_t my_led;
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
 {
     uint32_t sm_r = 0, sm_g = 0, sm_b = 0;
-    if (w == 0)
-    {
-        sl_pwm_stop(&sl_pwm_w_led0);
-    }
-    else
-    {
-        my_pwm_set_duty_cycle_10bit_resolution(&sl_pwm_w_led0, w);
-        sl_pwm_start(&sl_pwm_w_led0);
-    }
+
+    LED_W_SetDuty(w); // 直接控制白光通道的 PWM 占空比，达到独立调节白光亮度的目的
+
     // 将10位精度转化为16位精度
     sm_r = r << 6;
     sm_g = g << 6;

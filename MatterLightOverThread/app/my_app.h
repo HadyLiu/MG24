@@ -7,6 +7,7 @@
 #include "../driver/pinManage.h"
 #include "../driver/powerManage.h"
 #include "../driver/iadc_driver.h"
+#include "../driver/indicLed.h"
 #include "../driver/sm15135e.h"
 
 // 你的函数声明

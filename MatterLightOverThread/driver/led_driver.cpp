@@ -21,11 +21,23 @@ const led_color_t g_color_table[LED_COLOR_COUNT] = {
     {0, 1023, 322, 0}    // color12: W0%   R100% G31.5% B0%
 };
 
-// 🎯 呼吸灯正弦波全整数查表（1/4周期正弦，放大1023倍，对应 0~90 度）
-// 范围从 0（灭） 到 1023（全亮）
-static const uint16_t g_sin_table_1023[29] = {0,   50,  100, 150, 200, 249, 297, 345, 392, 438, 483, 527,  570,  611, 652,
-                                              691, 729, 765, 800, 833, 865, 895, 923, 949, 972, 993, 1011, 1021, 1023};
-#define SIN_TABLE_SIZE 29 //(sizeof(g_sin_table_1023) / sizeof(g_sin_table_1023[0]))
+// easeInOutQuad 缓动表：对应 0ms 到 800ms (步长 10ms，共 81 个元素)
+// 专门针对嵌入式优化的 Sigmoid 12-bit (0 ~ 4096) 缓动表：对应 0ms 到 800ms (共 81 个元素)
+#if 0
+static const uint16_t g_ease_quad_table_4096[81] = {
+    0,    4,    4,    8,    8,    12,   16,   20,   24,   32,   40,   48,   60,   72,   88,   108,  128,  156,  184,  216,  256,
+    300,  348,  400,  460,  524,  600,  676,  764,  852,  952,  1056, 1164, 1280, 1404, 1528, 1660, 1792, 1928, 2068, 2204, 2340,
+    2472, 2604, 2728, 2852, 2968, 3076, 3176, 3264, 3352, 3440, 3516, 3592, 3656, 3716, 3768, 3816, 3860, 3900, 3936, 3964, 3988,
+    4008, 4024, 4036, 4048, 4056, 4064, 4068, 4072, 4076, 4080, 4084, 4088, 4092, 4092, 4092, 4096, 4096, 4096};
+#endif
+// 🎯 完美校准版：EaseInOutQuad cubic-bezier(0.45, 0, 0.55, 1) 缓动表
+// 对应 0ms 到 800ms (步长 10ms，共 81 个元素)
+// 数值严格闭环：第 0 步为 0，第 80 步精准为 4096
+static const uint16_t g_ease_quad_table_4096[81] = {
+    0,    1,    5,    11,   20,   32,   46,   62,   81,   103,  128,  154,  184,  216,  251,  288,  327,  370,  414,  462,  512,
+    564,  620,  677,  737,  800,  865,  933,  1004, 1077, 1152, 1230, 1311, 1394, 1479, 1567, 1658, 1750, 1845, 1943, 2048, 2153,
+    2251, 2346, 2438, 2529, 2617, 2702, 2785, 2866, 2944, 3019, 3092, 3163, 3231, 3296, 3359, 3419, 3476, 3532, 3584, 3634, 3682,
+    3726, 3769, 3808, 3845, 3880, 3912, 3942, 3968, 3993, 4015, 4034, 4050, 4064, 4076, 4085, 4091, 4095, 4096};
 
 MixedLightingEffects_t g_mixed_effects[5];
 
@@ -221,36 +233,29 @@ void LED_StopEffect(void)
 }
 
 /**
- * @brief 纯整数获取当前呼吸周期的放大比例
- * @return 0 ~ 1023 之间的整数比例值
+ * @brief 获取呼吸特效当前步的亮度缩放比例（优化版本，使用单表和整数运算）
+ * @param breath_tick 呼吸特效当前步数（0~319，对应一个
  */
-static uint16_t get_breath_scale_1023(uint32_t ms_in_cycle, uint32_t period_ms)
+static void get_breath_effect_params_optimized(uint16_t breath_tick, uint16_t *r_scale_4096, uint16_t *r_color_weight)
 {
-    // 将整个周期划分为 4 个象限，映射到查表索引
-    // 总索引跨度 = (SIN_TABLE_SIZE - 1) * 4
-    uint32_t total_steps = (SIN_TABLE_SIZE - 1) << 2; // 等同于 (SIN_TABLE_SIZE - 1) * 4
-    uint32_t step = (ms_in_cycle * total_steps) / period_ms;
+    uint16_t calc_val = 0;
 
-    uint32_t quadrant = step / (SIN_TABLE_SIZE - 1);
-    uint32_t index = step % (SIN_TABLE_SIZE - 1);
-
-    uint16_t value = 0;
-    switch (quadrant)
+    if (breath_tick < 80) // 阶段 1：0 ~ 79 步 -> 淡入
     {
-    case 0:
-        value = g_sin_table_1023[index]; // 第一象限：0 -> 1024 (吸气变亮)
-        break;
-    case 1:
-        value = g_sin_table_1023[SIN_TABLE_SIZE - 1 - index]; // 第二象限：1024 -> 0 (呼气变暗)
-        break;
-    case 2:
-        value = g_sin_table_1023[index]; // 第三象限：0 -> 1024 (吸气变亮)
-        break;
-    default:
-        value = g_sin_table_1023[SIN_TABLE_SIZE - 1 - index]; // 第四象限：1024 -> 0 (呼气变暗)
-        break;
+        calc_val = g_ease_quad_table_4096[breath_tick];
     }
-    return value;
+    else if (breath_tick < 160) // 阶段 2：80 ~ 159 步 -> 高亮度维持
+    {
+        calc_val = 4096;
+    }
+    else if (breath_tick < 240) // 阶段 3：160 ~ 239 步 -> 淡出
+    {
+        calc_val = g_ease_quad_table_4096[240 - breath_tick]; // 单向表双向复用
+    }
+    // 阶段 4：240 ~ 319 步 -> 全灭维持，calc_val 默认为 0
+
+    *r_scale_4096 = calc_val;
+    *r_color_weight = calc_val;
 }
 
 /**
@@ -276,16 +281,16 @@ void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, u
 }
 
 /**
- * @brief 设定呼吸模式
+ * @brief 设定呼吸模式 (贝塞尔曲线缓动版本)
  * @param period_ms 呼吸周期（毫秒），建议不小于100ms以避免过快变化
  * @param count 呼吸次数，0代表无限循环
  */
-void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count)
+void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count)
 {
-    if (period_ms < 100)
-    {
-        period_ms = 100;
-    }
+    // 强制锁死周期为设计图要求的 3200ms
+    // 如果你要支持变长周期，由于查表是按 10ms 步长，必须固定 3200ms 才能完美对齐 81 点的表格
+    g_led.effect_period_ms = 3200;
+
     brightness = led_clamp_u8(brightness, 0, 100);
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
 
@@ -293,7 +298,6 @@ void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t period_ms, 
     g_led.color_index = color_index;
     g_led.effect_mode = LED_EFFECT_BREATH;
     g_led.effect_start_ms = LED_GetTickMs();
-    g_led.effect_period_ms = period_ms;
     g_led.effect_count = count;
     g_led.fading = false;
 }
@@ -382,7 +386,7 @@ static void led_execute_mixed_index(uint8_t index)
     }
     else if (mode == LED_EFFECT_BREATH) // 呼吸 (对应 LED_EFFECT_BREATH 逻辑)
     {
-        LED_SetBreath(bri, color, ms, cnt);
+        LED_SetBreath(bri, color, cnt);
     }
     else if (mode == LED_EFFECT_HOLD) // 保持 (对应 LED_EFFECT_HOLD 逻辑)
     {
@@ -570,18 +574,47 @@ void LED_Tick10ms(void)
             }
             else if (g_led.effect_mode == LED_EFFECT_BREATH)
             {
-                uint32_t ms_in_cycle = elapsed % g_led.effect_period_ms;
-                uint16_t breath_scale_1023 = get_breath_scale_1023(ms_in_cycle, g_led.effect_period_ms);
+                // 1. 静态计数器 10ms 闭环自增
+                static uint16_t breath_tick = 0;
+                uint16_t        breath_scale_4096 = 0;
+                uint16_t        color_weight_4096 = 0;
+
+                // 2. 极速获取状态
+                get_breath_effect_params_optimized(breath_tick, &breath_scale_4096, &color_weight_4096);
+
+                if (++breath_tick >= 320)
+                {
+                    breath_tick = 0;
+                }
+
+                // 3. 获取目标颜色（彻底干掉 color_start 零矩阵混色，直接查表）
+                led_color_t color_end = g_color_table[led_clamp_u8(g_led.color_index, 0, LED_COLOR_COUNT - 1)];
+
+                // 4. 🎯 优化一：白光零矩阵污染阻断
+                // 因为 color_start 为全 0，blended_base_color 运算完全等价于：(color_end * weight + 2048) >> 12
+                led_color_t blended_base_color;
+                blended_base_color.w = (uint16_t)(((uint32_t)color_end.w * color_weight_4096 + 2048) >> 12);
+                blended_base_color.r = (uint16_t)(((uint32_t)color_end.r * color_weight_4096 + 2048) >> 12);
+                blended_base_color.g = (uint16_t)(((uint32_t)color_end.g * color_weight_4096 + 2048) >> 12);
+                blended_base_color.b = (uint16_t)(((uint32_t)color_end.b * color_weight_4096 + 2048) >> 12);
+
+                // 5. 获取 App 全局亮度缩放因子 (14-bit，最大 10240)
                 uint8_t  bri = led_clamp_u8(g_led.brightness, 0, 100);
                 uint32_t out_scale_14bit = led_map_app_percent_to_output_scale_14bit(bri);
-                uint64_t total_scale = (uint64_t)out_scale_14bit * breath_scale_1023;
 
-                // 依据动态选择的 base_raw_color 运算，不再写死查表
-                g_led.cur_color.w = (uint16_t)(((uint64_t)base_raw_color.w * total_scale) >> 24);
-                g_led.cur_color.r = (uint16_t)(((uint64_t)base_raw_color.r * total_scale) >> 24);
-                g_led.cur_color.g = (uint16_t)(((uint64_t)base_raw_color.g * total_scale) >> 24);
-                g_led.cur_color.b = (uint16_t)(((uint64_t)base_raw_color.b * total_scale) >> 24);
-                led_change = true;
+                // 6. 🎯 优化二：将 64 位乘法截断为纯 32 位乘法 (完全不溢出)
+                // out_scale_14bit (最大 10240) * breath_scale_4096 (最大 4096) = 41,943,040
+                // 远小于 uint32_t 的最大值 4,294,967,295，强转 (uint64_t) 属于严重性能浪费
+                uint32_t final_scale_14bit = (out_scale_14bit * (uint32_t)breath_scale_4096 + 2048) >> 12;
+
+                // 7. 🎯 优化三：复合寄存器写入合并优化 (如果你的 MCU 支持寄存器连续赋值)
+                // 最终输出范围严格压制在 0 ~ 1023
+                g_led.cur_color.w = (uint16_t)(((uint32_t)blended_base_color.w * final_scale_14bit + 8192) >> 14);
+                g_led.cur_color.r = (uint16_t)(((uint32_t)blended_base_color.r * final_scale_14bit + 8192) >> 14);
+                g_led.cur_color.g = (uint16_t)(((uint32_t)blended_base_color.g * final_scale_14bit + 8192) >> 14);
+                g_led.cur_color.b = (uint16_t)(((uint32_t)blended_base_color.b * final_scale_14bit + 8192) >> 14);
+
+                led_change = true; //
             }
             break;
         }

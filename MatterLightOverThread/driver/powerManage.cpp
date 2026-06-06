@@ -7,7 +7,7 @@ bool eg_PowerStatus, eg_UpPowerStatus;
 bool eg_TriggerDetection;
 bool eg_ChargingChip_TriggerDetection;
 
-bool g_ChargeState;//充电状态
+bool g_ChargeState; // 充电状态
 /********************
  * battery status
  ******************/
@@ -57,23 +57,21 @@ unsigned char g_FMCout;
 #ifdef DEBUGMODE
 unsigned int g_BatResVol;
 #endif
-unsigned int g_BatResMultipleVal;
+unsigned int  g_BatResMultipleVal;
 unsigned char g_BatResState;
 #endif
-
 
 // 实例化 IADC 驱动对象，绑定到具体的 GPIO 引脚（例如 PA08）
 IadcDriver adcA8(gpioPortA, 8); // PA08
 IadcDriver adcC4(gpioPortC, 4); // PC04
 IadcDriver adcC5(gpioPortC, 5); // PC05
 
-
 /**
  * @brief 📬 初始化 ADC 模块，准备好后续的电压检测功能
  */
 void powerManage_adc_Init(void)
 {
-    //adcA8.DeInit(gpioModeInput,0); 
+    // adcA8.DeInit(gpioModeInput,0);
     adcC4.Init(); // 初始化 IADC 驱动
     adcC5.Init(); // 初始化 IADC 驱动
 }
@@ -86,7 +84,7 @@ uint16_t get_powerin_adc_vol(void)
     uint16_t powerInVol;
     adcA8.Init(); // 确保 ADC 已经初始化
     powerInVol = adcA8.ReadVoltageMilliVolts();
-    adcA8.DeInit(gpioModeInput,0);
+    adcA8.DeInit(gpioModeInput, 0);
     return powerInVol;
 }
 
@@ -94,17 +92,13 @@ uint16_t get_powerin_adc_vol(void)
  * @brief 📬 获取电池电压的 ADC 电压值
  */
 uint16_t get_bat_adc_vol(void)
-{
-    return adcC4.ReadVoltageMilliVolts();
-}
+{ return adcC4.ReadVoltageMilliVolts(); }
 
 /**
  * @brief 📬 获取温度传感器的 ADC 电压值
  */
 uint16_t get_temp_adc_vol(void)
-{
-    return adcC5.ReadVoltageMilliVolts();
-}
+{ return adcC5.ReadVoltageMilliVolts(); }
 
 /****************************************
  * Init function
@@ -143,11 +137,11 @@ void PowerSwitchAssignment(void)
             eg_BatStatus = Bat_DisCharge;
         }
         PowerManageInit(); // 电源管理初始化
-        //IndicInit();       // 指示灯初始化
-        //led初始化
-        //eg_ledData.CloseProtection = false;
-        //eg_ledData.HistoryProtection = false;
-        //eg_ledData.Protection = false;
+        // IndicInit();       // 指示灯初始化
+        // led初始化
+        // eg_ledData.CloseProtection = false;
+        // eg_ledData.HistoryProtection = false;
+        // eg_ledData.Protection = false;
     }
 }
 
@@ -158,7 +152,6 @@ void GetDisChargeStatus(void)
 {
     do
     {
-
 /* 检测电池是否异常 */
 #if (false)
         ChargeSwitchOn();
@@ -177,14 +170,12 @@ void GetDisChargeStatus(void)
         delay_ms(1);
         g_ADMcuLowVal = MoveAverage(&g_ADMcuLowMultipleVal, GetAdcValue());
 
-        if ((eg_BatStatus == Bat_LowVolProt) ||
-            (g_ADMcuLowVal > BatDisChargeLowVal))
+        if ((eg_BatStatus == Bat_LowVolProt) || (g_ADMcuLowVal > BatDisChargeLowVal))
         {
             eg_BatStatus = Bat_LowVolProt;
             break;
         }
-        if ((eg_BatStatus == Bat_LowVolWarn) ||
-            (g_ADMcuLowVal > BatDisChargeLowWarnVal))
+        if ((eg_BatStatus == Bat_LowVolWarn) || (g_ADMcuLowVal > BatDisChargeLowWarnVal))
         {
             eg_BatStatus = Bat_LowVolWarn;
             break;
@@ -192,27 +183,24 @@ void GetDisChargeStatus(void)
         eg_BatStatus = Bat_DisCharge;
         break;
 #else
-        //SetAdcBatChannel();
+        // SetAdcBatChannel();
         g_ADBatLowVal = get_bat_adc_vol();
 
-        if ((eg_BatStatus == Bat_LowVolProt) ||
-            (g_ADBatLowVal < BatDisChargeLowVal))
+        if ((eg_BatStatus == Bat_LowVolProt) || (g_ADBatLowVal < BatDisChargeLowVal))
         {
             eg_BatStatus = Bat_LowVolProt;
             break;
         }
-        if ((eg_BatStatus == Bat_LowVolWarn) ||
-            (g_ADBatLowVal < BatDisChargeLowWarnVal))
+        if ((eg_BatStatus == Bat_LowVolWarn) || (g_ADBatLowVal < BatDisChargeLowWarnVal))
         {
             eg_BatStatus = Bat_LowVolWarn;
             break;
         }
         eg_BatStatus = Bat_DisCharge;
         break;
-        
-#endif
-    }while(0);
 
+#endif
+    } while (0);
 }
 
 /*-------------------- charge Time Updata --------------------------*/
@@ -222,13 +210,13 @@ void GetDisChargeStatus(void)
 void ChargeTimeUpdata(void)
 {
     static unsigned char timeCount = 0;
-    if(++timeCount>100)
+    if (++timeCount > 100)
     {
         timeCount = 0;
         if (g_ChargeTimeSec <= ChargeTimeMax && eg_BatStatus >= Bat_Nobat)
         {
             g_ChargeTimeSec++;
-        }  
+        }
     }
 }
 
@@ -274,7 +262,6 @@ void CalcBatRes(void)
 }
 #endif
 
-
 /**
  * @brief 📬 获取充电芯片状态，判断是否处于充电中或充满状态
  * @return FM4258_Enum 充电芯片状态枚举值
@@ -287,9 +274,9 @@ FM4258_Enum FM4258_GetStatus(void)
     const uint32_t pulseMinMs = 800;
     const uint32_t pulseMaxMs = 1200;
 
-    static uint8_t  lastLevel     = 0; // 上次检测到的电平状态
-    static uint32_t msSinceEdge   = 0; // 距离上次检测到边沿的时间
-    static uint8_t  edgeCount     = 0; // 连续边沿计数
+    static uint8_t  lastLevel = 0;   // 上次检测到的电平状态
+    static uint32_t msSinceEdge = 0; // 距离上次检测到边沿的时间
+    static uint8_t  edgeCount = 0;   // 连续边沿计数
 
     uint8_t level = FM4258_ReadStatusPin();
     msSinceEdge += samplePeriodMs;
@@ -333,26 +320,25 @@ FM4258_Enum FM4258_GetStatus(void)
     }
 }
 
-
 bool ChargeDetect(void)
 {
-    //错开检测
-    bool status = false;
+    // 错开检测
+    bool           status = false;
     static uint8_t IntervalTimer = 0;
     static uint8_t TestingSteps = 0;
-    //400ms检测一次
+    // 400ms检测一次
     if (++IntervalTimer >= 40)
     {
         IntervalTimer = 0;
-        if(TestingSteps >= 2)
+        if (TestingSteps >= 2)
         {
             TestingSteps = 1;
         }
     }
     if (eg_BatStatus >= Bat_Nobat)
     {
-        //错开检测步骤，第一次检测电池温度，第二次检测USB电源输入电压
-        if(TestingSteps == 0)
+        // 错开检测步骤，第一次检测电池温度，第二次检测USB电源输入电压
+        if (TestingSteps == 0)
         {
             BoostEn();
             ChargePwmOff();
@@ -361,9 +347,9 @@ bool ChargeDetect(void)
             g_ADTemperature = get_temp_adc_vol();
             TestingSteps++;
         }
-        else if(TestingSteps == 1)
+        else if (TestingSteps == 1)
         {
-         //   ChargeSwitchOff();
+            //   ChargeSwitchOff();
             sl_udelay_wait(30);
             g_ADPowerInVal = get_powerin_adc_vol();
             TestingSteps = 0;
@@ -371,35 +357,33 @@ bool ChargeDetect(void)
             TestingSteps++;
         }
 
-       // /* Turn on charging ----------------------- */
-       // BoostEn();
-       // ChargePwmOff();
-       // ChargeSwitchOn();
+        // /* Turn on charging ----------------------- */
+        // BoostEn();
+        // ChargePwmOff();
+        // ChargeSwitchOn();
 
         // power in
-       // SetPowerInAnalog();
-        //SetAdcPowerInChannel();
-      //  g_ADPowerInVal = get_powerin_adc_vol();
-        //ClearPowerInAnalog();
+        // SetPowerInAnalog();
+        // SetAdcPowerInChannel();
+        //  g_ADPowerInVal = get_powerin_adc_vol();
+        // ClearPowerInAnalog();
 
         // Temperature
-       // SetAdcTempChannel();
-      //  g_ADTemperature = get_temp_adc_vol();
+        // SetAdcTempChannel();
+        //  g_ADTemperature = get_temp_adc_vol();
 
-        
-//#ifdef USE_BATTERY_RESISTANCE
-//        CalcBatRes();
-//#endif
+        // #ifdef USE_BATTERY_RESISTANCE
+        //         CalcBatRes();
+        // #endif
     }
     else
     {
         status = true;
     }
-    //充电芯片状态检测
+    // 充电芯片状态检测
     g_ChargingChip_Status = FM4258_GetStatus();
     return status;
 }
-
 
 /**
  * @brief 📬 充电逻辑函数，根据当前电池状态和充电芯片状态进行相应的充电控制
@@ -407,9 +391,8 @@ bool ChargeDetect(void)
  */
 void ChargeLogic(bool ReceptionStatus)
 {
-    while (eg_TriggerDetection)
+    while (ReceptionStatus)
     {
-        eg_TriggerDetection = false;
 #if (true)
         if (eg_BatStatus <= Bat_InputOverCurt)
         {
@@ -420,11 +403,11 @@ void ChargeLogic(bool ReceptionStatus)
             eg_BatStatus = Bat_InputOverVol;
             break;
         }
-       // if (g_ADCurrentVal > BatLimitI)
-       // {
-       //     eg_BatStatus = Bat_InputOverCurt;
-       //     break;
-       // }
+        // if (g_ADCurrentVal > BatLimitI)
+        // {
+        //     eg_BatStatus = Bat_InputOverCurt;
+        //     break;
+        // }
 #endif
 
         if (g_ADTemperature > NTCDetectBat)
@@ -472,8 +455,7 @@ void ChargeLogic(bool ReceptionStatus)
         //     break;
         // }
 
-        if (g_ChargingChip_Status == ChargeFull ||
-            (g_ChargeTimeSec > ChargeTimeMax))
+        if (g_ChargingChip_Status == ChargeFull || (g_ChargeTimeSec > ChargeTimeMax))
         {
             eg_BatStatus = Bat_ChargeFull;
             break;
@@ -491,10 +473,7 @@ void ChargeLogic(bool ReceptionStatus)
 
 void ChargeCurrentCtrlOut(unsigned char Status)
 {
-    if (eg_BatStatus == Bat_Nobat ||
-        eg_BatStatus == Bat_ChargeInit ||
-        eg_BatStatus == Bat_Detect ||
-        eg_BatStatus == Bat_InCharge)
+    if (eg_BatStatus == Bat_Nobat || eg_BatStatus == Bat_ChargeInit || eg_BatStatus == Bat_Detect || eg_BatStatus == Bat_InCharge)
     {
         if (g_ChargeState == false)
         {

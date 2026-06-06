@@ -141,7 +141,7 @@ void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
 void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms);
 void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms);
 void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
-void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
+void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count);
 void LED_SetHold(bool is_on, uint8_t brightness, uint8_t color_index, uint16_t fade_ms);
 void LED_StopEffect(void);
 

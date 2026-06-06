@@ -13,7 +13,8 @@ project(
 include(MatterLightOverThread.cmake)
 
 add_executable(MatterLightOverThread
-    # Add additional sources here
+    # Add additional sources here 
+    
     ${CMAKE_CURRENT_SOURCE_DIR}/../app/my_app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/button.cpp
@@ -25,6 +26,8 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/main_light_control.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/ledModeConvert.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/indicLed.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/swimHost.cpp
     
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例

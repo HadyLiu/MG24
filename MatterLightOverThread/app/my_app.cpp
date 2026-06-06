@@ -37,9 +37,17 @@ void my_custom_init_app_process(void)
     SILABS_LOG("[app]Power completed");
 
     LED_Init(); // 初始化 LED 状态
+
     // LED_SetBlink(50, 6, 800, 3); // 上电后闪烁提示，亮度 50%，颜色索引 3，周期 800ms，闪烁 3 次
-    //  LED_SetBreath(50, 6, 3200, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
+
+    LED_SetBreath(65, 6, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
     // ResetMatterNetworkConfiguration(); // 初始化配网状态，设置好默认的灯效序列
+
+    Indic_W_Breath_Start(100); // 启动独立的白光呼吸灯，亮度 100%
+
+    // Indic_Red_Blink_Start(400, 3);
+
+    // Indic_Red_Mixed_Blink_Start(400, 5, 2400, 3);
 }
 
 /**
@@ -69,7 +77,7 @@ void my_custom_loop_app_process(void)
             GetDisChargeStatus();
             SILABS_LOG("Battery Status=%d", eg_BatStatus);
             extern unsigned int g_ADBatLowVal;
-            SILABS_LOG("BatVol=%d", g_ADBatLowVal);
+            SILABS_LOG("BatVol=%d mv", g_ADBatLowVal * 3);
             g_is_operation_in_progress = false;
         }
         BatOutEn();
@@ -80,12 +88,15 @@ void my_custom_loop_app_process(void)
         ChargeTimeUpdata(); // 充电时间更新
         BatOutDis();
         ChargeLogic(ChargeDetect());
-        ChargeCurrentCtrlOut(false);
+        ChargeCurrentCtrlOut(g_led.is_on);
+        Indic_W_Breath_Poll_10ms();
+        Indic_Red_Blink_Poll_10ms();
     }
     if (g_time_clk - tick > 200)
     {
         tick = g_time_clk;
         SILABS_LOG("tick=%d", tick);
+        SILABS_LOG("Battery Status=%d", eg_BatStatus);
         // check_interrupt_injection_status(5);
         //  CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
         // my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
