@@ -9,10 +9,8 @@
 #include <cmsis_os2.h>
 #endif
 
-#define LED_FADE_KEY_100_TO_50_MS 400
-#define LED_FADE_KEY_50_TO_0_MS   400
-#define LED_FADE_KEY_0_TO_100_MS  800
-#define LED_FADE_COLOR_SWITCH_MS  400
+#define LED_FADE_KEY_TOTAL_MS    400
+#define LED_FADE_COLOR_SWITCH_MS 400
 
 #define LED_BRIGHTNESS_MIN 1
 #define LED_BRIGHTNESS_MAX 100
@@ -110,7 +108,7 @@ typedef struct
 
 extern const led_color_t      g_color_table[LED_COLOR_COUNT];
 extern MixedLightingEffects_t g_mixed_effects[5];
-extern led_ctrl_t             g_led;
+// extern led_ctrl_t             g_led;
 
 /* 初始化 */
 void LED_Init(void);
@@ -118,19 +116,23 @@ void LED_Init(void);
 /* 10ms 调用一次 */
 void LED_Tick10ms(void);
 
-/* 按键事件 */
-void LED_KeyShortPress(void);
-void LED_KeyDoublePress(void);
+/* 状态读取和写入 */
+bool               led_Get_status(void);
+void               led_Set_status(bool on);
+uint8_t            led_Get_brightness(void);
+void               led_Set_brightness(uint8_t brightness);
+uint8_t            led_Get_color_index(void);
+void               led_Set_color_index(uint8_t color_index);
+led_color_source_t led_Get_color_source(void);
+void               led_Set_color_source(led_color_source_t source);
+StateChangeOrigin  led_Get_change_origin(void);
+void               led_Set_change_origin(StateChangeOrigin origin);
+uint8_t            led_Get_history_brightness(void);
+void               led_Set_history_brightness(uint8_t brightness);
+led_color_t        led_Get_custom_raw(void);
+void               led_Set_custom_raw(led_color_t raw);
 
-/* Matter/App 控制接口 */
-void LED_SetOnOff(bool on);
-void LED_SetBrightnessPercent(uint8_t percent); // App 1~100
-void LED_SetColorIndex(uint8_t index);          // 0~12
-
-/* 状态读取 */
-bool    LED_IsOn(void);
-uint8_t LED_GetBrightnessPercent(void);
-uint8_t LED_GetColorIndex(void);
+void custom_raw_color_safeguard(uint8_t color_index);
 
 /* 持久化加载/保存接口（需用户实现或自行替换） */
 void LED_LoadState(uint8_t *brightness, uint8_t *color_index, bool *is_on);
@@ -139,6 +141,7 @@ void LED_SaveState(uint8_t brightness, uint8_t color_index, bool is_on);
 /* 底层唯一输出接口：用户实现 */
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
 void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms);
+void LED_Start_Fade_RGBW_8bit(uint8_t W, uint8_t R, uint8_t G, uint8_t B, uint16_t fade_ms);
 void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms);
 void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
 void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count);

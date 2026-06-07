@@ -33,72 +33,6 @@
 using namespace chip;
 using namespace chip::DeviceLayer;
 
-/**
- * @brief 将 0-255 的 RGB 转换为 10位(0-1023) 硬件值并写入 LED 驱动
- * @param W 白色通道值 (0 ~ 255)
- * @param R 红色通道值 (0 ~ 255)
- * @param G 绿色通道值 (0 ~ 255)
- * @param B 蓝色通道值 (0 ~ 255)
- */
-void Apply_LED_Hardware_RGB(uint8_t W, uint8_t R, uint8_t G, uint8_t B)
-{
-    // 放大到 10 位硬件空间 (0-255 << 2 = 0-1020)
-    uint16_t led_w = (uint16_t)(W << 2);
-    uint16_t led_r = (uint16_t)(R << 2);
-    uint16_t led_g = (uint16_t)(G << 2);
-    uint16_t led_b = (uint16_t)(B << 2);
-
-    // 边界防呆，确保满载时达到 1023
-    if (W >= 255)
-    {
-        led_w = 1023;
-    }
-    if (R >= 255)
-    {
-        led_r = 1023;
-    }
-    if (G >= 255)
-    {
-        led_g = 1023;
-    }
-    if (B >= 255)
-    {
-        led_b = 1023;
-    }
-
-    SILABS_LOG("====> [我的独立转换] 绕过系统限界后的纯正 RGBW: W:%d | R:%d | G:%d | B:%d <====\n", W, R, G, B);
-
-    // 送入 sm15135e 硬件驱动
-    led_color_t color = {.w = led_w, .r = led_r, .g = led_g, .b = led_b};
-    g_led.change_origin = StateChangeOrigin::MATTER_APP; // 标记当前色彩来源为自定义 RGBW
-    LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, color, LED_FADE_COLOR_SWITCH_MS);
-}
-
-void MyCalculatedRGB(uint16_t chipX, uint16_t chipY)
-{
-    // 1. 还原为标准的 0.0 ~ 1.0 的 CIE 坐标
-    float x = (float)chipX / 65536.0f;
-    float y = (float)chipY / 65536.0f;
-    float z = 1.0f - x - y;
-
-    // 2. 这里的 Y 顺应亮度，暂设为 1.0 满亮度
-    float Y = 1.0f;
-    float X = (y > 0) ? (x * Y) / y : 0;
-    float Z = (y > 0) ? (z * Y) / y : 0;
-
-    // 3. 使用标准的 sRGB 逆转换矩阵（无视官方指示灯色域）
-    float r = 3.2406f * X - 1.5372f * Y - 0.4986f * Z;
-    float g = -0.9689f * X + 1.8758f * Y + 0.0415f * Z;
-    float b = 0.0557f * X - 0.2040f * Y + 1.0570f * Z;
-
-    // 4. 约束并放大到 0-255 硬件空间
-    int R = (r < 0) ? 0 : ((r > 1) ? 255 : (int)(r * 255));
-    int G = (g < 0) ? 0 : ((g > 1) ? 255 : (int)(g * 255));
-    int B = (b < 0) ? 0 : ((b > 1) ? 255 : (int)(b * 255));
-
-    Apply_LED_Hardware_RGB(0, R, G, B); // 白色通道 W 固定为 0，实际应用中可根据需要调整
-}
-
 // =================================================================
 // 🎯 承接：开关与亮度数据
 // =================================================================
@@ -111,36 +45,33 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
     {
         if (aAction == LightingManager::ON_ACTION)
         {
-            g_led.is_on = true;
+            led_Set_status(true);
             // 防呆保护：如果历史记录的旧亮度太低或为0，默认恢复到 50% 或者是 100% 亮度，防止开灯不亮
-            if (g_led.history_brightness <= 1)
+            if (led_Get_history_brightness() <= 1)
             {
-                g_led.history_brightness = 100;
+                led_Set_history_brightness(100); // 默认恢复到最大亮度
             }
-            g_led.brightness = g_led.history_brightness;
+            led_Set_brightness(led_Get_history_brightness());
         }
         else if (aAction == LightingManager::OFF_ACTION)
         {
-            g_led.is_on = false;
+            led_Set_status(false);
             // 只有当当前亮度大于 1 时，才值得记录为历史亮度
-            if (g_led.brightness >= 1)
+            if (led_Get_brightness() >= 1)
             {
-                g_led.history_brightness = g_led.brightness;
+                led_Set_history_brightness(led_Get_brightness());
             }
-            g_led.brightness = 0; // 关灯逻辑
+            led_Set_brightness(0); // 关灯逻辑
         }
 
-        SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", g_led.is_on ? "ON" : "OFF", g_led.brightness);
+        SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", led_Get_status() ? "ON" : "OFF", led_Get_brightness());
 
         // 如果没有有效的色彩缓存，从当前色表中提出来恢复
-        if (g_led.custom_raw.w == 0 && g_led.custom_raw.r == 0 && g_led.custom_raw.g == 0 && g_led.custom_raw.b == 0)
-        {
-            g_led.custom_raw = g_color_table[g_led.color_index];
-        }
+        custom_raw_color_safeguard(led_Get_color_index());
 
         // 🎯 核心修复点：明确地把全局同步更新后的状态和亮度塞入渐变控制器
-        g_led.change_origin = StateChangeOrigin::MATTER_APP; // 标记来源
-        LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
+        led_Set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+        LED_Start_Fade_RGBW(led_Get_status(), led_Get_brightness(), led_Get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
     }
     // 1. 判断是否是亮度
     if (aAction == LightingManager::LEVEL_ACTION) //&& g_led.is_on == true)
@@ -151,8 +82,9 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
             SILABS_LOG("====> [matter] 亮度: %d <====\n", brightness);
 
             uint16_t out_brightness = (uint16_t)(brightness * LED_BRIGHTNESS_MAX) >> 8; // 将 0-255 映射到 0-100
-            SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, g_led.is_on ? "ON" : "OFF");
-            LED_Start_Fade_RGBW(g_led.is_on, out_brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
+            SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, led_Get_status() ? "ON" : "OFF");
+            led_Set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+            LED_Start_Fade_RGBW(led_Get_status(), out_brightness, led_Get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
         }
     }
 }
@@ -187,8 +119,9 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
         // 🎯 TODO: 在此调用你的 HSV 转 RGB 驱动
         // 示例：led_driver_set_hsv(hue, saturation);
         uint8_t r, g, b;
-        LedDriver_ConvertHsvToRgb(hue, saturation, 254, &r, &g, &b); // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
-        Apply_LED_Hardware_RGB(0, r, g, b);                          // 白色通道 W 固定为 0，实际应用中可根据需要调整
+        led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        LedDriver_ConvertHsvToRgb(hue, saturation, 254, &r, &g, &b);    // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
+        LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
         break;
     }
 
@@ -206,6 +139,10 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
 
         // 🎯 TODO: 在此调用你的双色温驱动控制冷暖比例
         // 示例：main_light_control_set_ct(kelvin);
+        uint8_t w, r, g, b;
+        led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        Light_Calc_CT_To_WRGB(kelvin, &w, &r, &g, &b);                  // 计算出对应的 RGBW 基准值，实际应用中请替换为你的驱动函数
+        LED_Start_Fade_RGBW_8bit(w, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 将计算出的 RGBW 值应用到硬件
         break;
     }
 
@@ -220,10 +157,10 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
 
         SILABS_LOG("====> [色彩模式 - XY] 行动ID: %d | X: %d, Y: %d <====\n", action, x, y);
 
-        MyCalculatedRGB(x, y); // 计算并输出 RGB 值
-
-        // 🎯 TODO: 在此调用你的 XY/RGB 驱动
-        // 示例：sm15135e_set_xy(x, y);
+        uint8_t r, g, b;
+        led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        MyCalculatedRGB(x, y, &r, &g, &b);                              // 计算并输出 RGB 值
+        LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
         break;
     }
 
@@ -243,19 +180,17 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
 static bool g_bypass_zcl_callback = false;
 
 bool IsMatterReportBypassEnabled(void)
-{
-    return g_bypass_zcl_callback;
-}
+{ return g_bypass_zcl_callback; }
 
 /**
  * @brief 在 Matter 线程执行 OnOff 属性写入
  */
 static void Safe_Upload_OnOff_Callback(intptr_t context)
 {
-    const bool           is_on = (context != 0);
-    chip::EndpointId     targetEndpoint = 1;
-    static uint8_t       last_reported_onoff = 0xFF;
-    const uint8_t        onoff_value = is_on ? 1 : 0;
+    const bool       is_on = (context != 0);
+    chip::EndpointId targetEndpoint = 1;
+    static uint8_t   last_reported_onoff = 0xFF;
+    const uint8_t    onoff_value = is_on ? 1 : 0;
 
     if (onoff_value == last_reported_onoff)
     {
@@ -277,6 +212,9 @@ static void Safe_Upload_OnOff_Callback(intptr_t context)
     }
 }
 
+/**
+ * @brief 供驱动层调用的公开接口：上报开关状态
+ */
 void Upload_Matter_OnOff(bool is_on)
 {
     CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(Safe_Upload_OnOff_Callback, is_on ? 1 : 0);
@@ -286,29 +224,6 @@ void Upload_Matter_OnOff(bool is_on)
     }
 }
 
-// void Upload_Matter_Brightness(uint8_t driver_brightness_percent)
-//{
-//  static uint8_t   last_reported_level = 0xFF;
-//  chip::EndpointId targetEndpoint = 1;
-//
-//  uint8_t matter_level = (uint8_t)((uint16_t)driver_brightness_percent * 254 / 100);
-//
-//  if (matter_level == last_reported_level)
-//{
-//     return;
-// }
-//
-//// 获取锁
-// chip::DeviceLayer::PlatformMgr().LockChipStack();
-// auto status = chip::app::Clusters::LevelControl::Attributes::CurrentLevel::Set(targetEndpoint, matter_level);
-// chip::DeviceLayer::PlatformMgr().UnlockChipStack();
-//
-// if (status == chip::Protocols::InteractionModel::Status::Success)
-//{
-//    SILABS_LOG("====> [matter report] 亮度上报成功: %d%% -> Matter Value: %d <====\n", driver_brightness_percent, matter_level);
-//    last_reported_level = matter_level;
-//}
-//}
 // 1. 运行在 Matter 主线程环境下的安全回调函数
 static void Safe_Upload_Brightness_Callback(intptr_t context)
 {

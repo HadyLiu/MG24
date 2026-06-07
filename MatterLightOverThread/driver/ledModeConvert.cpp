@@ -61,3 +61,97 @@ void LedDriver_ConvertHsvToRgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint
         break;
     }
 }
+
+/**
+ * @brief 纯整数 WRGB 色温基准 PWM 计算（最大输出 255）
+ * @param kelvin 输入绝对色温 (2200 ~ 6500)
+ * @param out_w  输出 W 通道基准 PWM (0 ~ 255)
+ * @param out_r  输出 R 通道基准 PWM (0 ~ 255)
+ * @param out_g  输出 G 通道基准 PWM (0 ~ 255)
+ * @param out_b  输出 B 通道基准 PWM (0 ~ 255)
+ */
+void Light_Calc_CT_To_WRGB(uint32_t kelvin, uint8_t *out_w, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b)
+{
+#define PWM_MAX_255 255  // 硬件最大PWM值 (8位)
+#define SCALE_10BIT 1024 // 内部高精度计算基底 (2^10)
+    // 1. 边界安全限幅
+    if (kelvin < 2200)
+    {
+        kelvin = 2200;
+    }
+    if (kelvin > 6500)
+    {
+        kelvin = 6500;
+    }
+
+    uint32_t w_factor = SCALE_10BIT; // 1024
+    uint32_t r_factor = 0;
+    uint32_t g_factor = 0;
+    uint32_t b_factor = 0;
+
+    // 2. 分区间计算各个通道的放大因子 (0 ~ 1024)
+    if (kelvin == 2700)
+    {
+        w_factor = SCALE_10BIT;
+    }
+    else if (kelvin < 2700)
+    {
+        // 【暖调光区间】2200K ~ 2699K -> W全开 + R + 少许 G
+        uint32_t range_factor = ((2700 - kelvin) * SCALE_10BIT) / (2700 - 2200);
+
+        w_factor = SCALE_10BIT;
+        r_factor = (range_factor * 358) >> 10; // 35.0% 红光
+        g_factor = (range_factor * 82) >> 10;  // 8.0% 绿光校准
+        b_factor = 0;
+    }
+    else
+    {
+        // 【冷调光区间】2701K ~ 6500K -> W渐减 + B + G
+        uint32_t range_factor = ((kelvin - 2700) * SCALE_10BIT) / (6500 - 2700);
+
+        w_factor = SCALE_10BIT - ((range_factor * 205) >> 10); // W 渐减至 80%
+        r_factor = 0;
+        b_factor = (range_factor * 563) >> 10; // 55.0% 蓝光
+        g_factor = (range_factor * 410) >> 10; // 40.0% 绿光
+    }
+
+    // 3. 将 1024 基底精确定位到 0 ~ 255 空间
+    // 数学公式：实际输出 = (factor * 255) / 1024，利用 >> 10 代替除法
+    *out_w = (uint8_t)((w_factor * PWM_MAX_255) >> 10);
+    *out_r = (uint8_t)((r_factor * PWM_MAX_255) >> 10);
+    *out_g = (uint8_t)((g_factor * PWM_MAX_255) >> 10);
+    *out_b = (uint8_t)((b_factor * PWM_MAX_255) >> 10);
+
+    // 4. 严谨性限幅保护
+    if (*out_w > PWM_MAX_255)
+        *out_w = PWM_MAX_255;
+    if (*out_r > PWM_MAX_255)
+        *out_r = PWM_MAX_255;
+    if (*out_g > PWM_MAX_255)
+        *out_g = PWM_MAX_255;
+    if (*out_b > PWM_MAX_255)
+        *out_b = PWM_MAX_255;
+}
+
+void MyCalculatedRGB(uint16_t chipX, uint16_t chipY, uint8_t *outR, uint8_t *outG, uint8_t *outB)
+{
+    // 1. 还原为标准的 0.0 ~ 1.0 的 CIE 坐标
+    float x = (float)chipX / 65536.0f;
+    float y = (float)chipY / 65536.0f;
+    float z = 1.0f - x - y;
+
+    // 2. 这里的 Y 顺应亮度，暂设为 1.0 满亮度
+    float Y = 1.0f;
+    float X = (y > 0) ? (x * Y) / y : 0;
+    float Z = (y > 0) ? (z * Y) / y : 0;
+
+    // 3. 使用标准的 sRGB 逆转换矩阵（无视官方指示灯色域）
+    float r = 3.2406f * X - 1.5372f * Y - 0.4986f * Z;
+    float g = -0.9689f * X + 1.8758f * Y + 0.0415f * Z;
+    float b = 0.0557f * X - 0.2040f * Y + 1.0570f * Z;
+
+    // 4. 约束并放大到 0-255 硬件空间
+    int R = (r < 0) ? 0 : ((r > 1) ? 255 : (int)(r * 255));
+    int G = (g < 0) ? 0 : ((g > 1) ? 255 : (int)(g * 255));
+    int B = (b < 0) ? 0 : ((b > 1) ? 255 : (int)(b * 255));
+}

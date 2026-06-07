@@ -68,6 +68,44 @@ static uint16_t led_clamp_u16(uint16_t v, uint16_t min, uint16_t max)
     return v;
 }
 
+bool led_Get_status(void)
+{ return g_led.is_on; }
+void led_Set_status(bool on)
+{ g_led.is_on = on; }
+
+uint8_t led_Get_brightness(void)
+{ return g_led.brightness; }
+void led_Set_brightness(uint8_t brightness)
+{ g_led.brightness = brightness; }
+
+uint8_t led_Get_color_index(void)
+{ return g_led.color_index; }
+void led_Set_color_index(uint8_t color_index)
+{
+    color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
+    g_led.color_index = color_index;
+}
+
+led_color_source_t led_Get_color_source(void)
+{ return g_led.color_source; }
+void led_Set_color_source(led_color_source_t source)
+{ g_led.color_source = source; }
+
+StateChangeOrigin led_Get_change_origin(void)
+{ return g_led.change_origin; }
+void led_Set_change_origin(StateChangeOrigin origin)
+{ g_led.change_origin = origin; }
+
+uint8_t led_Get_history_brightness(void)
+{ return g_led.history_brightness; }
+void led_Set_history_brightness(uint8_t brightness)
+{ g_led.history_brightness = brightness; }
+
+led_color_t led_Get_custom_raw(void)
+{ return g_led.custom_raw; }
+void led_Set_custom_raw(led_color_t custom_raw)
+{ g_led.custom_raw = custom_raw; }
+
 /**
  * @brief 应用结构体 WRGB 输出到硬件
  */
@@ -80,6 +118,14 @@ static void led_apply_output_struct(led_color_t color)
 
     g_led.cur_color = color;
     LED_HW_SetWRGB(color.w, color.r, color.g, color.b);
+}
+
+void custom_raw_color_safeguard(uint8_t color_index)
+{
+    if (g_led.custom_raw.w == 0 && g_led.custom_raw.r == 0 && g_led.custom_raw.g == 0 && g_led.custom_raw.b == 0)
+    {
+        g_led.custom_raw = g_color_table[color_index];
+    }
 }
 
 /*
@@ -171,6 +217,43 @@ void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t 
     g_led.fade_start_ms = LED_GetTickMs();
     g_led.fade_time_ms = (fade_ms == 0) ? 1 : fade_ms;
     g_led.fading = true;
+}
+
+/**
+ * @brief 将 0-255 的 RGB 转换为 10位(0-1023) 硬件值并写入 LED 驱动
+ * @param W 白色通道值 (0 ~ 255)
+ * @param R 红色通道值 (0 ~ 255)
+ * @param G 绿色通道值 (0 ~ 255)
+ * @param B 蓝色通道值 (0 ~ 255)
+ * @param fade_ms 渐变时间（毫秒）
+ */
+void LED_Start_Fade_RGBW_8bit(uint8_t W, uint8_t R, uint8_t G, uint8_t B, uint16_t fade_ms)
+{
+    // 放大到 10 位硬件空间 (0-255 << 2 = 0-1020)
+    uint16_t led_w = (uint16_t)(W << 2);
+    uint16_t led_r = (uint16_t)(R << 2);
+    uint16_t led_g = (uint16_t)(G << 2);
+    uint16_t led_b = (uint16_t)(B << 2);
+
+    // 边界防呆，确保满载时达到 1023
+    if (W >= 255)
+    {
+        led_w = 1023;
+    }
+    if (R >= 255)
+    {
+        led_r = 1023;
+    }
+    if (G >= 255)
+    {
+        led_g = 1023;
+    }
+    if (B >= 255)
+    {
+        led_b = 1023;
+    }
+    led_color_t color = {.w = led_w, .r = led_r, .g = led_g, .b = led_b};
+    LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, color, fade_ms);
 }
 
 /**
@@ -631,53 +714,7 @@ void LED_Tick10ms(void)
             {
                 led_change = true;
                 g_led.cur_color = g_led.target_color;
-
-                if (g_led.fading)
-                {
-                    g_led.fading = false; // 👈 拦截下一轮 Tick，确保后续 10ms 绝不会再进来
-
-                    // 🎯 核心修复点 2：只有当改变来源【不是】来自 Matter 控制时（比如按键触发、传感器触发），才向网关上报
-                    if (g_led.change_origin != StateChangeOrigin::MATTER_APP)
-                    {
-                        extern void Upload_Matter_OnOff(bool is_on);
-                        extern void Upload_Matter_Brightness(uint8_t brightness);
-
-                        // 🎯 核心修复点 3：上报当前的开关状态和亮度值，确保云端状态与设备实际状态保持一致
-                        // Upload_Matter_OnOff(g_led.is_on);
-                        // Upload_Matter_Brightness(g_led.brightness);
-
-                        // if (g_led.is_on == false || g_led.brightness == 0)
-                        //{
-                        //     // 如果是彻底关灯，上报一次关
-                        //     Upload_Matter_OnOff(false);
-                        //     Upload_Matter_Brightness(0);
-                        // }
-                        // else
-                        //{
-                        //  如果灯原本就是开着的，仅仅是短按切换亮度（如 100% -> 50%）：
-                        //  🚨 绝对不要调用 Upload_Matter_OnOff(true)！只上报亮度！、
-                        // Upload_Matter_OnOff(g_led.is_on); // 这里可以选择不调用，因为如果之前就是开着的，状态没变，云端可能也不需要重复上报开
-                        // Upload_Matter_Brightness(g_led.brightness);
-                        SILABS_LOG("LED Tick: Brightness changed to %d%%, reporting brightness without toggling OnOff\n", g_led.brightness);
-                        // }
-
-                        if (g_led.color_source == LED_SOURCE_COLOR_INDEX)
-                        {
-                            if (g_led.color_index == 2) // 举例：当前是出厂默认 color2 (2450K)
-                            {
-                                // Upload_Matter_Color_As_CT(2450); // 上报色温
-                            }
-                            else if (g_led.color_index >= 4)
-                            {
-                                // 纯彩色状态，将驱动里的 RGB 转成 HSV 算好后上报
-                                uint8_t h_254 = 0;
-                                uint8_t s_254 = 0;
-                                // YourRgbToHsv(g_led.cur_color.r, g_led.cur_color.g, g_led.cur_color.b, &h_254, &s_254);
-                                // Upload_Matter_Color_As_HSV(h_254, s_254);
-                            }
-                        }
-                    }
-                }
+                g_led.fading = false; // 👈 拦截下一轮 Tick，确保后续 10ms 绝不会再进来
                 break;
             }
             // SILABS_LOG("LED Tick: is_on=%d, bri=%d, color_idx=%d, effect=%d, fading=%d, elapsed=%dms\n", g_led.is_on, g_led.brightness,

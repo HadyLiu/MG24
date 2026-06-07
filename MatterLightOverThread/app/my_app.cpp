@@ -88,7 +88,7 @@ void my_custom_loop_app_process(void)
         ChargeTimeUpdata(); // 充电时间更新
         BatOutDis();
         ChargeLogic(ChargeDetect());
-        ChargeCurrentCtrlOut(g_led.is_on);
+        ChargeCurrentCtrlOut(led_Get_status()); // 根据 LED 状态调整充电电流，控制充电速度
         Indic_W_Breath_Poll_10ms();
         Indic_Red_Blink_Poll_10ms();
     }
@@ -190,76 +190,81 @@ void MyButtonActionHandler(AppEvent *aEvent)
     switch (action)
     {
     case AppButtonEvent::kButtonAction_ShortPress:
+    {
         SILABS_LOG(" -> [业务确诊] 按键 %d : 单击触发！", button_idx);
         // 这里写你的单击控制代码
         // 如果当前状态变化来源是远程下发
-        if (g_led.change_origin == StateChangeOrigin::MATTER_APP && g_led.is_on == 1) // 并且灯当前是开的
+        if (led_Get_change_origin() == StateChangeOrigin::MATTER_APP && led_Get_status() == true) // 并且灯当前是开的
         {
             SILABS_LOG("当前LED由远程控制打开，单击事件优先关灯");
-            g_led.is_on = 0;
-            g_led.brightness = 0;
-            g_led.change_origin = StateChangeOrigin::LOCAL_KEY; // 标记状态变化来源为本地按键
-            LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+            led_Set_status(false);
+            led_Set_brightness(0);
+            led_Set_change_origin(StateChangeOrigin::LOCAL_KEY); // 标记状态变化来源为本地按键
+            LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_KEY_TOTAL_MS);
             break;
         }
-        if (g_led.is_on == 0 || g_led.brightness == 0)
+        if (led_Get_status() == false || led_Get_brightness() == 0)
         {
-            g_led.is_on = 1;
-            g_led.brightness = LED_BRIGHTNESS_MAX;
+            led_Set_status(true);
+            led_Set_brightness(LED_BRIGHTNESS_MAX); // 恢复到最大亮度
         }
-        else if (g_led.is_on == 1 && g_led.brightness == LED_BRIGHTNESS_MAX)
+        else if (led_Get_status() == true && led_Get_brightness() == LED_BRIGHTNESS_MAX)
         {
-            g_led.brightness = (LED_BRIGHTNESS_MAX >> 1); // 50% 亮度
+            led_Set_brightness(LED_BRIGHTNESS_MAX >> 1); // 50% 亮度
         }
-        else if (g_led.is_on == 1 && g_led.brightness == (LED_BRIGHTNESS_MAX >> 1))
+        else if (led_Get_status() == true && led_Get_brightness() == (LED_BRIGHTNESS_MAX >> 1))
         {
-            g_led.is_on = 0;
-            g_led.brightness = 0;
+            led_Set_status(false);
+            led_Set_brightness(0);
         }
         else
         {
-            g_led.is_on = 0;
-            g_led.brightness = 0;
+            led_Set_status(false);
+            led_Set_brightness(0);
         }
         // 标记状态变化来源为本地按键
-        g_led.change_origin = StateChangeOrigin::LOCAL_KEY;
+        led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);
         extern void Upload_Matter_OnOff(bool is_on);
         extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
-        Upload_Matter_OnOff(g_led.is_on);           // 上报开关状态
-        Upload_Matter_Brightness(g_led.brightness); // 上报亮度状态
-        SILABS_LOG("is_On=%d, brightness=%d", g_led.is_on, g_led.brightness);
-        LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, 400);
-        break;
+        Upload_Matter_OnOff(led_Get_status());          // 上报开关状态到 Matter 层
+        Upload_Matter_Brightness(led_Get_brightness()); // 上报亮度状态到 Matter 层
 
+        SILABS_LOG("is_On=%d, brightness=%d", led_Get_status(), led_Get_brightness());
+        LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_KEY_TOTAL_MS);
+        break;
+    }
     case AppButtonEvent::kButtonAction_DoublePress:
+    {
         SILABS_LOG(" -> [业务确诊] 按键 %d : 双击触发！", button_idx);
-        if (g_led.is_on == 0)
+        if (led_Get_status() == false)
         {
             SILABS_LOG("当前LED熄灭！！！双击事件不执行任何操作");
             break;
         }
         // 这里写你的双击控制代码
-        g_led.color_index++;
-        if (g_led.color_index >= LED_COLOR_COUNT)
+        uint8_t color_index = led_Get_color_index() + 1;
+        if (color_index >= LED_COLOR_COUNT)
         {
-            g_led.color_index = 0;
+            color_index = 0;
         }
+        led_Set_color_index(color_index);
         // 标记状态变化来源为本地按键
-        g_led.change_origin = StateChangeOrigin::LOCAL_KEY;
+        led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);
         extern void Upload_Matter_OnOff(bool is_on);
         extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
-        Upload_Matter_OnOff(g_led.is_on);           // 上报开关状态
-        Upload_Matter_Brightness(g_led.brightness); // 上报亮度状态
-        SILABS_LOG("color_index=%d", g_led.color_index);
-        LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, 400);
+        Upload_Matter_OnOff(led_Get_status());          // 上报开关状态
+        Upload_Matter_Brightness(led_Get_brightness()); // 上报亮度状态
+        SILABS_LOG("color_index=%d", led_Get_color_index());
+        LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_COLOR_SWITCH_MS);
         break;
-
+    }
     case AppButtonEvent::kButtonAction_LongPressStart:
     {
         SILABS_LOG(" -> [业务确诊] 按键 %d : 开始长按！", button_idx);
         break;
     }
     case AppButtonEvent::kButtonAction_LongPressing:
+    {
         if (long_press_count == 25) // 5000/200=25 代表每200ms触发一次长按事件
         {
             // 开启配网灯效
@@ -273,7 +278,9 @@ void MyButtonActionHandler(AppEvent *aEvent)
         save_history_long_press_count = long_press_count; // 更新历史计数
         SILABS_LOG(" -> [业务确诊] 按键 %d : 长按中！ 脉冲计数 = %d", button_idx, long_press_count);
         break;
+    }
     case AppButtonEvent::kButtonAction_LongPressRelease:
+    {
         // 长按时间不足过程不重置配网，但未达到放弃配网的条件
         if (save_history_long_press_count >= 25 && save_history_long_press_count < 50)
         {
@@ -282,6 +289,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
         SILABS_LOG(" -> [业务确诊] 按键 %d : 长按松开！ 脉冲计数 = %d", button_idx, save_history_long_press_count);
         // 🧼 善后清理：手终于松开了，把重置旗标清空，允许下一次长按重置
         break;
+    }
 
     default: SILABS_LOG(" -> [未捕获] 动作编号: %d", action); break;
     }
@@ -299,6 +307,7 @@ void CheckTickResolution(void)
     SILABS_LOG("因此 1 个 Tick = %d 毫秒", ms_per_tick);
 }
 
+#if 0
 // 测试硬件是否开启了双沿中断
 void check_interrupt_injection_status(uint8_t pin)
 {
@@ -326,3 +335,4 @@ void check_interrupt_injection_status(uint8_t pin)
         SILABS_LOG("结果：⚠️ 警告！硬件仍处于单沿状态（原厂Bug未被覆盖）。\r\n\r\n");
     }
 }
+#endif
