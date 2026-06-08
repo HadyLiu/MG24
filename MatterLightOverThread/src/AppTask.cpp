@@ -267,8 +267,8 @@ void AppTask::LightControlEventHandler(AppEvent *aEvent)
     break;
     default: ChipLogProgress(NotSpecified, "LightMgr:Unknown"); break;
     }
-    extern void MyColorEventHandlerBridge(uint8_t action, void *valueData);
-    MyColorEventHandlerBridge(aEvent->LightControlEvent.Action, &(aEvent->LightControlEvent.Value));
+    extern void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint16_t Y);
+    MyColorEventHandlerBridge(aEvent->LightControlEvent.Action, &(aEvent->LightControlEvent.Value), colorData.xy.x, colorData.xy.y);
 }
 #endif // (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED)
 

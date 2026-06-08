@@ -28,6 +28,7 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/ledModeConvert.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/indicLed.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/swimHost.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/bit_utils.cpp
     
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例

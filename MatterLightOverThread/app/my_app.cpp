@@ -50,6 +50,8 @@ void my_custom_init_app_process(void)
     // Indic_Red_Mixed_Blink_Start(400, 5, 2400, 3);
 }
 
+uint16_t g_ex, g_ey;
+
 /**
  * @brief 📬 主循环阶段：在这里处理所有的业务逻辑，包括电源管理、按键处理等
  */
@@ -97,12 +99,13 @@ void my_custom_loop_app_process(void)
         tick = g_time_clk;
         SILABS_LOG("tick=%d", tick);
         SILABS_LOG("Battery Status=%d", eg_BatStatus);
-        // check_interrupt_injection_status(5);
-        //  CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
-        // my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
-        // my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
-        // sl_pwm_start(&sl_pwm_w_led0);
-        // sl_pwm_start(&sl_pwm_Indic_led0);
+        // SILABS_LOG("g_ex=%d, g_ey=%d", g_ex, g_ey);
+        //  check_interrupt_injection_status(5);
+        //   CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
+        //  my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
+        //  my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
+        //  sl_pwm_start(&sl_pwm_w_led0);
+        //  sl_pwm_start(&sl_pwm_Indic_led0);
 
         // write_led_example();
     }
@@ -140,7 +143,8 @@ void ResetMatterNetworkConfiguration(void)
     // Your reset logic here
     SILABS_LOG("[app]重置Matter网络配置...");
     // 这里可以添加任何需要在重置时执行的清理代码，例如重置全局变量、清除持久化存储等
-    TriggerNetworkResetWithoutReboot(); // 执行在线网络重置的核心逻辑
+    // TriggerNetworkResetWithoutReboot(); // 执行在线网络重置的核心逻辑
+    chip::DeviceLayer::ConfigurationMgr().InitiateFactoryReset();
 }
 
 /**

@@ -92,19 +92,79 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath &a
                         *value, size);
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
 
-        if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentX::Id)
-        {
-            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
-                            *value, size);
+        // if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentX::Id)
+        //{
+        //     ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId),
+        //     type,
+        //                     *value, size);
 
-            LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId, value);
-        }
-        else if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentY::Id)
+        //    LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId, value);
+        //}
+        // else if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentY::Id)
+        //{
+        //    ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId),
+        //    type,
+        //                    *value, size);
+        //    LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId, value);
+        //}
+
+        static uint16_t s_raw_x = 0;
+        static uint16_t s_raw_y = 0;
+        static bool     s_x_ready = false;
+        static bool     s_y_ready = false;
+
+        if (attributeId == ColorControl::Attributes::CurrentX::Id)
         {
-            ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,
-                            *value, size);
-            LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId, value);
+            if (value != nullptr)
+            {
+                s_raw_x = *reinterpret_cast<uint16_t *>(value);
+                s_x_ready = true;
+            }
         }
+        else if (attributeId == ColorControl::Attributes::CurrentY::Id)
+        {
+            if (value != nullptr)
+            {
+                s_raw_y = *reinterpret_cast<uint16_t *>(value);
+                s_y_ready = true;
+            }
+        }
+
+        if (s_x_ready && s_y_ready)
+        {
+            s_x_ready = false;
+            s_y_ready = false;
+
+            // 1. 先用工具函数，把 Bit 序反掉的 Bug 秒杀掉，算出真正的 XY
+            // extern uint16_t FixBitEndian16(uint16_t raw_val);
+            uint16_t g_ex = s_raw_x; // FixBitEndian16(s_raw_x);
+            uint16_t g_ey = s_raw_y; // FixBitEndian16(s_raw_y);
+
+            // 拦截未对齐的畸变脏数据
+            // if (g_ex == 9792 && s_raw_x != s_raw_y)
+            //{
+            //    ChipLogProgress(Zcl, "====> [合流拦截] 抓到未对齐突变帧，丢弃");
+            //    return;
+            //}
+
+            // 2. 🚨 【核心魔改】把洗干净、合流好的 g_ex 和 g_ey 重新塞回给数组或者结构体
+            // 因为 X 和 Y 都是 16 位（2字节），我们用一个 4 字节的数组把它们捆绑在一起
+            uint16_t        combined_xy[2];
+            extern uint16_t out_ex, out_ey; // 声明外部全局变量，实际定义在 LightingManager.cpp 中
+            out_ex = g_ex;                  // 更新全局变量
+            out_ey = g_ey;                  // 更新全局变量
+            combined_xy[0] = out_ex;        // 塞入高保真 X
+            combined_xy[1] = out_ey;        // 塞入高保真 Y
+
+            ChipLogProgress(Zcl, "====> [合流打包成功] 投递黄金组合到队列 -> X: %u, Y: %u", out_ex, out_ey);
+
+            // 3. 🚀 继续调用官方函数！但注意：我们传的是捆绑好的 combined_xy 指针！
+            // 这样，主任务队列收到事件时，就能同时拿到最新、最纯净的 X 和 Y 了！
+            LightMgr().InitiateLightCtrlAction(AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY, attributeId,
+                                               reinterpret_cast<uint8_t *>(combined_xy) // 👈 传我们打包好的纯净数据
+            );
+        }
+
         if (clusterId == ColorControl::Id && attributeId == ColorControl::Attributes::CurrentHue::Id)
         {
             ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type,

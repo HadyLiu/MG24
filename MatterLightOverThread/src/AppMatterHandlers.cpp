@@ -8,6 +8,7 @@
 // 引入官方的结构体定义，用于解析指针
 #include "LightingManager.h"
 #include "RGBLEDWidget.h"
+#include "../driver/bit_utils.h" // 引入 Bit 处理工具函数的头文件
 
 // 重置网络的核心函数声明
 #include <app/server/Server.h>
@@ -89,10 +90,11 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
     }
 }
 
+uint16_t out_ex, out_ey; // 定义全局变量用于存储最终的 XY 值，供 MyColorEventHandlerBridge 使用
 // =================================================================
 // 🎯 承接：色彩与色温数据
 // =================================================================
-void MyColorEventHandlerBridge(uint8_t action, void *valueData)
+void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint16_t Y)
 {
     if (valueData == nullptr)
     {
@@ -152,15 +154,38 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
     // =========================================================================
     case LightingManager::COLOR_ACTION_XY:
     {
-        uint16_t x = colorData->xy.x;
-        uint16_t y = colorData->xy.y;
+        uint16_t raw_x; //= colorData->xy.x;
+        uint16_t raw_y; //= colorData->xy.y;
 
-        SILABS_LOG("====> [色彩模式 - XY] 行动ID: %d | X: %d, Y: %d <====\n", action, x, y);
+        // 直接去底层数据库捞取 `.533` 秒那两行绝对正确的原始值 (116 和 82 对应放大后的 24948 和 13394)
+        chip::DeviceLayer::PlatformMgr().LockChipStack();
+        chip::app::Clusters::ColorControl::Attributes::CurrentX::Get(LIGHT_ENDPOINT, &raw_x);
+        chip::app::Clusters::ColorControl::Attributes::CurrentY::Get(LIGHT_ENDPOINT, &raw_y);
+        chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+        // SILABS_LOG("Raw Bytes: [0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X]", colorData[0], colorData[1], colorData[2],
+        // colorData[3],
+        //            colorData[4], colorData[5], colorData[6], colorData[7]);
+        //  uint16_t x = colorData->xy.x;
+        // uint16_t y = colorData->xy.y;
 
+        // 2. 🛠️ 【双杀修复】强行对调 X 和 Y 的高低字节，彻底纠正大端序 Bug
+        // uint16_t real_x = FixBitEndian16(raw_x);
+        // uint16_t real_y = FixBitEndian16(raw_y);
+
+        // 2. 🛠️ 【双杀修复】强行对调 X 和 Y 的高低字节，彻底纠正大端序 Bug
+
+        extern uint16_t g_ex, g_ey; // 声明外部全局变量，实际定义在 LightingManager.cpp 中
+                                    //  uint16_t        real_x = ((raw_x & 0x00FF) << 8) | ((raw_x & 0xFF00) >> 8);
+                                    //  uint16_t        real_y = ((raw_y & 0x00FF) << 8) | ((raw_y & 0xFF00) >> 8);
+
+        g_ex = out_ex; // 更新全局变量
+        g_ey = out_ey; // 更新全局变量
         uint8_t r, g, b;
         led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
-        MyCalculatedRGB(x, y, &r, &g, &b);                              // 计算并输出 RGB 值
+        Light_Calc_XY_To_RGB(out_ex, out_ey, &r, &g, &b);               // 计算并输出 RGB 值
         LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
+                                                                        // SILABS_LOG("%d | X: %d, Y: %d\n", action, g_ex, g_ey);
+
         break;
     }
 
@@ -169,6 +194,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData)
     // =========================================================================
     default:
         // 这里不需要报错，因为开关、亮度事件通常由别的 Handler（如 MyOnOffEventHandlerBridge）处理
+        SILABS_LOG("====> [色彩模式] 未知的行动ID: %d <====\n", action);
         break;
     }
 }
