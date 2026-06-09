@@ -67,42 +67,42 @@ static uint16_t led_clamp_u16(uint16_t v, uint16_t min, uint16_t max)
     return v;
 }
 
-bool led_Get_status(void)
+bool led_get_status(void)
 { return g_led.is_on; }
-void led_Set_status(bool on)
+void led_set_status(bool on)
 { g_led.is_on = on; }
 
-uint8_t led_Get_brightness(void)
+uint8_t led_get_brightness(void)
 { return g_led.brightness; }
-void led_Set_brightness(uint8_t brightness)
+void led_set_brightness(uint8_t brightness)
 { g_led.brightness = brightness; }
 
-uint8_t led_Get_color_index(void)
+uint8_t led_get_color_index(void)
 { return g_led.color_index; }
-void led_Set_color_index(uint8_t color_index)
+void led_set_color_index(uint8_t color_index)
 {
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
     g_led.color_index = color_index;
 }
 
-led_color_source_t led_Get_color_source(void)
+led_color_source_t led_get_color_source(void)
 { return g_led.color_source; }
-void led_Set_color_source(led_color_source_t source)
+void led_set_color_source(led_color_source_t source)
 { g_led.color_source = source; }
 
-StateChangeOrigin led_Get_change_origin(void)
+StateChangeOrigin led_get_change_origin(void)
 { return g_led.change_origin; }
-void led_Set_change_origin(StateChangeOrigin origin)
+void led_set_change_origin(StateChangeOrigin origin)
 { g_led.change_origin = origin; }
 
-uint8_t led_Get_history_brightness(void)
+uint8_t led_get_history_brightness(void)
 { return g_led.history_brightness; }
-void led_Set_history_brightness(uint8_t brightness)
+void led_set_history_brightness(uint8_t brightness)
 { g_led.history_brightness = brightness; }
 
-led_color_t led_Get_custom_raw(void)
+led_color_t led_get_custom_raw(void)
 { return g_led.custom_raw; }
-void led_Set_custom_raw(led_color_t custom_raw)
+void led_set_custom_raw(led_color_t custom_raw)
 { g_led.custom_raw = custom_raw; }
 
 /**
@@ -402,31 +402,6 @@ void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count)
     g_led.fading = false;
 }
 
-///**
-// * @brief 设定保持模式（直接保持在目标状态，无闪烁或呼吸效果）
-// * @param is_on 目标开关状态
-// * @param fade_ms 渐变时间（毫秒），如果为0则立即切换
-// */
-// void LED_SetHold(bool is_on, uint16_t fade_ms)
-//{
-//    led_color_t target = {0, 0, 0, 0};
-//    if (!is_on)
-//    {
-//        return;
-//    }
-//    g_led.is_on = is_on;
-//    g_led.effect_start_ms = LED_GetTickMs();
-//    g_led.effect_period_ms = fade_ms;
-//    g_led.effect_mode = LED_EFFECT_HOLD;
-//    g_led.fading = false;
-//
-//    g_led.effect_count = (fade_ms == 0) ? 0 : 1; // 如果 fade_ms 为0则无限循环，否则只运行1次
-//
-//    // 立即应用当前颜色
-//    g_led.cur_color = led_calc_target_from_logic_struct(g_led.is_on, g_led.brightness, g_led.color_index);
-//    led_apply_output_struct(g_led.cur_color);
-//}
-
 /**
  * @brief 设定保持模式（直接保持在目标状态，无闪烁或呼吸效果）
  * @param is_on 目标开关状态
@@ -573,94 +548,6 @@ void led_mixed_lighting_effects_service(void)
     led_execute_mixed_index(g_led.mix_effect_index);
 }
 
-///**
-// * @brief  将当前灯光的所有状态立刻写入 NVM3 闪存
-// * @note   内部已做防盲写优化：如果数据没变，不会触发真正的 Flash 擦写
-// */
-// void LED_SaveStateToFlash(void)
-//{
-//    Ecode_t              err;
-//    light_flash_memory_t current_mem;
-//
-//    // 1. 将运行时的 g_led 核心数据打包
-//    current_mem.is_on = g_led.is_on;
-//    current_mem.brightness = g_led.brightness;
-//    current_mem.color_index = g_led.color_index;
-//    current_mem.color_source = (uint8_t)g_led.color_source;
-//    current_mem.custom_w = g_led.custom_raw.w;
-//    current_mem.custom_r = g_led.custom_raw.r;
-//    current_mem.custom_g = g_led.custom_raw.g;
-//    current_mem.custom_b = g_led.custom_raw.b;
-//
-//    // 2. 读取 Flash 中旧的记忆进行比对，防止完全相同的数据重复刷写 Flash 减短寿命
-//    light_flash_memory_t old_mem;
-//    uint32_t             object_type;
-//    size_t               data_len = sizeof(light_flash_memory_t);
-//
-//    err = nvm3_getObjectInfo(nvm3_defaultHandle, NVM3_KEY_LIGHT_MEMORY_DATA, &object_type, &data_len);
-//    if (err == ECODE_NVM3_OK)
-//    {
-//        nvm3_readData(nvm3_defaultHandle, NVM3_KEY_LIGHT_MEMORY_DATA, &old_mem, sizeof(light_flash_memory_t));
-//        // 如果数据完全一致，直接退出，不写 Flash
-//        if (memcmp(&current_mem, &old_mem, sizeof(light_flash_memory_t)) == 0)
-//        {
-//            return;
-//        }
-//    }
-//
-//    // 3. 执行真正的 NVM3 写入（底层会自动处理 TrustZone 加密与磨损均衡）
-//    err = nvm3_writeData(nvm3_defaultHandle, NVM3_KEY_LIGHT_MEMORY_DATA, &current_mem, sizeof(light_flash_memory_t));
-//    if (err == ECODE_NVM3_OK)
-//    {
-//        SILABS_LOG("====> [LED NVM3] 灯光数据记忆成功！ <====\n");
-//    }
-//    else
-//    {
-//        SILABS_LOG("====> [LED NVM3] 灯光数据记忆失败！ <====\n");
-//    }
-//}
-//
-///**
-// * @brief  从 NVM3 恢复灯光数据到 g_led 结构体中
-// * @return true: 成功读取历史记忆；false: 闪存无数据，使用出厂默认值
-// */
-// bool LED_LoadStateFromFlash(void)
-//{
-//    Ecode_t              err;
-//    uint32_t             object_type;
-//    size_t               data_len = sizeof(light_flash_memory_t);
-//    light_flash_memory_t saved_mem;
-//
-//    // 1. 检查 NVM3 对应的 Key 中是否存在历史数据
-//    err = nvm3_getObjectInfo(nvm3_defaultHandle, NVM3_KEY_LIGHT_MEMORY_DATA, &object_type, &data_len);
-//    if (err != ECODE_NVM3_OK)
-//    {
-//        SILABS_LOG("====> [LED NVM3] 首次上电，未找到历史记忆，将使用默认值 <====\n");
-//        return false;
-//    }
-//
-//    // 2. 从 NVM3 读取数据
-//    err = nvm3_readData(nvm3_defaultHandle, NVM3_KEY_LIGHT_MEMORY_DATA, &saved_mem, sizeof(light_flash_memory_t));
-//    if (err != ECODE_NVM3_OK)
-//    {
-//        SILABS_LOG("====> [LED NVM3] 读取历史记忆失败，将使用默认值 <====\n");
-//        return false;
-//    }
-//
-//    // 3. 将记忆数据安全恢复至全局运行时结构体 g_led
-//    g_led.is_on = saved_mem.is_on;
-//    g_led.brightness = led_clamp_u8(saved_mem.brightness, 0, 100);
-//    g_led.color_index = led_clamp_u8(saved_mem.color_index, 0, LED_COLOR_COUNT - 1);
-//    g_led.color_source = (led_color_source_t)saved_mem.color_source;
-//    g_led.custom_raw.w = led_clamp_u16(saved_mem.custom_w, 0, LED_HW_MAX);
-//    g_led.custom_raw.r = led_clamp_u16(saved_mem.custom_r, 0, LED_HW_MAX);
-//    g_led.custom_raw.g = led_clamp_u16(saved_mem.custom_g, 0, LED_HW_MAX);
-//    g_led.custom_raw.b = led_clamp_u16(saved_mem.custom_b, 0, LED_HW_MAX);
-//
-//    g_led.history_brightness = g_led.brightness;
-//
-//    return true;
-//}
 void LED_SaveStateToFlash(void)
 {
     Ecode_t              err;
@@ -914,8 +801,11 @@ void LED_Tick10ms(void)
                 uint32_t ms_in_cycle = elapsed % g_led.effect_period_ms;
                 if (ms_in_cycle < (g_led.effect_period_ms >> 1))
                 {
-                    // 依据来源对基础色做缩放
-                    g_led.cur_color = led_scale_color(base_raw_color, g_led.brightness);
+                    if (g_led.color_source == LED_SOURCE_CUSTOM_RGBW)
+                    {
+                        // 依据来源对基础色做缩放
+                        g_led.cur_color = led_scale_color(base_raw_color, g_led.brightness);
+                    }
                 }
                 else
                 {

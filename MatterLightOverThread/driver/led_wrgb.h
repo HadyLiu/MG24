@@ -135,20 +135,20 @@ void LED_Init(void);
 void LED_Tick10ms(void);
 
 /* 状态读取和写入 */
-bool               led_Get_status(void);
-void               led_Set_status(bool on);
-uint8_t            led_Get_brightness(void);
-void               led_Set_brightness(uint8_t brightness);
-uint8_t            led_Get_color_index(void);
-void               led_Set_color_index(uint8_t color_index);
-led_color_source_t led_Get_color_source(void);
-void               led_Set_color_source(led_color_source_t source);
-StateChangeOrigin  led_Get_change_origin(void);
-void               led_Set_change_origin(StateChangeOrigin origin);
-uint8_t            led_Get_history_brightness(void);
-void               led_Set_history_brightness(uint8_t brightness);
-led_color_t        led_Get_custom_raw(void);
-void               led_Set_custom_raw(led_color_t raw);
+bool               led_get_status(void);
+void               led_set_status(bool on);
+uint8_t            led_get_brightness(void);
+void               led_set_brightness(uint8_t brightness);
+uint8_t            led_get_color_index(void);
+void               led_set_color_index(uint8_t color_index);
+led_color_source_t led_get_color_source(void);
+void               led_set_color_source(led_color_source_t source);
+StateChangeOrigin  led_get_change_origin(void);
+void               led_set_change_origin(StateChangeOrigin origin);
+uint8_t            led_get_history_brightness(void);
+void               led_set_history_brightness(uint8_t brightness);
+led_color_t        led_get_custom_raw(void);
+void               led_set_custom_raw(led_color_t raw);
 
 void custom_raw_color_safeguard(uint8_t color_index);
 

@@ -19,13 +19,13 @@
 uint32_t g_time_detect_bat = 0;              // 上次检测电池状态的时间戳，单位为10ms
 bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进行中
 bool     g_PowerProtect = false;             // 电池电量过低标志
-
-void write_led_example(void);
-void CheckTickResolution(void);
-void ResetMatterNetworkConfiguration(void);
-void check_interrupt_injection_status(uint8_t pin);
-void PowerSwitchAssignment(void);
-void change_led_Indic(uint8_t charge_status);
+uint8_t  g_Identify = false;
+void     write_led_example(void);
+void     CheckTickResolution(void);
+void     ResetMatterNetworkConfiguration(void);
+void     check_interrupt_injection_status(uint8_t pin);
+void     PowerSwitchAssignment(void);
+void     change_led_Indic(uint8_t charge_status);
 
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
@@ -106,7 +106,7 @@ void entry_Loop(void)
         ChargeTimeUpdata(); // 充电时间更新
         BatOutDis();
         ChargeLogic(ChargeDetect());            // 400ms 充电逻辑处理一次，根据充电检测结果调整充电状态
-        ChargeCurrentCtrlOut(led_Get_status()); // 根据 LED 状态调整充电电流，控制充电速度
+        ChargeCurrentCtrlOut(led_get_status()); // 根据 LED 状态调整充电电流，控制充电速度
         change_led_Indic(eg_BatStatus);         // 根据电池状态调整指示灯显示
     }
     LED_SetLowBatteryProtection(g_PowerProtect); // 根据电量过低保护标志设置 LED 的保护状态，物理上锁定或解锁 LED 输出
@@ -124,6 +124,7 @@ void entry_Loop(void)
         SILABS_LOG("bat Temperature=%d", g_ADTemperature);
         SILABS_LOG("charge time=%d", g_ChargeTimeSec);
         SILABS_LOG("bat status=%d", eg_BatStatus);
+        SILABS_LOG("identify=%d", g_Identify);
 
         //  check_interrupt_injection_status(5);
         //   CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
@@ -281,13 +282,13 @@ void MyButtonActionHandler(AppEvent *aEvent)
         SILABS_LOG(" -> [业务确诊] 按键 %d : 单击触发！", button_idx);
         // 这里写你的单击控制代码
         // 如果当前状态变化来源是远程下发
-        if (led_Get_change_origin() == StateChangeOrigin::MATTER_APP && led_Get_status() == true) // 并且灯当前是开的
+        if (led_get_change_origin() == StateChangeOrigin::MATTER_APP && led_get_status() == true) // 并且灯当前是开的
         {
             SILABS_LOG("当前LED由远程控制打开，单击事件优先关灯");
-            led_Set_status(false);
-            led_Set_brightness(0);
-            led_Set_change_origin(StateChangeOrigin::LOCAL_KEY); // 标记状态变化来源为本地按键
-            LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_KEY_TOTAL_MS);
+            led_set_status(false);
+            led_set_brightness(0);
+            led_set_change_origin(StateChangeOrigin::LOCAL_KEY); // 标记状态变化来源为本地按键
+            LED_Start_Fade_Color_Index(led_get_status(), led_get_brightness(), led_get_color_index(), LED_FADE_KEY_TOTAL_MS);
             break;
         }
         if (eg_BatStatus <= Bat_LowVolWarn)
@@ -300,41 +301,41 @@ void MyButtonActionHandler(AppEvent *aEvent)
         {
             break;
         }
-        if (led_Get_status() == false || led_Get_brightness() == 0)
+        if (led_get_status() == false || led_get_brightness() == 0)
         {
-            led_Set_status(true);
-            led_Set_brightness(LED_BRIGHTNESS_MAX); // 恢复到最大亮度
+            led_set_status(true);
+            led_set_brightness(LED_BRIGHTNESS_MAX); // 恢复到最大亮度
         }
-        else if (led_Get_status() == true && led_Get_brightness() == LED_BRIGHTNESS_MAX)
+        else if (led_get_status() == true && led_get_brightness() == LED_BRIGHTNESS_MAX)
         {
-            led_Set_brightness(LED_BRIGHTNESS_MAX >> 1); // 50% 亮度
+            led_set_brightness(LED_BRIGHTNESS_MAX >> 1); // 50% 亮度
         }
-        else if (led_Get_status() == true && led_Get_brightness() == (LED_BRIGHTNESS_MAX >> 1))
+        else if (led_get_status() == true && led_get_brightness() == (LED_BRIGHTNESS_MAX >> 1))
         {
-            led_Set_status(false);
-            led_Set_brightness(0);
+            led_set_status(false);
+            led_set_brightness(0);
         }
         else
         {
-            led_Set_status(false);
-            led_Set_brightness(0);
+            led_set_status(false);
+            led_set_brightness(0);
         }
         LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         // 标记状态变化来源为本地按键
-        led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);
+        led_set_change_origin(StateChangeOrigin::LOCAL_KEY);
         extern void Upload_Matter_OnOff(bool is_on);
         extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
-        Upload_Matter_OnOff(led_Get_status());          // 上报开关状态到 Matter 层
-        Upload_Matter_Brightness(led_Get_brightness()); // 上报亮度状态到 Matter 层
+        Upload_Matter_OnOff(led_get_status());          // 上报开关状态到 Matter 层
+        Upload_Matter_Brightness(led_get_brightness()); // 上报亮度状态到 Matter 层
 
-        SILABS_LOG("is_On=%d, brightness=%d", led_Get_status(), led_Get_brightness());
-        LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_KEY_TOTAL_MS);
+        SILABS_LOG("is_On=%d, brightness=%d", led_get_status(), led_get_brightness());
+        LED_Start_Fade_Color_Index(led_get_status(), led_get_brightness(), led_get_color_index(), LED_FADE_KEY_TOTAL_MS);
         break;
     }
     case AppButtonEvent::kButtonAction_DoublePress:
     {
         SILABS_LOG(" -> [业务确诊] 按键 %d : 双击触发！", button_idx);
-        if (led_Get_status() == false)
+        if (led_get_status() == false)
         {
             SILABS_LOG("当前LED熄灭！！！双击事件不执行任何操作");
             break;
@@ -351,21 +352,21 @@ void MyButtonActionHandler(AppEvent *aEvent)
             break;
         }
         // 这里写你的双击控制代码
-        uint8_t color_index = led_Get_color_index() + 1;
+        uint8_t color_index = led_get_color_index() + 1;
         if (color_index >= LED_COLOR_COUNT)
         {
             color_index = 0;
         }
         LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
-        led_Set_color_index(color_index);
+        led_set_color_index(color_index);
         // 标记状态变化来源为本地按键
-        led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);
+        led_set_change_origin(StateChangeOrigin::LOCAL_KEY);
         extern void Upload_Matter_OnOff(bool is_on);
         extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
-        Upload_Matter_OnOff(led_Get_status());          // 上报开关状态
-        Upload_Matter_Brightness(led_Get_brightness()); // 上报亮度状态
-        SILABS_LOG("color_index=%d", led_Get_color_index());
-        LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_COLOR_SWITCH_MS);
+        Upload_Matter_OnOff(led_get_status());          // 上报开关状态
+        Upload_Matter_Brightness(led_get_brightness()); // 上报亮度状态
+        SILABS_LOG("color_index=%d", led_get_color_index());
+        LED_Start_Fade_Color_Index(led_get_status(), led_get_brightness(), led_get_color_index(), LED_FADE_COLOR_SWITCH_MS);
         break;
     }
     case AppButtonEvent::kButtonAction_LongPressStart:

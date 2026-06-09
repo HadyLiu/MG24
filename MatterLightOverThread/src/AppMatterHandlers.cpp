@@ -29,6 +29,7 @@
 
 #include "../driver/led_wrgb.h"         // 引入 LED 驱动的头文件，获取 led_ctrl_t 定义和 LED_Start_Fade_RGBW 函数声明
 #include "../driver/led_mode_convert.h" // 引入 LED 模式转换的头文件，获取 MyCalculatedRGB 函数声明
+#include <app/clusters/identify-server/CodegenIntegration.h>
 
 using namespace chip;
 using namespace chip::DeviceLayer;
@@ -45,33 +46,33 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
     {
         if (aAction == LightingManager::ON_ACTION)
         {
-            led_Set_status(true);
+            led_set_status(true);
             // 防呆保护：如果历史记录的旧亮度太低或为0，默认恢复到 50% 或者是 100% 亮度，防止开灯不亮
-            if (led_Get_history_brightness() <= 1)
+            if (led_get_history_brightness() <= 1)
             {
-                led_Set_history_brightness(100); // 默认恢复到最大亮度
+                led_set_history_brightness(100); // 默认恢复到最大亮度
             }
-            led_Set_brightness(led_Get_history_brightness());
+            led_set_brightness(led_get_history_brightness());
         }
         else if (aAction == LightingManager::OFF_ACTION)
         {
-            led_Set_status(false);
+            led_set_status(false);
             // 只有当当前亮度大于 1 时，才值得记录为历史亮度
-            if (led_Get_brightness() >= 1)
+            if (led_get_brightness() >= 1)
             {
-                led_Set_history_brightness(led_Get_brightness());
+                led_set_history_brightness(led_get_brightness());
             }
-            led_Set_brightness(0); // 关灯逻辑
+            led_set_brightness(0); // 关灯逻辑
         }
         LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
-        SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", led_Get_status() ? "ON" : "OFF", led_Get_brightness());
+        SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", led_get_status() ? "ON" : "OFF", led_get_brightness());
 
         // 如果没有有效的色彩缓存，从当前色表中提出来恢复
-        custom_raw_color_safeguard(led_Get_color_index());
+        custom_raw_color_safeguard(led_get_color_index());
 
         // 🎯 核心修复点：明确地把全局同步更新后的状态和亮度塞入渐变控制器
-        led_Set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
-        LED_Start_Fade_RGBW(led_Get_status(), led_Get_brightness(), led_Get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
+        led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+        LED_Start_Fade_RGBW(led_get_status(), led_get_brightness(), led_get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
     }
     // 1. 判断是否是亮度
     if (aAction == LightingManager::LEVEL_ACTION) //&& g_led.is_on == true)
@@ -82,9 +83,9 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
             SILABS_LOG("====> [matter] 亮度: %d <====\n", brightness);
 
             uint16_t out_brightness = (uint16_t)(brightness * LED_BRIGHTNESS_MAX) >> 8; // 将 0-255 映射到 0-100
-            SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, led_Get_status() ? "ON" : "OFF");
-            led_Set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
-            LED_Start_Fade_RGBW(led_Get_status(), out_brightness, led_Get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
+            SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, led_get_status() ? "ON" : "OFF");
+            led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+            LED_Start_Fade_RGBW(led_get_status(), out_brightness, led_get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
             LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         }
     }
@@ -122,7 +123,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
         // 🎯 TODO: 在此调用你的 HSV 转 RGB 驱动
         // 示例：led_driver_set_hsv(hue, saturation);
         uint8_t r, g, b;
-        led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
         LedDriver_ConvertHsvToRgb(hue, saturation, 254, &r, &g, &b);    // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
         LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
         LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
@@ -144,7 +145,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
         // 🎯 TODO: 在此调用你的双色温驱动控制冷暖比例
         // 示例：main_light_control_set_ct(kelvin);
         uint8_t w, r, g, b;
-        led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
         Light_Calc_CT_To_WRGB(kelvin, &w, &r, &g, &b);                  // 计算出对应的 RGBW 基准值，实际应用中请替换为你的驱动函数
         LED_Start_Fade_RGBW_8bit(w, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 将计算出的 RGBW 值应用到硬件
         LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
@@ -160,7 +161,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
         // g_ex = out_ex; // 更新全局变量
         // g_ey = out_ey; // 更新全局变量
         uint8_t r, g, b;
-        led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
         Light_Calc_XY_To_RGB(out_ex, out_ey, &r, &g, &b);               // 计算并输出 RGB 值
         LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
         LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
@@ -280,23 +281,47 @@ void Upload_Matter_Brightness(uint8_t driver_brightness_percent)
     }
 }
 // ================= 3. 设备识别 (Identify) =================
-// 修正后的回调函数
-// void OnIdentifyStart(::Identify *identify)
-//{
-//    //
-//    SILABS_LOG("\r\n====> [设备识别] Identify Start Triggered! <====\r\n");
-//}
-//
-// void OnIdentifyStop(::Identify *identify)
-//{
-//    //
-//    SILABS_LOG("\r\n====> [设备识别] Identify Stop Triggered! <====\r\n");
-//}
 
-// 静态初始化结构体
-// static Identify gIdentify = {chip::EndpointId(1), OnIdentifyStart, OnIdentifyStop,
-//                            chip::app::Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
-// ================= 4. 配网成功通知 =================
+/**
+ * @brief 🎯 属于你自己的真正 Identify 开始回调函数
+ */
+void MyUserIdentifyStartHandler(Identify *identify)
+{
+    ChipLogProgress(Zcl, "====> [铁证闭环拦截] 收到网关指令：Identify 闪烁开始！ <====");
+    // 在这里写你的 LED 闪烁触发代码
+    extern void    LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
+    extern uint8_t led_get_brightness(void);
+    extern uint8_t led_get_color_index(void);
+    LED_SetBlink(led_get_brightness(), led_get_color_index(), 800, 2);
+}
+
+/**
+ * @brief 🎯 属于你自己的真正 Identify 结束回调函数
+ */
+void MyUserIdentifyStopHandler(Identify *identify)
+{
+    ChipLogProgress(Zcl, "====> [铁证闭环拦截] 收到网关指令：Identify 闪烁结束！ <====");
+
+    // 在这里写你的 LED 停止闪烁代码
+}
+
+/**
+ * @brief 在初始化函数（如 RegisterDeviceEventListener）中调用此函数即可
+ */
+void InitUserIdentifyCluster()
+{
+    // 2. 🔥 核心魔法：利用第 160/165 行的特性，直接静态实例化一个属于我们自己的处理器
+    // 它在构造时会自动执行 RegisterLegacyIdentify 并注入全局数据模型中！
+    static Identify sMyPrivateIdentify(1,                                                     // Endpoint 1
+                                       MyUserIdentifyStartHandler,                            // 你的开始函数
+                                       MyUserIdentifyStopHandler,                             // 你的结束函数
+                                       chip::app::Clusters::Identify::IdentifyTypeEnum::kNone // 默认识别类型
+    );
+
+    ChipLogProgress(Zcl, "====> [应用层处理器挂载成功] 应用层专属 Identify 实例已成功注入全局数据模型！");
+}
+
+//  ================= 4. 配网成功通知 =================
 static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
 {
     switch (event->Type)
@@ -326,8 +351,9 @@ void RegisterDeviceEventListener(void)
     // 注册 Matter 设备事件监听器，关注配网完成等关键事件
     PlatformMgr().AddEventHandler(OnMatterDeviceEvent, reinterpret_cast<intptr_t>(nullptr));
 
-    // 注册 Identify 事件回调，处理设备识别请求
-    //(void)gIdentify;
+    // 运行时强符号重写，确保我们的函数被挂载到系统默认实例上
+    InitUserIdentifyCluster();
+    SILABS_LOG("====> [Identify] 设备识别群集成功注册到 Endpoint 1 <====");
 }
 
 ///**

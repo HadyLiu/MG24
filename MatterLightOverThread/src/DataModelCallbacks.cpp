@@ -180,7 +180,15 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath &a
     {
         ChipLogProgress(Zcl, "Identify attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u", ChipLogValueMEI(attributeId), type, *value,
                         size);
+        // 1. 判断是 Identify Cluster 的事件
+        extern uint8_t g_Identify; // 声明外部全局变量，实际定义在 entry.cpp 中
+        g_Identify = 1;
+        ChipLogProgress(Zcl, "Identify 检测成功");
     }
+    extern uint8_t g_Identify;
+    g_Identify = clusterId;
+    ChipLogProgress(Zcl, "clusterId = " ChipLogFormatMEI " attributeId = " ChipLogFormatMEI, ChipLogValueMEI(clusterId),
+                    ChipLogValueMEI(attributeId));
 #ifdef SL_CATALOG_ZIGBEE_ZCL_FRAMEWORK_CORE_PRESENT
     MultiProtocolDataModel::WriteMatterAttributeValueToZigbee(endpointId, clusterId, attributeId, value, type);
 #endif // SL_CATALOG_ZIGBEE_ZCL_FRAMEWORK_CORE_PRESENT
