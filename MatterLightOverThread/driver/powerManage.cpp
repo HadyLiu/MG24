@@ -301,8 +301,8 @@ bool ChargeDetect(void)
     bool           status = false;
     static uint8_t IntervalTimer = 0;
     static uint8_t TestingSteps = 0;
-    // 400ms检测一次
-    if (++IntervalTimer >= 40)
+    // 200ms检测一次
+    if (++IntervalTimer >= 20)
     {
         IntervalTimer = 0;
         if (TestingSteps >= 2)
@@ -329,27 +329,7 @@ bool ChargeDetect(void)
             g_ADPowerInVal = get_powerin_adc_vol();
             TestingSteps = 0;
             status = true;
-            TestingSteps++;
         }
-
-        // /* Turn on charging ----------------------- */
-        // BoostEn();
-        // ChargePwmOff();
-        // ChargeSwitchOn();
-
-        // power in
-        // SetPowerInAnalog();
-        // SetAdcPowerInChannel();
-        //  g_ADPowerInVal = get_powerin_adc_vol();
-        // ClearPowerInAnalog();
-
-        // Temperature
-        // SetAdcTempChannel();
-        //  g_ADTemperature = get_temp_adc_vol();
-
-        // #ifdef USE_BATTERY_RESISTANCE
-        //         CalcBatRes();
-        // #endif
     }
     else
     {
@@ -446,7 +426,7 @@ void ChargeLogic(bool ReceptionStatus)
     }
 }
 
-void ChargeCurrentCtrlOut(unsigned char Status)
+void ChargeCurrentCtrlOut(unsigned char status)
 {
     if (eg_BatStatus == Bat_Nobat || eg_BatStatus == Bat_ChargeInit || eg_BatStatus == Bat_Detect || eg_BatStatus == Bat_InCharge)
     {
@@ -458,12 +438,14 @@ void ChargeCurrentCtrlOut(unsigned char Status)
             ChargeSwitchOn();
         }
 
-        if (Status == false)
+        if (status == false)
         {
+            // 快充
             ChargeRateEn();
         }
         else
         {
+            // 慢充
             ChargeRateDis();
         }
     }

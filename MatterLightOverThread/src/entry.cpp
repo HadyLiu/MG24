@@ -16,15 +16,16 @@
 #include "../driver/led_white_indic.h"
 #include "../driver/sm15135e.h"
 
-uint32_t g_time_clk = 0;
-uint32_t g_time_detect_bat = 0;
+uint32_t g_time_detect_bat = 0;              // 上次检测电池状态的时间戳，单位为10ms
 bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进行中
+bool     g_PowerProtect = false;             // 电池电量过低标志
 
 void write_led_example(void);
 void CheckTickResolution(void);
 void ResetMatterNetworkConfiguration(void);
 void check_interrupt_injection_status(uint8_t pin);
 void PowerSwitchAssignment(void);
+void change_led_Indic(uint8_t charge_status);
 
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
@@ -65,9 +66,12 @@ void entry_Init(void)
  */
 void entry_Loop(void)
 {
+    static uint32_t time_clk = 0; // 全局时钟计数器，单位为10ms，供整个应用程序使用
+#if 1
     static uint32_t tick = 0;
+#endif
     // 获取计时器的值
-    g_time_clk++;
+    time_clk++;
 
     // 获取电源状态
     GetExternPowerFlag();
@@ -81,14 +85,18 @@ void entry_Loop(void)
     if (eg_PowerStatus == false)
     {
         // 电池模式
-        if (g_time_clk - g_time_detect_bat > 100) // 1s 检测一次电池状态
+        if (time_clk - g_time_detect_bat > 100) // 1s 检测一次电池状态
         {
-            g_time_detect_bat = g_time_clk;
+            g_time_detect_bat = time_clk;
             GetDisChargeStatus();
             SILABS_LOG("Battery Status=%d", eg_BatStatus);
             extern unsigned int g_ADBatLowVal;
             SILABS_LOG("BatVol=%d mv", g_ADBatLowVal * 3);
             g_is_operation_in_progress = false;
+            if (eg_BatStatus == Bat_LowVolProt)
+            {
+                g_PowerProtect = true; // 设置电量过低保护标志，禁止所有操作
+            }
         }
         BatOutEn();
     }
@@ -97,16 +105,25 @@ void entry_Loop(void)
         // 外部供电模式
         ChargeTimeUpdata(); // 充电时间更新
         BatOutDis();
-        ChargeLogic(ChargeDetect());
+        ChargeLogic(ChargeDetect());            // 400ms 充电逻辑处理一次，根据充电检测结果调整充电状态
         ChargeCurrentCtrlOut(led_Get_status()); // 根据 LED 状态调整充电电流，控制充电速度
-        Indic_W_Breath_Poll_10ms();
-        Indic_Red_Blink_Poll_10ms();
+        change_led_Indic(eg_BatStatus);         // 根据电池状态调整指示灯显示
     }
-    if (g_time_clk - tick > 200)
+    LED_SetLowBatteryProtection(g_PowerProtect); // 根据电量过低保护标志设置 LED 的保护状态，物理上锁定或解锁 LED 输出
+    Indic_W_Breath_Poll_10ms();
+    Indic_Red_Blink_Control_Dispatch();
+    Indic_Red_Blink_Poll_10ms();
+
+#if 1
+    if (time_clk - tick > 200)
     {
-        tick = g_time_clk;
+        tick = time_clk;
         SILABS_LOG("tick=%d", tick);
-        SILABS_LOG("Battery Status=%d", eg_BatStatus);
+        extern uint16_t g_ChargeTimeSec;
+        extern uint16_t g_ADTemperature;
+        SILABS_LOG("bat Temperature=%d", g_ADTemperature);
+        SILABS_LOG("charge time=%d", g_ChargeTimeSec);
+        SILABS_LOG("bat status=%d", eg_BatStatus);
 
         //  check_interrupt_injection_status(5);
         //   CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
@@ -117,6 +134,7 @@ void entry_Loop(void)
 
         // write_led_example();
     }
+#endif
 }
 
 /**
@@ -135,14 +153,40 @@ void PowerSwitchAssignment(void)
         {
             eg_BatStatus = Bat_DisCharge;
         }
-        PowerManageInit();     // 电源管理初始化
-        Indic_W_Breath_Stop(); // 切换电源时停止独立指示白色呼吸灯，避免状态混乱
+        g_PowerProtect = false;                       // 切换电源时重置电量过低保护标志，允许正常操作
+        PowerManageInit();                            // 电源管理初始化
+        Indic_W_Breath_Stop();                        // 切换电源时停止独立指示白色呼吸灯，避免状态混乱
+        Indic_Red_Blink_Normal_Flag_Set(false, NULL); // 切换电源时关闭红色错误闪烁，等待新的状态更新来决定是否需要开启
 
         // IndicInit();       // 指示灯初始化
         // led初始化
         // eg_ledData.CloseProtection = false;
         // eg_ledData.HistoryProtection = false;
         // eg_ledData.Protection = false;
+    }
+}
+
+void change_led_Indic(uint8_t charge_status)
+{
+    static uint8_t s_status = 0xFF;
+
+    while (charge_status != s_status)
+    {
+        s_status = charge_status;
+        if (s_status == Bat_InCharge)
+        {
+            Indic_W_Breath_Start(100);                    // 充满电后呼吸提示，亮度 100%，颜色索引 0，周期 3200ms，持续呼吸
+            Indic_Red_Blink_Normal_Flag_Set(false, NULL); // 关闭红色错误闪烁
+            break;
+        }
+
+        Indic_W_Breath_Stop(); // 其他状态停止呼吸提示
+        if (s_status == Bat_Nobat || s_status == Bat_HighTemp)
+        {
+            blink_normal_cfg_t s_normal_cfg = {400, 0};           // 默认值：400ms 持续闪烁
+            Indic_Red_Blink_Normal_Flag_Set(true, &s_normal_cfg); // 无电池状态，红色正常闪烁提示
+            break;
+        }
     }
 }
 
@@ -161,8 +205,12 @@ void ResetMatterNetworkLightingEffects(void)
     }; // 最后一个 NONE 代表特效序列结束
 
     memcpy(g_mixed_effects, MixedLightingEffects_Start_Example, sizeof(MixedLightingEffects_Start_Example));
+
     // 启动混合特效
     Led_MixedLightingEffects_Start(MixedLightingEffectsCount, true, 100, 2);
+    // 红色指示灯闪烁
+    blink_mixed_cfg_t s_mixed_cfg = {800, 3, 2400, 1};
+    Indic_Red_Blink_Mixed_Flag_Set(true, &s_mixed_cfg); // 启动混合双速闪烁
 
     // Your reset logic here
     SILABS_LOG("开启配网等效的灯效提示...");
@@ -242,6 +290,17 @@ void MyButtonActionHandler(AppEvent *aEvent)
             LED_Start_Fade_Color_Index(led_Get_status(), led_Get_brightness(), led_Get_color_index(), LED_FADE_KEY_TOTAL_MS);
             break;
         }
+        if (eg_BatStatus <= Bat_LowVolWarn)
+        {
+            SILABS_LOG("当前电池电量过低，红色闪烁提示");
+            blink_normal_cfg_t s_normal_cfg = {400, 2};           // 默认值
+            Indic_Red_Blink_Normal_Flag_Set(true, &s_normal_cfg); // 红色正常闪烁提示
+        }
+        if (g_PowerProtect == true) // 额外的电量过低保护逻辑，防止在电池电量过低时误操作导致设备无法正常使用
+        {
+            break;
+        }
+        SILABS_LOG("当前电池电量过低，单击事件不执行任何操作");
         if (led_Get_status() == false || led_Get_brightness() == 0)
         {
             led_Set_status(true);
@@ -261,6 +320,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
             led_Set_status(false);
             led_Set_brightness(0);
         }
+
         // 标记状态变化来源为本地按键
         led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);
         extern void Upload_Matter_OnOff(bool is_on);
@@ -278,6 +338,17 @@ void MyButtonActionHandler(AppEvent *aEvent)
         if (led_Get_status() == false)
         {
             SILABS_LOG("当前LED熄灭！！！双击事件不执行任何操作");
+            break;
+        }
+        if (eg_BatStatus <= Bat_LowVolWarn)
+        {
+            SILABS_LOG("当前电池电量过低，红色闪烁提示");
+            blink_normal_cfg_t s_normal_cfg = {400, 2};           // 默认值
+            Indic_Red_Blink_Normal_Flag_Set(true, &s_normal_cfg); // 红色正常闪烁提示
+        }
+        if (g_PowerProtect == true)
+        {
+            SILABS_LOG("当前LED处于保护状态！！！双击事件不执行任何操作");
             break;
         }
         // 这里写你的双击控制代码
@@ -304,6 +375,10 @@ void MyButtonActionHandler(AppEvent *aEvent)
     }
     case AppButtonEvent::kButtonAction_LongPressing:
     {
+        if (g_PowerProtect) // 额外的电量过低保护逻辑，防止在电池电量过低时误操作导致设备无法正常使用
+        {
+            break;
+        }
         if (long_press_count == 25) // 5000/200=25 代表每200ms触发一次长按事件
         {
             // 开启配网灯效
@@ -320,6 +395,10 @@ void MyButtonActionHandler(AppEvent *aEvent)
     }
     case AppButtonEvent::kButtonAction_LongPressRelease:
     {
+        if (g_PowerProtect) // 额外的电量过低保护逻辑，防止在电池电量过低时误操作导致设备无法正常使用
+        {
+            break;
+        }
         // 长按时间不足过程不重置配网，但未达到放弃配网的条件
         if (save_history_long_press_count >= 25 && save_history_long_press_count < 50)
         {

@@ -58,10 +58,11 @@ enum class StateChangeOrigin : uint8_t
 
 typedef struct
 {
-    bool    is_on;              // 当前逻辑开关状态
-    uint8_t brightness;         // 记忆亮度 0~100，默认100
-    uint8_t history_brightness; // 历史亮度，用于短按时的亮度切换逻辑
-    uint8_t color_index;        // 0~12，默认0
+    bool    low_battery_protected; // 低电量保护状态
+    bool    is_on;                 // 当前逻辑开关状态
+    uint8_t brightness;            // 记忆亮度 0~100，默认100
+    uint8_t history_brightness;    // 历史亮度，用于短按时的亮度切换逻辑
+    uint8_t color_index;           // 0~12，默认0
 
     // 若被 Matter/App 外部开灯，则下次短按优先关灯
     // 🎯 核心修改：用枚举替代原有的 bool key_next_off;
@@ -139,14 +140,15 @@ void LED_LoadState(uint8_t *brightness, uint8_t *color_index, bool *is_on);
 void LED_SaveState(uint8_t brightness, uint8_t color_index, bool is_on);
 
 /* 底层唯一输出接口：用户实现 */
-void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
-void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms);
-void LED_Start_Fade_RGBW_8bit(uint8_t W, uint8_t R, uint8_t G, uint8_t B, uint16_t fade_ms);
-void LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms);
-void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
-void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count);
-void LED_SetHold(bool is_on, uint8_t brightness, uint8_t color_index, uint16_t fade_ms);
-void LED_StopEffect(void);
+void    LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
+uint8_t LED_SetLowBatteryProtection(bool protect);
+void    LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms);
+void    LED_Start_Fade_RGBW_8bit(uint8_t W, uint8_t R, uint8_t G, uint8_t B, uint16_t fade_ms);
+void    LED_Start_Fade_RGBW(bool is_on, uint8_t brightness_percent, led_color_t custom_raw, uint16_t fade_ms);
+void    LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
+void    LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count);
+void    LED_SetHold(bool is_on, uint8_t brightness, uint8_t color_index, uint16_t fade_ms);
+void    LED_StopEffect(void);
 
 void Led_MixedLightingEffects_Start(uint8_t effect_end, bool is_on, uint8_t brightness, uint8_t color_index);
 void LED_StopMixedEffects(bool is_on, uint8_t brightness, uint8_t color_index);

@@ -200,6 +200,12 @@ static led_color_t led_calc_target_from_logic_struct(bool is_on, uint8_t brightn
  */
 void LED_Start_Fade_Color_Index(bool is_on, uint8_t brightness_percent, uint8_t color_index, uint16_t fade_ms)
 {
+    //
+    if (g_led.low_battery_protected)
+    {
+        return;
+    }
+
     g_led.effect_mode = LED_EFFECT_NONE;
     brightness_percent = led_clamp_u8(brightness_percent, 0, 100);
     color_index = led_clamp_u8(color_index, 0, LED_COLOR_COUNT - 1);
@@ -347,6 +353,12 @@ static void get_breath_effect_params_optimized(uint16_t breath_tick, uint16_t *r
  */
 void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count)
 {
+    // 🎯 拦截点：没电时拒绝进入闪烁特效
+    if (g_led.low_battery_protected)
+    {
+        return;
+    }
+
     if (period_ms < 20)
     {
         period_ms = 20;
@@ -369,6 +381,12 @@ void LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, u
  */
 void LED_SetBreath(uint8_t brightness, uint8_t color_index, uint16_t count)
 {
+    // 🎯 拦截点：没电时拒绝进入呼吸特效
+    if (g_led.low_battery_protected)
+    {
+        return;
+    }
+
     // 强制锁死周期为设计图要求的 3200ms
     // 如果你要支持变长周期，由于查表是按 10ms 步长，必须固定 3200ms 才能完美对齐 81 点的表格
     g_led.effect_period_ms = 3200;
@@ -491,6 +509,11 @@ static void led_execute_mixed_index(uint8_t index)
 
 void Led_MixedLightingEffects_Start(uint8_t effect_end, bool is_on, uint8_t brightness, uint8_t color_index)
 {
+    // 电池没电了，保护状态，不允许启动特效
+    if (g_led.low_battery_protected)
+    {
+        return;
+    }
     if (effect_end == 0 || effect_end > 5)
     {
         return;
@@ -578,15 +601,81 @@ void LED_Init(void)
     // led_apply_output_struct(target_color);
     LED_Start_Fade_Color_Index(is_on, brightness, color_index, LED_FADE_COLOR_SWITCH_MS); // 上电时使用渐变效果切到目标状态
 }
+
+/**
+ * @brief 设置电池低电量保护状态 返回值说明：用于数据上报
+ * @param protect true: 进入低电量保护（强行关灯，锁定输出）；false: 解除保护
+ * @return 0: 状态未改变；1: 进入保护；2: 解除保护并恢复到自定义 RGBW 颜色；3: 解除保护但保持全灭（原本就是关灯状态）
+ */
+uint8_t LED_SetLowBatteryProtection(bool protect)
+{
+    // 如果状态没有发生改变，直接返回，避免重复触发
+    if (g_led.low_battery_protected == protect)
+    {
+        return 0; // 状态未改变，无需操作
+    }
+
+    g_led.low_battery_protected = protect;
+
+    if (g_led.low_battery_protected)
+    {
+        // 🔒 1. 拦截并关闭当前正在运行的特殊特效和渐变状态机
+        g_led.effect_mode = LED_EFFECT_NONE;
+        g_led.fading = false;
+
+        // 🔒 2. 强行将物理硬件输出清零（物理灭灯），但绝不修改 g_led 中的业务记忆数据
+        led_color_t dark_color = {0, 0, 0, 0};
+        g_led.cur_color = dark_color; // 同时更新驱动记录的当前颜色
+        LED_HW_SetWRGB(0, 0, 0, 0);
+
+        // SILABS_LOG("====> [LED] Battery low! Hardware output locked to zero. <====\n");
+    }
+    else
+    {
+        // 🔓 3. 解除保护：如果原本记忆状态是开灯的，则执行平滑淡入
+        if (g_led.is_on)
+        {
+            // 🎯 核心修正：强制让渐变的起点为全黑 0，确保硬件从暗到亮平滑渐变
+            g_led.cur_color = (led_color_t){0, 0, 0, 0};
+            g_led.start_color = (led_color_t){0, 0, 0, 0};
+
+            if (g_led.color_source == LED_SOURCE_CUSTOM_RGBW)
+            {
+                // 恢复自定义 RGBW 颜色及目标亮度
+                LED_Start_Fade_RGBW(g_led.is_on, g_led.brightness, g_led.custom_raw, LED_FADE_COLOR_SWITCH_MS);
+                return 1;
+            }
+            else
+            {
+                // 恢复索引表色温/颜色及目标亮度
+                LED_Start_Fade_Color_Index(g_led.is_on, g_led.brightness, g_led.color_index, LED_FADE_COLOR_SWITCH_MS);
+                return 2;
+            }
+        }
+        else
+        {
+            // 如果原本就是关灯状态，解除保护时保持全灭即可
+            g_led.cur_color = (led_color_t){0, 0, 0, 0};
+            LED_HW_SetWRGB(0, 0, 0, 0);
+            return 3;
+        }
+    }
+}
+
 /**
  * @brief LED状态机服务函数，建议每10ms调用一次
  */
 void LED_Tick10ms(void)
 {
-    // led_change 标志用于指示本次 Tick 是否计算出了新的颜色值需要应用到硬件，避免不必要的重复输出
-    bool led_change = false;
+    bool led_change = false; // led_change 标志用于指示本次 Tick 是否计算出了新的颜色值需要应用到硬件，避免不必要的重复输出
+
     do
     {
+        // 🎯 核心防呆拦截：低电量保护下，挂起状态机，不计算、不输出任何常规颜色
+        if (g_led.low_battery_protected)
+        {
+            break;
+        }
         // -----------------------------------------------------------------
         // 特效灯效状态机
         // -----------------------------------------------------------------

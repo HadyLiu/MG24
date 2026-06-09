@@ -114,11 +114,11 @@ void charge_speed_set(bool fast)
     sl_gpio_t gpio = {.port = CHARGE_SPEED_PORT, .pin = CHARGE_SPEED_PIN};
     if (fast)
     {
-        sl_gpio_clear_pin(&gpio); // 快充：拉低引脚
+        sl_gpio_set_pin(&gpio);
     }
     else
     {
-        sl_gpio_set_pin(&gpio); // 慢充：拉高引脚
+        sl_gpio_clear_pin(&gpio);
     }
 }
 
