@@ -1,6 +1,8 @@
 #pragma once
 
 #include "AppConfig.h"
+#include <cstring> // 🎯 修复1：引入 string 库，解决 'memcmp' was not declared 错误
+#include "nvm3.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "time.h"
@@ -16,6 +18,21 @@
 #define LED_BRIGHTNESS_MAX 100
 #define LED_HW_MAX         1023
 #define LED_COLOR_COUNT    13
+
+#define NVM3_KEY_LIGHT_MEMORY_DATA 0x00011 // 🎯 选在 0x00000-0x0FFFF 用户安全区，绝对不与 Matter 冲突
+
+// 专门用于断电记忆的结构体（紧凑对齐）
+typedef struct
+{
+    bool     is_on;        // 开关状态
+    uint8_t  brightness;   // 亮度 (0~100)
+    uint8_t  color_index;  // 颜色索引表 ID (0~12)
+    uint8_t  color_source; // 色彩来源 (索引表还是自定义：led_color_source_t)
+    uint16_t custom_w;     // 备份的自定义 WRGB 原始值
+    uint16_t custom_r;
+    uint16_t custom_g;
+    uint16_t custom_b;
+} __attribute__((packed)) light_flash_memory_t;
 
 typedef struct
 {
@@ -136,8 +153,7 @@ void               led_Set_custom_raw(led_color_t raw);
 void custom_raw_color_safeguard(uint8_t color_index);
 
 /* 持久化加载/保存接口（需用户实现或自行替换） */
-void LED_LoadState(uint8_t *brightness, uint8_t *color_index, bool *is_on);
-void LED_SaveState(uint8_t brightness, uint8_t color_index, bool is_on);
+void LED_SaveStateToFlash(void);
 
 /* 底层唯一输出接口：用户实现 */
 void    LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b);

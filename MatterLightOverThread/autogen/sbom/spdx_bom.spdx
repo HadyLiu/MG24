@@ -13,7 +13,7 @@ DocumentNamespace: https://silabs.com
 
 ## Creation Information
 Creator: Organization: Silicon Laboratories, Inc.
-Created: 2026-06-05T10:36:42Z
+Created: 2026-06-09T07:23:41Z
 ## Relationships
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-silabs.matter-2.8.1
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-silabs.simplicity_sdk-2025.12.2
@@ -1360,6 +1360,9 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.si
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_main_process_action
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-gpio
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common
 
 ## Package Information
 PackageName: EFR32MG24B010F1536IM40
@@ -3779,3 +3782,36 @@ PackageSupplier: Organization: Silicon Laboratories, Inc.
 PackageLicenseConcluded: Zlib
 ## Relationships
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: NVM3 Service for TrustZone Secure Key Library
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Zlib
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3 CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: tz_service_config
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Zlib
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+
+## Package Information
+PackageName: NVM3 and ITS service helper component for TrustZone secure library
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common
+PackageVersion: 2025.12.2
+PrimaryPackagePurpose: LIBRARY
+PackageDownloadLocation: NOASSERTION
+PackageSupplier: Organization: Silicon Laboratories, Inc.
+PackageLicenseConcluded: Zlib
+## Relationships
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2

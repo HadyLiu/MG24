@@ -3,7 +3,7 @@
   "specVersion" : "1.6",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-06-05T10:36:42Z",
+    "timestamp" : "2026-06-09T07:23:41Z",
     "authors" : [ {
       "name" : "Silicon Laboratories, Inc."
     } ],
@@ -3811,6 +3811,42 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:simple_led",
       "name" : "Simple LED",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_nvm3",
+      "name" : "NVM3 Service for TrustZone Secure Key Library",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_config",
+      "name" : "tz_service_config",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_nvm3_common",
+      "name" : "NVM3 and ITS service helper component for TrustZone secure library",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."

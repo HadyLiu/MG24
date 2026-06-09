@@ -51,10 +51,10 @@ void entry_Init(void)
 
     // LED_SetBlink(50, 6, 800, 3); // 上电后闪烁提示，亮度 50%，颜色索引 3，周期 800ms，闪烁 3 次
 
-    LED_SetBreath(65, 6, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
+    // LED_SetBreath(65, 6, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
     // ResetMatterNetworkConfiguration(); // 初始化配网状态，设置好默认的灯效序列
 
-    Indic_W_Breath_Start(100); // 启动独立的白光呼吸灯，亮度 100%
+    /// Indic_W_Breath_Start(100); // 启动独立的白光呼吸灯，亮度 100%
 
     // Indic_Red_Blink_Start(400, 3);
 
@@ -300,7 +300,6 @@ void MyButtonActionHandler(AppEvent *aEvent)
         {
             break;
         }
-        SILABS_LOG("当前电池电量过低，单击事件不执行任何操作");
         if (led_Get_status() == false || led_Get_brightness() == 0)
         {
             led_Set_status(true);
@@ -320,7 +319,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
             led_Set_status(false);
             led_Set_brightness(0);
         }
-
+        LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         // 标记状态变化来源为本地按键
         led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);
         extern void Upload_Matter_OnOff(bool is_on);
@@ -357,6 +356,7 @@ void MyButtonActionHandler(AppEvent *aEvent)
         {
             color_index = 0;
         }
+        LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         led_Set_color_index(color_index);
         // 标记状态变化来源为本地按键
         led_Set_change_origin(StateChangeOrigin::LOCAL_KEY);

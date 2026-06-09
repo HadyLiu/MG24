@@ -63,7 +63,7 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
             }
             led_Set_brightness(0); // 关灯逻辑
         }
-
+        LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", led_Get_status() ? "ON" : "OFF", led_Get_brightness());
 
         // 如果没有有效的色彩缓存，从当前色表中提出来恢复
@@ -85,6 +85,7 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
             SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, led_Get_status() ? "ON" : "OFF");
             led_Set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
             LED_Start_Fade_RGBW(led_Get_status(), out_brightness, led_Get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
+            LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         }
     }
 }
@@ -124,6 +125,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
         led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
         LedDriver_ConvertHsvToRgb(hue, saturation, 254, &r, &g, &b);    // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
         LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
+        LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         break;
     }
 
@@ -145,6 +147,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
         led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
         Light_Calc_CT_To_WRGB(kelvin, &w, &r, &g, &b);                  // 计算出对应的 RGBW 基准值，实际应用中请替换为你的驱动函数
         LED_Start_Fade_RGBW_8bit(w, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 将计算出的 RGBW 值应用到硬件
+        LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         break;
     }
 
@@ -160,6 +163,7 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
         led_Set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
         Light_Calc_XY_To_RGB(out_ex, out_ey, &r, &g, &b);               // 计算并输出 RGB 值
         LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
+        LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         break;
     }
 

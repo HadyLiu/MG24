@@ -187,6 +187,9 @@ component:
   - rgb_data
   vendor: silabs
   id: spidrv_eusart
+- package: simplicity_sdk
+  vendor: silabs
+  id: tz_service_nvm3
 other_file:
 - path: qr_code_img.png
 define:
