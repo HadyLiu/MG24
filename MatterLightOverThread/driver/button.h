@@ -1,7 +1,10 @@
 #pragma once
 
 #include <stdint.h>
-#include "AppEvent.h" // 必须引入原厂头文件，用于对齐原厂函数指针定义
+#include "cmsis_os2.h"
+#include "AppTask.h"
+#include "AppConfig.h"
+#include "AppEvent.h"
 
 /**
  * @brief 自定义按键事件结构体（严格保持原厂强转架构与内存对齐）

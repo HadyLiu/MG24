@@ -54,10 +54,6 @@
 
 // 1. 定义我们自己的应用程序
 #include "AppMatterHandlers.h"
-#include "../app/my_app.h"
-
-#include "../driver/button.h"
-#include "../driver/pinManage.h"
 
 #ifdef SL_CATALOG_SIMPLE_LED_LED1_PRESENT
 #define LIGHT_LED 1
@@ -102,6 +98,8 @@ CHIP_ERROR AppTask::AppInit()
     // 将自定义按键中断回调函数注册到芯片平台，以便在按键事件发生时能够正确地触发我们的状态机逻辑
     extern void inject_btn0_double_edge_interrupt_ext(void);
     inject_btn0_double_edge_interrupt_ext();
+
+    extern void MyCustomButtonInterruptHandler(uint8_t button, uint8_t action);
     chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(MyCustomButtonInterruptHandler);
     // SILABS_LOG("Custom button interrupt handler registered");
     // chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(AppTask::ButtonEventHandler);
@@ -149,7 +147,8 @@ void AppTask::AppTaskMain(void *pvParameter)
     AppEvent           event;
     osMessageQueueId_t sAppEventQueue = *(static_cast<osMessageQueueId_t *>(pvParameter));
 
-    my_custom_init_app_process();
+    extern void entry_Init(void);
+    entry_Init();
     // Initialization that needs to happen before the BaseInit is called here as the BaseApplication::Init() will call
     // the AppInit() after BaseInit.
 
@@ -192,8 +191,9 @@ void AppTask::AppTaskMain(void *pvParameter)
             sAppTask.DispatchEvent(&event);
             eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, 0);
         }
-        // 每隔10ms执行一次my_custom_loop_app_process()，你可以在这个函数中添加你自己的代码
-        my_custom_loop_app_process();
+        // 每隔10ms执行一次entry_Loop()，你可以在这个函数中添加你自己的代码
+        extern void entry_Loop(void);
+        entry_Loop();
     }
 }
 

@@ -121,31 +121,6 @@ void PowerManageInit(void)
 }
 
 /**
- * @brief 📬 电源切换函数，根据当前电源状态进行相应的初始化和状态更新
- */
-void PowerSwitchAssignment(void)
-{
-    if (eg_PowerStatus != eg_UpPowerStatus)
-    {
-        eg_PowerStatus = eg_UpPowerStatus;
-        if (eg_PowerStatus == true) // 外部供电状态
-        {
-            eg_BatStatus = Bat_ChargeInit;
-        }
-        else // 电池供电状态
-        {
-            eg_BatStatus = Bat_DisCharge;
-        }
-        PowerManageInit(); // 电源管理初始化
-        // IndicInit();       // 指示灯初始化
-        // led初始化
-        // eg_ledData.CloseProtection = false;
-        // eg_ledData.HistoryProtection = false;
-        // eg_ledData.Protection = false;
-    }
-}
-
-/**
  * @brief 📬 获取放电时电池状态
  */
 void GetDisChargeStatus(void)

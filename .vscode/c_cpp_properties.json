@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "EFR32MG24-Matter",
+            "includePath": [
+                "${workspaceRoot}/**"
+            ],
+            // 3. 全局宏定义（让 IntelliSense 识别特定芯片平台和 Matter 配置）
+            "defines": [
+                "CHIP_HAVE_CONFIG_H=1",
+                "EFR32MG24B210F1536IM48=1", // 根据你具体的芯片型号修改
+                "SILABS_BOARD_DEFAULT=1",
+                "SL_MATTER_RGB_LED_ENABLED=1",
+                "ARM_MATH_CM4=1",
+                "__GNUC__",
+                "__mixed_endian_select__"
+            ],
+            // 4. 交叉编译器路径（关键：让 VS Code 自动解析 GCC 的系统头文件）
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-arm"
+        }
+    ],
+    "version": 4
+}

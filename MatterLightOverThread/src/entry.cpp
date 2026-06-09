@@ -1,11 +1,20 @@
-#include "my_app.h"
-
 #include "sl_udelay.h"
 #include "AppTask.h"
 #include "AppConfig.h"
 #include "AppEvent.h"
 
-#include "../include/AppMatterHandlers.h"
+#include "AppMatterHandlers.h"
+
+// 引入驱动层的头文件
+#include "../driver/button.h"
+#include "../driver/led_pwm_port.h"
+#include "../driver/led_wrgb.h"
+#include "../driver/pinManage.h"
+#include "../driver/powerManage.h"
+#include "../driver/iadc_driver.h"
+#include "../driver/led_red_indic.h"
+#include "../driver/led_white_indic.h"
+#include "../driver/sm15135e.h"
 
 uint32_t g_time_clk = 0;
 uint32_t g_time_detect_bat = 0;
@@ -14,12 +23,13 @@ bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进�
 void write_led_example(void);
 void CheckTickResolution(void);
 void ResetMatterNetworkConfiguration(void);
-
 void check_interrupt_injection_status(uint8_t pin);
+void PowerSwitchAssignment(void);
+
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
  */
-void my_custom_init_app_process(void)
+void entry_Init(void)
 {
     // Your initialization code here
     SILABS_LOG("[app]run start");
@@ -50,12 +60,10 @@ void my_custom_init_app_process(void)
     // Indic_Red_Mixed_Blink_Start(400, 5, 2400, 3);
 }
 
-uint16_t g_ex, g_ey;
-
 /**
  * @brief 📬 主循环阶段：在这里处理所有的业务逻辑，包括电源管理、按键处理等
  */
-void my_custom_loop_app_process(void)
+void entry_Loop(void)
 {
     static uint32_t tick = 0;
     // 获取计时器的值
@@ -99,7 +107,7 @@ void my_custom_loop_app_process(void)
         tick = g_time_clk;
         SILABS_LOG("tick=%d", tick);
         SILABS_LOG("Battery Status=%d", eg_BatStatus);
-        // SILABS_LOG("g_ex=%d, g_ey=%d", g_ex, g_ey);
+
         //  check_interrupt_injection_status(5);
         //   CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
         //  my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
@@ -108,6 +116,33 @@ void my_custom_loop_app_process(void)
         //  sl_pwm_start(&sl_pwm_Indic_led0);
 
         // write_led_example();
+    }
+}
+
+/**
+ * @brief 📬 电源切换函数，根据当前电源状态进行相应的初始化和状态更新
+ */
+void PowerSwitchAssignment(void)
+{
+    if (eg_PowerStatus != eg_UpPowerStatus)
+    {
+        eg_PowerStatus = eg_UpPowerStatus;
+        if (eg_PowerStatus == true) // 外部供电状态
+        {
+            eg_BatStatus = Bat_ChargeInit;
+        }
+        else // 电池供电状态
+        {
+            eg_BatStatus = Bat_DisCharge;
+        }
+        PowerManageInit();     // 电源管理初始化
+        Indic_W_Breath_Stop(); // 切换电源时停止独立指示白色呼吸灯，避免状态混乱
+
+        // IndicInit();       // 指示灯初始化
+        // led初始化
+        // eg_ledData.CloseProtection = false;
+        // eg_ledData.HistoryProtection = false;
+        // eg_ledData.Protection = false;
     }
 }
 

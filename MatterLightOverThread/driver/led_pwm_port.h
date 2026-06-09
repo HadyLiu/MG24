@@ -1,8 +1,12 @@
 #pragma once
 
-#include "sl_pwm.h"
 #include "sl_pwm_instances.h"
-#include <stdint.h>
+#include "sl_pwm.h"
+#if defined(_SILICON_LABS_32B_SERIES_2)
+#include "em_timer.h"
+#else
+#include "sl_hal_timer.h"
+#endif
 
 #include "sm15135e.h"
 

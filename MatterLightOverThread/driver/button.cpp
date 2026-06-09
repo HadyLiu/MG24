@@ -1,8 +1,4 @@
-#include "../app/my_app.h"
-#include "cmsis_os2.h"
-#include "AppTask.h"
-#include "AppConfig.h"
-#include "AppEvent.h"
+#include "button.h"
 
 // ==================== ⏱️ 按键参数自定义配置区 ====================
 #define BTN_SCAN_PERIOD_MS  50  // 定时器基准周期 (单位：毫秒)

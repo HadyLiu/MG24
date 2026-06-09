@@ -14,26 +14,24 @@ include(MatterLightOverThread.cmake)
 
 add_executable(MatterLightOverThread
     # Add additional sources here 
-    
-    ${CMAKE_CURRENT_SOURCE_DIR}/../app/my_app.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/AppMatterHandlers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/entry.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/button.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_mode_convert.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_pwm_port.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_driver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_red_indic.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_white_indic.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_wrgb.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/pinManage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/powerManage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/main_light_control.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/ledModeConvert.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/indicLed.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/swimHost.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/bit_utils.cpp
-    
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/AppMatterHandlers.cpp
 )
 
 

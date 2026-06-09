@@ -1,4 +1,4 @@
-#include "ledModeConvert.h"
+#include "led_mode_convert.h"
 /**
  * @brief  智能照明专用：HSV 转 RGB（输入范围 0-254/255）
  * @param  h: 色调 (0 ~ 254) -> 对应 0~360度
@@ -123,100 +123,23 @@ void Light_Calc_CT_To_WRGB(uint32_t kelvin, uint8_t *out_w, uint8_t *out_r, uint
     *out_b = (uint8_t)((b_factor * PWM_MAX_255) >> 10);
 
     // 4. 严谨性限幅保护
-    if (*out_w > PWM_MAX_255)
+    if (*out_w >= PWM_MAX_255)
+    {
         *out_w = PWM_MAX_255;
-    if (*out_r > PWM_MAX_255)
+    }
+    if (*out_r >= PWM_MAX_255)
+    {
         *out_r = PWM_MAX_255;
-    if (*out_g > PWM_MAX_255)
+    }
+    if (*out_g >= PWM_MAX_255)
+    {
         *out_g = PWM_MAX_255;
-    if (*out_b > PWM_MAX_255)
+    }
+    if (*out_b >= PWM_MAX_255)
+    {
         *out_b = PWM_MAX_255;
+    }
 }
-
-// void MyCalculatedRGB(uint16_t chipX, uint16_t chipY, uint8_t *outR, uint8_t *outG, uint8_t *outB)
-//{
-//     // 1. 还原为标准的 0.0 ~ 1.0 的 CIE 坐标
-//     float x = (float)chipX / 65536.0f;
-//     float y = (float)chipY / 65536.0f;
-//     float z = 1.0f - x - y;
-//
-//     // 2. 这里的 Y 顺应亮度，暂设为 1.0 满亮度
-//     float Y = 1.0f;
-//     float X = (y > 0) ? (x * Y) / y : 0;
-//     float Z = (y > 0) ? (z * Y) / y : 0;
-//
-//     // 3. 使用标准的 sRGB 逆转换矩阵（无视官方指示灯色域）
-//     float r = 3.2406f * X - 1.5372f * Y - 0.4986f * Z;
-//     float g = -0.9689f * X + 1.8758f * Y + 0.0415f * Z;
-//     float b = 0.0557f * X - 0.2040f * Y + 1.0570f * Z;
-//
-//     // 4. 约束并放大到 0-255 硬件空间
-//     int R = (r < 0) ? 0 : ((r > 1) ? 255 : (int)(r * 255));
-//     int G = (g < 0) ? 0 : ((g > 1) ? 255 : (int)(g * 255));
-//     int B = (b < 0) ? 0 : ((b > 1) ? 255 : (int)(b * 255));
-// }
-
-static float GammaCorrect(float v)
-{
-    // 限幅保护，防止 powf 处理负数或越界产生 NaN
-    if (v < 0.0f)
-        return 0.0f;
-    if (v > 1.0f)
-        return 1.0f;
-
-    // 采用符合 LED 物理光强和人眼视觉曲线的标准照明 Gamma 2.2 公式
-    // 能够完美匹配 SM15135E 调光线性度，且让色温补偿混光时高低亮度完全一致
-    // 使用高精度多项式拟合曲线，完美替代 powf(v, 2.2f)，且全靠乘法，速度提升数倍
-    return v * v * (0.467f + 0.533f * v);
-}
-
-///**
-// * @brief  CIE 1931 XY 坐标转换为 RGB
-// * @param  currentX: 传入的 X 坐标 (0 ~ 65527, 对应 0.0 ~ 1.0)
-// * @param  currentY: 传入的 Y 坐标 (0 ~ 65527, 对应 0.0 ~ 1.0)
-// * @param  r: 输出的 Red 值 (0 ~ 255)
-// * @param  g: 输出的 Green 值 (0 ~ 255)
-// * @param  b: 输出的 Blue 值 (0 ~ 255)
-// */
-// void Light_Calc_XY_To_RGB(uint16_t currentX, uint16_t currentY, uint8_t *r, uint8_t *g, uint8_t *b)
-//{
-//    // 1. 将接收到的 uint16_t 坐标还原为 0.0 - 1.0 的 CIE xy 浮点数
-//    float x = (float)currentX / 65536.0f;
-//    float y = (float)currentY / 65536.0f;
-//
-//    if (y < 0.00001f)
-//        y = 0.00001f; // 防止除以 0
-//
-//    // 2. 补全为大 XYZ 空间 (假设相对亮度 Y = 1.0f)
-//    float z = 1.0f - x - y;
-//    float X = (1.0f / y) * x;
-//    float Y = 1.0f;
-//    float Z = (1.0f / y) * z;
-//
-//    // 3. 使用针对你提供的数据集拟合出的【专属校准系数】
-//    float r_f = 4.3986f * X - 2.5057f * Y - 0.4561f * Z;
-//    float g_f = -2.1384f * X + 2.7663f * Y + 0.3150f * Z;
-//    float b_f = -1.2185f * X - 0.6385f * Y + 2.1462f * Z;
-//
-//    // 4. 边界硬裁剪与映射 (0.0 ~ 1.0)
-//    if (r_f < 0.0f)
-//        r_f = 0.0f;
-//    else if (r_f > 1.0f)
-//        r_f = 1.0f;
-//    if (g_f < 0.0f)
-//        g_f = 0.0f;
-//    else if (g_f > 1.0f)
-//        g_f = 1.0f;
-//    if (b_f < 0.0f)
-//        b_f = 0.0f;
-//    else if (b_f > 1.0f)
-//        b_f = 1.0f;
-//
-//    // 5. 输出最终 RGB 结果
-//    *r = (uint8_t)(r_f * 255.0f);
-//    *g = (uint8_t)(g_f * 255.0f);
-//    *b = (uint8_t)(b_f * 255.0f);
-//}
 
 void Light_Calc_XY_To_RGB(uint16_t currentX, uint16_t currentY, uint8_t *r, uint8_t *g, uint8_t *b)
 {

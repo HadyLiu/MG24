@@ -1,11 +1,5 @@
 #include "led_pwm_port.h"
-
-#include "sl_pwm.h"
-#if defined(_SILICON_LABS_32B_SERIES_2)
-#include "em_timer.h"
-#else
-#include "sl_hal_timer.h"
-#endif
+#include <stdint.h>
 
 extern sl_pwm_instance_t sl_pwm_w_led0;
 
@@ -28,8 +22,8 @@ void my_pwm_set_duty_cycle_10bit_resolution(sl_pwm_instance_t *pwm, uint16_t dut
 #else
     // 适用于 Series 3 芯片
     uint32_t top = sl_hal_timer_get_top(pwm->timer);
-    sl_hal_timer_channel_set_compare_buffer(pwm->timer, pwm->channel,
-                                            (top * duty_val) >> 10); // 右移10位相当于除以1024
+    // 右移10位相当于除以1024
+    sl_hal_timer_channel_set_compare_buffer(pwm->timer, pwm->channel, (top * duty_val) >> 10);
 #endif
 }
 

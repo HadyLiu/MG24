@@ -1,6 +1,6 @@
-#ifndef __LED_DRIVER_H__
-#define __LED_DRIVER_H__
+#pragma once
 
+#include "AppConfig.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "time.h"
@@ -150,5 +150,3 @@ void LED_StopEffect(void);
 
 void Led_MixedLightingEffects_Start(uint8_t effect_end, bool is_on, uint8_t brightness, uint8_t color_index);
 void LED_StopMixedEffects(bool is_on, uint8_t brightness, uint8_t color_index);
-
-#endif

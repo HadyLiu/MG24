@@ -1,5 +1,4 @@
-#include "led_driver.h"
-#include "AppConfig.h"
+#include "led_wrgb.h"
 
 led_ctrl_t g_led;
 
