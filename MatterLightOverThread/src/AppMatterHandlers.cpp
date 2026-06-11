@@ -52,7 +52,7 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
             // 防呆保护：如果历史记录的旧亮度太低或为0，默认恢复到 50% 或者是 100% 亮度，防止开灯不亮
             if (led_get_history_brightness() <= 1)
             {
-                led_set_history_brightness(100); // 默认恢复到最大亮度
+                led_set_history_brightness(255); // 默认恢复到最大亮度
             }
             led_set_brightness(led_get_history_brightness());
         }
@@ -69,12 +69,10 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
         LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
         SILABS_LOG("====> [matter] 开关事件触发: %s | 恢复亮度: %d <====\n", led_get_status() ? "ON" : "OFF", led_get_brightness());
 
-        // 如果没有有效的色彩缓存，从当前色表中提出来恢复
-        custom_raw_color_safeguard(led_get_color_index());
-
         // 🎯 核心修复点：明确地把全局同步更新后的状态和亮度塞入渐变控制器
-        led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
-        LED_Start_Fade_RGBW(led_get_status(), led_get_brightness(), led_get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
+        led_set_change_origin(LED_ORIGIN_MATTER_APP); // 标记来源
+        led_update_normal_state(led_get_status(), led_get_brightness(), led_get_raw_color());
+        LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS); // 使用统一的渐变函数，确保所有状态变化都经过同一套流程，避免状态不同步问题
     }
     // 1. 判断是否是亮度
     if (aAction == LightingManager::LEVEL_ACTION) //&& g_led.is_on == true)
@@ -84,11 +82,17 @@ void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
             uint8_t brightness = *aValue;
             SILABS_LOG("====> [matter] 亮度: %d <====\n", brightness);
 
-            uint16_t out_brightness = (uint16_t)(brightness * LED_BRIGHTNESS_MAX) >> 8; // 将 0-255 映射到 0-100
+            uint16_t out_brightness = (uint16_t)(brightness); // 将 0-255 映射到 0-100
             SILABS_LOG("====> [matter] 最终亮度: %d | 灯状态: %s <====\n", out_brightness, led_get_status() ? "ON" : "OFF");
-            led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
-            LED_Start_Fade_RGBW(led_get_status(), out_brightness, led_get_custom_raw(), LED_FADE_COLOR_SWITCH_MS);
-            LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+            // led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+
+            // 🎯 核心修复点：明确地把全局同步更新后的状态和亮度塞入渐变控制器
+
+            led_set_color_source(LED_SOURCE_CUSTOM_RGBW); // 标记来源RGBW
+            led_set_change_origin(LED_ORIGIN_MATTER_APP); // 标记来源
+            led_update_normal_state(led_get_status(), out_brightness, led_get_raw_color());
+            LED_SaveStateToFlash();                              // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+            LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS); // 使用统一的渐变函数，确保所有状态变化都经过同一套流程，避免状态不同步问题
         }
     }
 }
@@ -126,11 +130,15 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
 
         // 🎯 TODO: 在此调用你的 HSV 转 RGB 驱动
         // 示例：led_driver_set_hsv(hue, saturation);
-        uint8_t r, g, b;
-        led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
-        LedDriver_ConvertHsvToRgb(hue, saturation, 254, &r, &g, &b);    // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
-        LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
-        LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+        led_color_t rgbw_color = {0}; // 定义一个 RGBW 结构体用于存储转换后的颜色值
+        // led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
+        LedDriver_ConvertHsvToRgb(hue, saturation, 254, &rgbw_color.r, &rgbw_color.g,
+                                  &rgbw_color.b);     // 直接调用转换函数计算 RGB，实际应用中请替换为你的驱动函数
+        led_set_color_source(LED_SOURCE_CUSTOM_RGBW); // 标记来源RGBW
+        led_set_change_origin(LED_ORIGIN_MATTER_APP); // 标记来源
+        led_update_normal_state(led_get_status(), led_get_brightness(), rgbw_color);
+        LED_SaveStateToFlash();                              // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+        LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS); // 使用统一的渐变函数，确保所有状态变化都经过同一套流程，避免状态不同步问题
         break;
     }
 
@@ -148,11 +156,16 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
 
         // 🎯 TODO: 在此调用你的双色温驱动控制冷暖比例
         // 示例：main_light_control_set_ct(kelvin);
-        uint8_t w, r, g, b;
-        led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
-        Light_Calc_CT_To_WRGB(kelvin, &w, &r, &g, &b);                  // 计算出对应的 RGBW 基准值，实际应用中请替换为你的驱动函数
-        LED_Start_Fade_RGBW_8bit(w, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 将计算出的 RGBW 值应用到硬件
-        LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+        led_color_t rgbw_color = {0}; // 定义一个 RGBW 结构体用于存储转换后的颜色值
+        // led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+        Light_Calc_CT_To_WRGB(kelvin, &rgbw_color.w, &rgbw_color.r, &rgbw_color.g,
+                              &rgbw_color.b); // 计算出对应的 RGBW 基准值，实际应用中请替换为你的驱动函数
+
+        led_set_color_source(LED_SOURCE_CUSTOM_RGBW); // 标记来源RGBW
+        led_set_change_origin(LED_ORIGIN_MATTER_APP); // 标记来源
+        led_update_normal_state(led_get_status(), led_get_brightness(), rgbw_color);
+        LED_SaveStateToFlash();                              // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+        LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS); // 使用统一的渐变函数，确保所有状态变化都经过同一套流程，避免状态不同步问题
         break;
     }
 
@@ -164,11 +177,15 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
     {
         // g_ex = out_ex; // 更新全局变量
         // g_ey = out_ey; // 更新全局变量
-        uint8_t r, g, b;
-        led_set_change_origin(StateChangeOrigin::MATTER_APP);           // 标记来源
-        Light_Calc_XY_To_RGB(out_ex, out_ey, &r, &g, &b);               // 计算并输出 RGB 值
-        LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
-        LED_SaveStateToFlash();                                         // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+        led_color_t rgbw_color = {0}; // 定义一个 RGBW 结构体用于存储转换后的颜色值
+        // led_set_change_origin(StateChangeOrigin::MATTER_APP); // 标记来源
+        Light_Calc_XY_To_RGB(out_ex, out_ey, &rgbw_color.r, &rgbw_color.g, &rgbw_color.b); // 计算并输出 RGB 值
+        //  LED_Start_Fade_RGBW_8bit(0, r, g, b, LED_FADE_COLOR_SWITCH_MS); // 白色通道 W 固定为 0，实际应用中可根据需要调整
+        led_set_color_source(LED_SOURCE_CUSTOM_RGBW); // 标记来源RGBW
+        led_set_change_origin(LED_ORIGIN_MATTER_APP); // 标记来源
+        led_update_normal_state(led_get_status(), led_get_brightness(), rgbw_color);
+        LED_SaveStateToFlash();                              // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
+        LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS); // 使用统一的渐变函数，确保所有状态变化都经过同一套流程，避免状态不同步问题
         break;
     }
 
@@ -293,12 +310,13 @@ void MyUserIdentifyStartHandler(Identify *identify)
 {
     ChipLogProgress(Zcl, "====> [铁证闭环拦截] 收到网关指令：Identify 闪烁开始！ <====");
     // 在这里写你的 LED 闪烁触发代码
-    extern void    LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
+    extern void    LED_SetBlink(uint8_t brightness, led_color_t color, uint16_t period_ms, uint16_t count);
     extern uint8_t led_get_brightness(void);
     extern uint8_t led_get_color_index(void);
     extern void    ConditionalWake_up(void);
     ConditionalWake_up(); // 每次行动请求都触发唤醒，确保系统及时响应用户操作
-    LED_SetBlink(led_get_brightness(), led_get_color_index(), 800, 2);
+
+    LED_SetBlink(led_get_brightness(), led_get_raw_color(), 800, 2); // 连续两次闪烁，确保用户能明显感知到反馈
 }
 
 /**
@@ -327,6 +345,11 @@ void InitUserIdentifyCluster()
     ChipLogProgress(Zcl, "====> [应用层处理器挂载成功] 应用层专属 Identify 实例已成功注入全局数据模型！");
 }
 
+bool IsMatterUnprovisioned(void)
+{
+    return chip::Server::GetInstance().GetFabricTable().FabricCount() == 0;
+}
+
 //  ================= 4. 配网成功通知 =================
 static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
 {
@@ -342,9 +365,11 @@ static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
     // 🎯 核心事件：配网完成（手机成功将设备加入家庭网络）
     case DeviceEventType::kCommissioningComplete:
         SILABS_LOG("🎯 Matter Connection Established: Commissioning Complete!");
+        LED_SetFirstCommissionDone();
+        CommissioningFirstBreath_Stop();
         if (!is_animation_triggered)
         {
-            is_animation_triggered = true; // 上锁
+            is_animation_triggered = true;
             extern void TriggerPairingSuccessAnimation(void);
             TriggerPairingSuccessAnimation();
         }

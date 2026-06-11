@@ -77,8 +77,8 @@ void CreateCustomMonitorTask(void)
                                       .stack_size = MONITOR_TASK_STACK_SIZE,
                                       // 🎯 优先级必须设为低（osPriorityBelowNormal 或 osPriorityBelowNormal1），
                                       // 绝对不能抢占 Matter 核心协议栈（CHIP/OpenThread）的时间片，防止手机控制卡顿
-                                      //.priority = osPriorityRealtime, // osPriorityBelowNormal,
-                                      .priority = osPriorityBelowNormal,
+                                      .priority = osPriorityRealtime, // osPriorityBelowNormal,
+                                      //.priority = osPriorityBelowNormal,
                                       .tz_module = 0,
                                       .reserved = 0};
 

@@ -6,7 +6,7 @@
  * @param  v: 明度 (0 ~ 254) -> 通常传全局亮度，或直接填 254
  * @out    r, g, b: 输出驱动值 (0 ~ 255)
  */
-void LedDriver_ConvertHsvToRgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b)
+void LedDriver_ConvertHsvToRgb(uint8_t h, uint8_t s, uint8_t v, uint16_t *r, uint16_t *g, uint16_t *b)
 {
     if (s == 0)
     {
@@ -60,20 +60,23 @@ void LedDriver_ConvertHsvToRgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint
         *b = q;
         break;
     }
+    *r <<= 2;
+    *g <<= 2;
+    *b <<= 2;
 }
 
 /**
  * @brief 纯整数 WRGB 色温基准 PWM 计算（最大输出 255）
  * @param kelvin 输入绝对色温 (2200 ~ 6500)
- * @param out_w  输出 W 通道基准 PWM (0 ~ 255)
- * @param out_r  输出 R 通道基准 PWM (0 ~ 255)
- * @param out_g  输出 G 通道基准 PWM (0 ~ 255)
- * @param out_b  输出 B 通道基准 PWM (0 ~ 255)
+ * @param out_w  输出 W 通道基准 PWM (0 ~ 1023)
+ * @param out_r  输出 R 通道基准 PWM (0 ~ 1023)
+ * @param out_g  输出 G 通道基准 PWM (0 ~ 1023)
+ * @param out_b  输出 B 通道基准 PWM (0 ~ 1023)
  */
-void Light_Calc_CT_To_WRGB(uint32_t kelvin, uint8_t *out_w, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b)
+void Light_Calc_CT_To_WRGB(uint32_t kelvin, uint16_t *out_w, uint16_t *out_r, uint16_t *out_g, uint16_t *out_b)
 {
-#define PWM_MAX_255 255  // 硬件最大PWM值 (8位)
-#define SCALE_10BIT 1024 // 内部高精度计算基底 (2^10)
+#define PWM_MAX_1023 1023 // 硬件最大PWM值 (10位)
+#define SCALE_10BIT  1024 // 内部高精度计算基底 (2^10)
     // 1. 边界安全限幅
     if (kelvin < 2200)
     {
@@ -115,33 +118,33 @@ void Light_Calc_CT_To_WRGB(uint32_t kelvin, uint8_t *out_w, uint8_t *out_r, uint
         g_factor = (range_factor * 410) >> 10; // 40.0% 绿光
     }
 
-    // 3. 将 1024 基底精确定位到 0 ~ 255 空间
-    // 数学公式：实际输出 = (factor * 255) / 1024，利用 >> 10 代替除法
-    *out_w = (uint8_t)((w_factor * PWM_MAX_255) >> 10);
-    *out_r = (uint8_t)((r_factor * PWM_MAX_255) >> 10);
-    *out_g = (uint8_t)((g_factor * PWM_MAX_255) >> 10);
-    *out_b = (uint8_t)((b_factor * PWM_MAX_255) >> 10);
+    // 3. 将 1024 基底精确定位到 0 ~  空间
+    // 数学公式：实际输出 = (factor * 255) / 1024，利用 >> 8 代替除法
+    *out_w = (uint16_t)((w_factor * PWM_MAX_1023) >> 10);
+    *out_r = (uint16_t)((r_factor * PWM_MAX_1023) >> 10);
+    *out_g = (uint16_t)((g_factor * PWM_MAX_1023) >> 10);
+    *out_b = (uint16_t)((b_factor * PWM_MAX_1023) >> 10);
 
     // 4. 严谨性限幅保护
-    if (*out_w >= PWM_MAX_255)
+    if (*out_w >= PWM_MAX_1023)
     {
-        *out_w = PWM_MAX_255;
+        *out_w = PWM_MAX_1023;
     }
-    if (*out_r >= PWM_MAX_255)
+    if (*out_r >= PWM_MAX_1023)
     {
-        *out_r = PWM_MAX_255;
+        *out_r = PWM_MAX_1023;
     }
-    if (*out_g >= PWM_MAX_255)
+    if (*out_g >= PWM_MAX_1023)
     {
-        *out_g = PWM_MAX_255;
+        *out_g = PWM_MAX_1023;
     }
-    if (*out_b >= PWM_MAX_255)
+    if (*out_b >= PWM_MAX_1023)
     {
-        *out_b = PWM_MAX_255;
+        *out_b = PWM_MAX_1023;
     }
 }
 
-void Light_Calc_XY_To_RGB(uint16_t currentX, uint16_t currentY, uint8_t *r, uint8_t *g, uint8_t *b)
+void Light_Calc_XY_To_RGB(uint16_t currentX, uint16_t currentY, uint16_t *r, uint16_t *g, uint16_t *b)
 {
     // 1. 将 0-65535 的整数还原为 0.0 - 1.0 的浮点相对坐标
     float x = (float)currentX / 65535.0f;
@@ -177,7 +180,10 @@ void Light_Calc_XY_To_RGB(uint16_t currentX, uint16_t currentY, uint8_t *r, uint
         b_f = 1.0f;
 
     // 5. 最终输出传递给 PWM 驱动的 8位 RGB 值
-    *r = (uint8_t)(r_f * 255.0f);
-    *g = (uint8_t)(g_f * 255.0f);
-    *b = (uint8_t)(b_f * 255.0f);
+    *r = (uint16_t)(r_f);
+    *g = (uint16_t)(g_f);
+    *b = (uint16_t)(b_f);
+    *r <<= 10; // 从 0-255 映射到 0-1023
+    *g <<= 10; // 从 0-255 映射到 0-1023
+    *b <<= 10; // 从 0-255 映射到 0-1023
 }

@@ -25,6 +25,71 @@ void ResetMatterNetworkConfiguration(void);
 void check_interrupt_injection_status(uint8_t pin);
 void PowerSwitchAssignment(void);
 void change_led_Indic(uint8_t charge_status);
+void CommissioningFirstBreath_Poll(void);
+
+static bool s_first_commission_breath_active = false;
+
+static bool IsCommissioningFirstBreathRequested(void)
+{
+    if (LED_IsFirstCommissionDone())
+    {
+        return false;
+    }
+    if (!IsMatterUnprovisioned())
+    {
+        return false;
+    }
+    if (!led_get_status() || g_PowerProtect)
+    {
+        return false;
+    }
+    return true;
+}
+
+void CommissioningFirstBreath_Stop(void)
+{
+    if (!s_first_commission_breath_active)
+    {
+        return;
+    }
+
+    s_first_commission_breath_active = false;
+    LED_StopEffect();
+    SILABS_LOG("[commission] First commissioning white breath stopped");
+}
+
+static void CommissioningFirstBreath_Start(void)
+{
+    led_color_t white = led_get_color_table(0);
+
+    s_first_commission_breath_active = true;
+    LED_SetBreath(LED_BRIGHTNESS_MAX, white, 0);
+    SILABS_LOG("[commission] First commissioning white breath started");
+}
+
+void CommissioningFirstBreath_Poll(void)
+{
+    if (!IsCommissioningFirstBreathRequested())
+    {
+        if (s_first_commission_breath_active)
+        {
+            CommissioningFirstBreath_Stop();
+        }
+        return;
+    }
+
+    if (s_first_commission_breath_active)
+    {
+        return;
+    }
+
+    if (!LED_IsUserEffectIdle())
+    {
+        return;
+    }
+
+    CommissioningFirstBreath_Start();
+}
 
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
@@ -47,6 +112,7 @@ void entry_Init(void)
     SILABS_LOG("[app]Power completed");
 
     LED_Init(); // 初始化 LED 状态
+    CommissioningFirstBreath_Poll();
 }
 
 /**
@@ -169,6 +235,7 @@ bool entry_Loop(bool *InterruptWake_up)
 
         LED_Tick10ms();                              // LED 驱动的定时器滴答函数，处理渐变效果和状态更新
         LED_SetLowBatteryProtection(g_PowerProtect); // 根据电量过低保护标志设置 LED 的保护状态，物理上锁定或解锁 LED 输出
+        CommissioningFirstBreath_Poll();             // 开箱首次配网白光呼吸（与充电 Indic 呼吸独立）
         // 电源模式
         if (eg_PowerStatus == false)
         {
@@ -212,7 +279,7 @@ bool entry_Loop(bool *InterruptWake_up)
         }
 
 #if debugLog
-        dump_power_debug();
+        // dump_power_debug();
         if (time_clk - debugTick > 200)
         {
             debugTick = time_clk;
@@ -292,6 +359,16 @@ void change_led_Indic(uint8_t charge_status)
     }
 }
 
+static void on_reset_effect_end_callback(void)
+{
+    // 特效完全结束了，手动设置目标状态并触发渐变
+    led_set_status(true);
+    led_set_color_index(2);
+    led_update_normal_state(led_get_status(), led_get_brightness(), led_get_color_table(led_get_color_index()));
+    // 触发 400ms 的平滑过渡
+    LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS);
+}
+
 /**
  * @brief 📬 重置matter配网，灯效启动
  * @param  无
@@ -299,17 +376,23 @@ void change_led_Indic(uint8_t charge_status)
 void ResetMatterNetworkLightingEffects(void)
 {
 #define MixedLightingEffectsCount 4
-    static const MixedLightingEffects_t MixedLightingEffects_Start_Example[MixedLightingEffectsCount] = {
-        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 100, .color_index = 6, .fade_ms = 800, .count = 3},
-        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 100, .color_index = 6, .fade_ms = 2400, .count = 1},
-        {.fuction_mode = LED_EFFECT_HOLD, .is_on = false, .brightness = 100, .color_index = 2, .fade_ms = 2000, .count = 1},
-        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 100, .color_index = 2, .fade_ms = 400, .count = 2},
+    led_color_t raw_color = led_get_raw_color(); // 获取当前原始颜色，准备在特效中使用
+
+    led_set_color_index(2);                                               // 将当前颜色设置为原始颜色，确保特效从当前颜色开始变化
+    led_color_t raw_color_2 = led_get_color_table(led_get_color_index()); // 获取当前原始颜色，准备在特效中使用
+
+    MixedLightingEffects_t MixedLightingEffects_Start_Example[MixedLightingEffectsCount] = {
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 255, .raw_color = raw_color, .fade_ms = 800, .count = 3},
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 255, .raw_color = raw_color, .fade_ms = 2400, .count = 1},
+        {.fuction_mode = LED_EFFECT_HOLD, .is_on = false, .brightness = 255, .raw_color = raw_color_2, .fade_ms = 2000, .count = 1},
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 255, .raw_color = raw_color_2, .fade_ms = 400, .count = 2},
     }; // 最后一个 NONE 代表特效序列结束
 
     memcpy(g_mixed_effects, MixedLightingEffects_Start_Example, sizeof(MixedLightingEffects_Start_Example));
 
     // 启动混合特效
-    Led_MixedLightingEffects_Start(MixedLightingEffectsCount, true, 100, 2);
+    Led_MixedLightingEffects_Start(MixedLightingEffectsCount, on_reset_effect_end_callback);
+
     // 红色指示灯闪烁
     blink_mixed_cfg_t s_mixed_cfg = {800, 3, 2400, 1};
     Indic_Red_Blink_Mixed_Flag_Set(true, &s_mixed_cfg); // 启动混合双速闪烁
@@ -341,7 +424,8 @@ void GiveUpMatterNetworkConfiguration(void)
     // Your logic to give up network configuration here
     SILABS_LOG("[app]Giving up on Matter network configuration...");
     // 这里可以添加任何需要在放弃网络配置时执行的代码，例如重置网络状态
-    LED_StopMixedEffects(true, 100, 2);
+    LED_StopMixedEffects();
+    Indic_Red_Blink_Stop(); // 停止红色指示灯闪烁
 }
 
 /**
@@ -350,15 +434,17 @@ void GiveUpMatterNetworkConfiguration(void)
 void TriggerPairingSuccessAnimation(void)
 {
 #define SuccessEffectsCount 1
-    static const MixedLightingEffects_t Success_Effects[SuccessEffectsCount] = {
+
+    led_color_t            raw_color = led_get_raw_color(); // 获取当前原始颜色，准备在特效中使用
+    MixedLightingEffects_t Success_Effects[SuccessEffectsCount] = {
         // Step 0: 以 60% 亮度快速闪烁 2 次（亮 200ms，灭 200ms，周期 400ms，次数 2）
-        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 60, .color_index = 0, .fade_ms = 400, .count = 2},
+        {.fuction_mode = LED_EFFECT_BLINK, .is_on = true, .brightness = 60, .raw_color = raw_color, .fade_ms = 800, .count = 2},
     };
 
     memcpy(g_mixed_effects, Success_Effects, sizeof(Success_Effects));
 
     // 启动混合灯效
-    Led_MixedLightingEffects_Start(SuccessEffectsCount, true, 100, 2);
+    Led_MixedLightingEffects_Start(1, NULL);
 }
 
 /**
@@ -376,6 +462,10 @@ void MyButtonActionHandler(AppEvent *aEvent)
     uint8_t  action = pBtnEvent->ButtonEvent.Action;
     uint16_t long_press_count = pBtnEvent->ButtonEvent.LongPressCount;
 
+    // 上报当前状态到 Matter 层，确保手机端状态同步
+    extern void Upload_Matter_OnOff(bool is_on);
+    extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
+
     switch (action)
     {
     case AppButtonEvent::kButtonAction_ShortPress:
@@ -383,13 +473,19 @@ void MyButtonActionHandler(AppEvent *aEvent)
         SILABS_LOG(" -> [业务确诊] 按键 %d : 单击触发！", button_idx);
         // 这里写你的单击控制代码
         // 如果当前状态变化来源是远程下发
-        if (led_get_change_origin() == StateChangeOrigin::MATTER_APP && led_get_status() == true) // 并且灯当前是开的
+        if (led_get_change_origin() == LED_ORIGIN_MATTER_APP && led_get_status() == true) // 并且灯当前是开的
         {
             SILABS_LOG("当前LED由远程控制打开，单击事件优先关灯");
+
+            Upload_Matter_OnOff(led_get_status());
+            Upload_Matter_Brightness((uint16_t)(led_get_brightness() + 1) * 100 >> 8); // 上报亮度状态
+
             led_set_status(false);
             led_set_brightness(0);
-            led_set_change_origin(StateChangeOrigin::LOCAL_KEY); // 标记状态变化来源为本地按键
-            LED_Start_Fade_Color_Index(led_get_status(), led_get_brightness(), led_get_color_index(), LED_FADE_KEY_TOTAL_MS);
+            led_set_change_origin(LED_ORIGIN_LOCAL_KEY); // 标记状态变化来源为本地按键
+            LED_SaveStateToFlash();
+            LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS);
+
             break;
         }
         if (eg_BatStatus <= Bat_LowVolWarn)
@@ -421,16 +517,21 @@ void MyButtonActionHandler(AppEvent *aEvent)
             led_set_status(false);
             led_set_brightness(0);
         }
-        LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
-        // 标记状态变化来源为本地按键
-        led_set_change_origin(StateChangeOrigin::LOCAL_KEY);
+
+        // 上报当前状态到 Matter 层，确保手机端状态同步
         extern void Upload_Matter_OnOff(bool is_on);
         extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
-        Upload_Matter_OnOff(led_get_status());          // 上报开关状态到 Matter 层
-        Upload_Matter_Brightness(led_get_brightness()); // 上报亮度状态到 Matter 层
+
+        Upload_Matter_OnOff(led_get_status());
+        Upload_Matter_Brightness((uint16_t)(led_get_brightness() + 1) * 100 >> 8); // 上报亮度状态
 
         SILABS_LOG("is_On=%d, brightness=%d", led_get_status(), led_get_brightness());
-        LED_Start_Fade_Color_Index(led_get_status(), led_get_brightness(), led_get_color_index(), LED_FADE_KEY_TOTAL_MS);
+
+        // 传递变化
+        led_set_change_origin(LED_ORIGIN_LOCAL_KEY);
+        led_update_normal_state(led_get_status(), led_get_brightness(), led_get_raw_color());
+        LED_SaveStateToFlash();
+        LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS);
         break;
     }
     case AppButtonEvent::kButtonAction_DoublePress:
@@ -458,16 +559,19 @@ void MyButtonActionHandler(AppEvent *aEvent)
         {
             color_index = 0;
         }
-        LED_SaveStateToFlash(); // 每次状态变化后保存当前状态到 Flash，以便下次上电恢复
-        led_set_color_index(color_index);
-        // 标记状态变化来源为本地按键
-        led_set_change_origin(StateChangeOrigin::LOCAL_KEY);
-        extern void Upload_Matter_OnOff(bool is_on);
-        extern void Upload_Matter_Brightness(uint8_t driver_brightness_percent);
-        Upload_Matter_OnOff(led_get_status());          // 上报开关状态
-        Upload_Matter_Brightness(led_get_brightness()); // 上报亮度状态
+
+        Upload_Matter_OnOff(led_get_status());                                     // 上报开关状态
+        Upload_Matter_Brightness((uint16_t)(led_get_brightness() + 1) * 100 >> 8); // 上报亮度状态
+
         SILABS_LOG("color_index=%d", led_get_color_index());
-        LED_Start_Fade_Color_Index(led_get_status(), led_get_brightness(), led_get_color_index(), LED_FADE_COLOR_SWITCH_MS);
+
+        led_set_color_index(color_index); // 触发颜色表更新，确保颜色正确
+        led_set_change_origin(LED_ORIGIN_LOCAL_KEY);
+        led_set_color_source(LED_SOURCE_INDEX_TABLE); // 双击切换颜色时，强制使用颜色表作为颜色来源，确保颜色正确更新
+        led_update_normal_state(led_get_status(), led_get_brightness(), led_get_color_table(led_get_color_index()));
+        LED_SaveStateToFlash();
+        LED_Start_Fade_To_Current(LED_FADE_COLOR_SWITCH_MS);
+
         break;
     }
     case AppButtonEvent::kButtonAction_LongPressStart:
