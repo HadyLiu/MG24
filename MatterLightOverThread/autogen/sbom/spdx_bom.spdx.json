@@ -5,7 +5,7 @@
   "name" : "Silicon-Laboratories",
   "documentNamespace" : "https://silabs.com",
   "creationInfo" : {
-    "created" : "2026-06-09T07:23:41Z",
+    "created" : "2026-06-10T05:55:42Z",
     "creators" : [ "Tool: Silicon Labs Configuration Tooling" ]
   },
   "comment" : "TERMS OF USE - SILICON LABORATORIES INC.\n(With respect to Silicon Labs software components, this Software Bill of Materials (SBOM) is based upon Silicon Labs'\nreview and analysis of the code version when released.  It is provided \"AS IS\" and does not modify, change or alter\nthe terms or conditions of your use of Silicon Labs' software and/or SDKs based upon license terms and/or agreements\nassociated with this software or SDKs when distributed to you, received by you, or installed by you.  Further, no\nwarranties or obligations are created by this SBOM.  It is your obligation to comply with the terms of licenses\nreferenced in this SBOM.)",
@@ -762,6 +762,22 @@
     "supplier" : "Organization: Silicon Laboratories Inc.",
     "licenseConcluded" : "Apache 2.0"
   }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_icd_core",
+    "name" : "ICD Server Configuration",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_icd_management",
+    "name" : "ICD Management Server Cluster",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Apache 2.0"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "name" : "Simplicity SDK Suite",
     "versionInfo" : "2025.12.2",
@@ -771,14 +787,6 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
     "name" : "EFR32MG24B010F1536IM40",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
-    "name" : "High Frequency RC Oscillator (HFRCO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -835,6 +843,14 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_eusart",
     "name" : "SPIDRV EUSART",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3",
+    "name" : "NVM3 Service for TrustZone Secure Key Library",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -1016,14 +1032,6 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_ftd",
-    "name" : "Stack (FTD)",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_platform_abstraction",
     "name" : "Platform Abstraction",
     "versionInfo" : "2025.12.2",
@@ -1074,6 +1082,14 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_main_kernel",
     "name" : "SL Main Kernel",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config",
+    "name" : "tz_service_config",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -1613,6 +1629,14 @@
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common",
+    "name" : "NVM3 and ITS service helper component for TrustZone secure library",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
   }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-hal_sysrtc",
     "name" : "SYSRTC",
@@ -2561,24 +2585,16 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3",
-    "name" : "NVM3 Service for TrustZone Secure Key Library",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_mtd",
+    "name" : "Stack (MTD)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config",
-    "name" : "tz_service_config",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common",
-    "name" : "NVM3 and ITS service helper component for TrustZone secure library",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "name" : "High Frequency RC Oscillator (HFRCO)",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -2966,12 +2982,16 @@
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-dnssd",
     "relationshipType" : "CONTAINS"
   }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_icd_core",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_icd_management",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-EFR32MG24B010F1536IM40",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3000,6 +3020,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-spidrv_eusart",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3087,10 +3111,6 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_ftd",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_platform_abstraction",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3116,6 +3136,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-sl_main_kernel",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3376,6 +3400,10 @@
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-rail_lib_multiprotocol_internal_chips_dummy",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3835,15 +3863,11 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_mtd",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_config",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-tz_service_nvm3_common",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
     "relationshipType" : "CONTAINS"
   } ]
 }

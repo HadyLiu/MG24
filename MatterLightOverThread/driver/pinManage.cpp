@@ -167,3 +167,19 @@ void inject_btn0_double_edge_interrupt_ext(void)
     // 3. 确保该通道的外部中断使能没有被关闭
     GPIO->IEN_SET = mask;
 }
+
+// ===========================================================================
+// 🌙 关闭 RGB
+// ===========================================================================
+void rgb_hardware_enter_low_power(void)
+{
+    // 1. 关闭应用层输出并释放功耗锁
+    sl_led_turn_off((sl_led_t *)&sl_simple_rgb_pwm_led_rgb_led0);
+
+    CMU_ClockEnable(cmuClock_TIMER4, false);
+
+    // 3. 将 RGB 涉及的三个物理引脚（PB2, PB3, PB4）强制 Disabled，彻底阻断漏电
+    GPIO_PinModeSet((GPIO_Port_TypeDef)SL_SIMPLE_RGB_PWM_LED_RGB_LED0_RED_PORT, SL_SIMPLE_RGB_PWM_LED_RGB_LED0_RED_PIN, gpioModeDisabled, 0);
+    GPIO_PinModeSet((GPIO_Port_TypeDef)SL_SIMPLE_RGB_PWM_LED_RGB_LED0_GREEN_PORT, SL_SIMPLE_RGB_PWM_LED_RGB_LED0_GREEN_PIN, gpioModeDisabled, 0);
+    GPIO_PinModeSet((GPIO_Port_TypeDef)SL_SIMPLE_RGB_PWM_LED_RGB_LED0_BLUE_PORT, SL_SIMPLE_RGB_PWM_LED_RGB_LED0_BLUE_PIN, gpioModeDisabled, 0);
+}

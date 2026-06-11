@@ -76,6 +76,22 @@ void powerManage_adc_Init(void)
     adcC5.Init(); // 初始化 IADC 驱动
 }
 
+void powerManage_adc_DeInit(void)
+{
+    adcC4.DeInit(gpioModeInput, 0); // 反初始化 IADC 驱动，释放资源
+    adcC5.DeInit(gpioModeInput, 0); // 反初始化 IADC 驱动，释放资源
+
+    // 1. 复位 IADC 内核
+    //  IADC_reset(IADC0);
+
+    // 🎯 2. 【核心补丁】强行剥离 IADC 的高频时钟源锁
+    // 如果不清除这个寄存器，FSRCO/HFRCO 会一直空转，把系统卡在 EM1 (功耗恰好是 4~5mA)
+    // IADC0->CTRL_CLR = _IADC_CTRL_WARMUPMODE_MASK;
+
+    // 3. 彻底切断总线时钟
+    CMU_ClockEnable(cmuClock_IADC0, false);
+}
+
 /**
  * @brief 📬 获取外部电源输入的 ADC 电压值
  */

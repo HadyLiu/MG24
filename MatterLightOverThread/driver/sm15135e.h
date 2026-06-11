@@ -55,4 +55,3 @@ void sm15135e_reset(void);
 void sm15135e_send_frame(const sm15135e_pixel_t *p);
 void sm15135e_set_rgbwy(sm15135e_pixel_t *p, uint16_t r, uint16_t g, uint16_t b, uint16_t w, uint16_t y);
 void sm15135e_set_all_gain(sm15135e_pixel_t *p, uint8_t gain);
-void sm15135e_fill_default(sm15135e_pixel_t *p);

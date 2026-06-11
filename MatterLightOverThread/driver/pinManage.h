@@ -1,8 +1,11 @@
 #pragma once
 
+#include "em_cmu.h"
 #include "sl_simple_button_btn0_config.h"
 #include "sl_clock_manager.h"
 #include "sl_gpio.h"
+#include "sl_simple_rgb_pwm_led_instances.h"
+#include "sl_simple_rgb_pwm_led_rgb_led0_config.h"
 
 // ⚡ 核心修复：1. 必须使用 extern "C" 包裹 C 语言的外部中断库
 // ⚡           2. 确保包含 em_gpio.h 以防底层依赖缺失
@@ -65,6 +68,8 @@ extern bool charge_status_read(void);
 extern bool get_power_in_detect(void);
 
 extern void inject_btn0_double_edge_interrupt_ext(void);
+
+void rgb_hardware_enter_low_power(void);
 
 #define INDIC_R_LED_ON()  indic_r_led(true)
 #define INDIC_R_LED_OFF() indic_r_led(false)

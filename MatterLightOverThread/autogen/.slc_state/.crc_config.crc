@@ -35,6 +35,7 @@ sl_gp_interface_config.h=1499708938
 sl_hfxo_manager_config.h=-1473786040
 sl_main_start_task_config.h=5881419
 sl_matter_config.h=1652513889
+sl_matter_icd_config.h=1767116405
 sl_matter_ota_config.h=417339334
 sl_matter_provision_config.h=1807399134
 sl_mbedtls_config.h=559209216

@@ -172,20 +172,27 @@ void sm15135e_send_frame(const sm15135e_pixel_t *p)
     sm15135e_frame_buf[byte_idx++] = PACK_SPI_BYTE_PURE(ext.bits.b3, ext.bits.b2);
     sm15135e_frame_buf[byte_idx++] = PACK_SPI_BYTE_PURE(ext.bits.b1, ext.bits.b0);
 
+    // 初始值设为无效状态，确保第一次发送时能正确识别状态变化
+    static uint8_t old_standby = 0xFFu;
+    uint8_t        timeCounter = 1;
+    if (old_standby != (p->standby))
+    {
+        if (old_standby == SM15135E_STANDBY_SLEEP)
+        {
+            timeCounter = 2;
+        }
+        old_standby = (p->standby);
+    }
     // 🚀 纯内存到寄存器的算术映射，完工！
-    (void)SPIDRV_MTransmitB(sl_spidrv_eusart_rgb_data_handle, sm15135e_frame_buf, sizeof(sm15135e_frame_buf));
-}
-
-void sm15135e_send_chain(const sm15135e_pixel_t *pixels, size_t count)
-{
-    if ((pixels == NULL) || (count == 0u))
+    // 状态唤醒时发送两遍，确保芯片完全醒来；正常状态下发送一遍即可
+    do
     {
-        return;
-    }
-    for (size_t i = count; i > 0u; --i)
-    {
-        sm15135e_send_frame(&pixels[i - 1u]);
-    }
+        (void)SPIDRV_MTransmitB(sl_spidrv_eusart_rgb_data_handle, sm15135e_frame_buf, sizeof(sm15135e_frame_buf));
+        if (timeCounter > 1)
+        {
+            osDelay(2); // 状态切换时增加额外延时，确保芯片有足够时间从睡眠状态完全唤醒
+        }
+    } while (--timeCounter > 0);
 }
 
 /**
@@ -202,7 +209,17 @@ void sm15135e_set_rgbwy(sm15135e_pixel_t *p, uint16_t r, uint16_t g, uint16_t b,
     p->b = b;
     p->w = w;
     p->y = y;
+    if (r == 0 && g == 0 && b == 0 && w == 0 && y == 0)
+    {
+        p->standby = SM15135E_STANDBY_SLEEP;
+    }
+    else
+    {
+        p->standby = SM15135E_STANDBY_NORMAL;
+    }
+    p->reserve = 0x1Fu; // 手册强烈建议全填 1
 }
+
 /**
  * @brief 设定电流大小
  */
@@ -218,23 +235,4 @@ void sm15135e_set_all_gain(sm15135e_pixel_t *p, uint8_t gain)
     p->gain_b = g5;
     p->gain_w = g5;
     p->gain_y = g5;
-}
-
-/**
- * @brief 关闭所有灯光
- */
-void sm15135e_fill_default(sm15135e_pixel_t *p)
-{
-    if (p == NULL)
-    {
-        return;
-    }
-    p->r = 0u;
-    p->g = 0u;
-    p->b = 0u;
-    p->w = 0u;
-    p->y = 0u;
-    sm15135e_set_all_gain(p, SM15135E_GAIN_91_0MA); // 默认 60.7mA 电流
-    p->standby = SM15135E_STANDBY_NORMAL;
-    p->reserve = 0x1Fu; // 手册强烈建议全填 1
 }

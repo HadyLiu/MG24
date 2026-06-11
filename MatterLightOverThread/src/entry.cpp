@@ -16,16 +16,15 @@
 #include "../driver/led_white_indic.h"
 #include "../driver/sm15135e.h"
 
-uint32_t g_time_detect_bat = 0;              // 上次检测电池状态的时间戳，单位为10ms
-bool     g_is_operation_in_progress = false; // 耗时过长的操作正在进行中
-bool     g_PowerProtect = false;             // 电池电量过低标志
-uint8_t  g_Identify = false;
-void     write_led_example(void);
-void     CheckTickResolution(void);
-void     ResetMatterNetworkConfiguration(void);
-void     check_interrupt_injection_status(uint8_t pin);
-void     PowerSwitchAssignment(void);
-void     change_led_Indic(uint8_t charge_status);
+bool            g_PowerProtect = false; // 电池电量过低标志
+static uint16_t g_idleTime10Ms = 0;
+
+void write_led_example(void);
+void CheckTickResolution(void);
+void ResetMatterNetworkConfiguration(void);
+void check_interrupt_injection_status(uint8_t pin);
+void PowerSwitchAssignment(void);
+void change_led_Indic(uint8_t charge_status);
 
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
@@ -48,94 +47,196 @@ void entry_Init(void)
     SILABS_LOG("[app]Power completed");
 
     LED_Init(); // 初始化 LED 状态
+}
 
-    // LED_SetBlink(50, 6, 800, 3); // 上电后闪烁提示，亮度 50%，颜色索引 3，周期 800ms，闪烁 3 次
+/**
+ * @brief 📬 模块初始化阶段：在这里可以进行一些模块级别的初始化，例如状态变量的设置、定时器的创建等
+ */
+void module_Init(void)
+{
+    powerManage_adc_Init(); // 确保 ADC 模块在每次进入正常模式时都被正确初始化，准备好进行电压检测
+}
 
-    // LED_SetBreath(65, 6, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
-    // ResetMatterNetworkConfiguration(); // 初始化配网状态，设置好默认的灯效序列
+/**
+ * @brief 📬 模块反初始化阶段：在这里释放所有的资源，做好系统重置或关闭的准备
+ */
+void module_Deinit(void)
+{
+    // 关闭电池输出
+    BatOutDis();
+    // 🎯 1. 调用统一的 turn_off 接口
+    rgb_hardware_enter_low_power();
+    powerManage_adc_DeInit();
+}
 
-    /// Indic_W_Breath_Start(100); // 启动独立的白光呼吸灯，亮度 100%
+// 🎯 请将这段无依赖的代码放到你的底层轮询或者延时上方：
+void dump_power_debug(void)
+{
+    // 1. 直接读取 ARM Cortex-M33 内核的系统控制寄存器 (SCR)
+    // 如果 SLEEPDEEP 位（第 2 位）为 1，说明硬件上内核被允许进深睡 (EM2)
+    uint32_t scr = *(volatile uint32_t *)(0xE000ED10);
+    bool     sleep_deep_allowed = (scr & (1 << 2)) != 0;
 
-    // Indic_Red_Blink_Start(400, 3);
+    // 2. 🎯 使用系统的 TaskHandle_t 类型并强转，通过 C++ 严格的类型检查
+    TaskHandle_t current_task = (TaskHandle_t)xTaskGetCurrentTaskHandle();
+    const char  *task_name = current_task ? pcTaskGetName(current_task) : "Unknown";
 
-    // Indic_Red_Mixed_Blink_Start(400, 5, 2400, 3);
+    ChipLogProgress(DeviceLayer, "=== [HARDWARE LOG] SCR Reg: 0x%08X (DeepSleep: %s) | Running Task: %s ===", (unsigned int)scr,
+                    sleep_deep_allowed ? "YES(EM2)" : "NO(EM1 Locked)", task_name);
+}
+
+void entry_clearTimeout(bool *normalAndLow)
+{
+    // Your timeout clearing code here
+    g_idleTime10Ms = 0; // 重置 idle 时间计数器，通常在系统进入低功耗模式前调用，确保下次唤醒时从零开始计时
+    if (normalAndLow != nullptr)
+    {
+        *normalAndLow = true; // 重置正常模式标志
+        module_Init();        // 重新初始化模块，恢复到正常工作状态
+    }
+}
+
+void sleep_Timeout(bool *normalAndLow, bool clearFlag)
+{
+    // Your idle code here
+    ++g_idleTime10Ms; // 这个示例只是简单地增加 idleTimeMs，实际应用中你可以根据需要进行更复杂的处理
+    if (g_idleTime10Ms > 300)
+    {
+        g_idleTime10Ms = 300; // 防止溢出，最大记录 3000ms 的 idle 时间
+    }
+    if (clearFlag)
+    {
+        g_idleTime10Ms = 0;
+        if (normalAndLow != nullptr)
+        {
+            *normalAndLow = true; // 如果 clearFlag 为 true，重置状态
+        }
+    }
+    else if (g_idleTime10Ms >= 300) // 无任务 执行超过 3s，进入 idle 状态
+    {
+        if (normalAndLow != nullptr)
+        {
+            *normalAndLow = false; // 降低进入次数
+        }
+        SILABS_LOG("Idle for %lu ms", g_idleTime10Ms);
+    }
 }
 
 /**
  * @brief 📬 主循环阶段：在这里处理所有的业务逻辑，包括电源管理、按键处理等
+ * @param  InterruptWake_up 由外部事件触发的唤醒标志，指示当前循环是否是被外部事件唤醒的
+ * @return 返回值控制循环的行为，例如是否继续执行、是否进入低功耗模式等
  */
-void entry_Loop(void)
+bool entry_Loop(bool *InterruptWake_up)
 {
-    static uint32_t time_clk = 0; // 全局时钟计数器，单位为10ms，供整个应用程序使用
-#if 1
-    static uint32_t tick = 0;
+#define debugLog 1
+    static bool     normalAndLow = true; // 当前是否处于正常模式（true）还是低频模式（false）的标志，由电量过低保护逻辑控制
+    static uint32_t time_clk = 0;        // 全局时钟计数器，单位为10ms，供整个应用程序使用
+    static uint32_t time_detect_bat = 0; // 上次检测电池状态的时间戳，单位为10ms
+#if debugLog
+    static uint32_t debugTick = 0;
 #endif
-    // 获取计时器的值
-    time_clk++;
 
-    // 获取电源状态
-    GetExternPowerFlag();
-
-    // 电源管理 用于电源状态的切换
-    PowerSwitchAssignment();
-    // 补上按键 预防中断失效
-    // MyCustomButtonInterruptHandler(0, 0); // 模拟按键事件，实际使用中应由硬件中断触发调用
-    LED_Tick10ms(); // LED 驱动的定时器滴答函数，处理渐变效果和状态更新
-
-    if (eg_PowerStatus == false)
+    // 中断唤醒
+    if (*InterruptWake_up)
     {
-        // 电池模式
-        if (time_clk - g_time_detect_bat > 100) // 1s 检测一次电池状态
+        *InterruptWake_up = false; // 重置唤醒标志，准备下一次被唤醒
+        // 这里可以添加一些针对被外部事件唤醒时需要立即处理的逻辑，例如快速响应某些紧急事件
+        SILABS_LOG("====> [entry_Loop] 被外部事件唤醒，执行快速响应逻辑 <====");
+        // 例如：检查某个特定的标志位，或者直接调用一个紧急处理函数
+        entry_clearTimeout(&normalAndLow);
+    }
+    // 外部电源唤醒
+    if (normalAndLow == false)
+    {
+        GetExternPowerFlag(); // 获取电源状态，更新全局变量 eg_UpPowerStatus
+        // 电源切换回到正常模式的条件判断
+        if (eg_PowerStatus != eg_UpPowerStatus)
         {
-            g_time_detect_bat = time_clk;
-            GetDisChargeStatus();
-            SILABS_LOG("Battery Status=%d", eg_BatStatus);
-            extern unsigned int g_ADBatLowVal;
-            SILABS_LOG("BatVol=%d mv", g_ADBatLowVal * 3);
-            g_is_operation_in_progress = false;
-            if (eg_BatStatus == Bat_LowVolProt)
-            {
-                g_PowerProtect = true; // 设置电量过低保护标志，禁止所有操作
-            }
+            entry_clearTimeout(&normalAndLow);
         }
-        BatOutEn();
     }
-    else
+    if (normalAndLow == true)
     {
-        // 外部供电模式
-        ChargeTimeUpdata(); // 充电时间更新
-        BatOutDis();
-        ChargeLogic(ChargeDetect());            // 400ms 充电逻辑处理一次，根据充电检测结果调整充电状态
-        ChargeCurrentCtrlOut(led_get_status()); // 根据 LED 状态调整充电电流，控制充电速度
-        change_led_Indic(eg_BatStatus);         // 根据电池状态调整指示灯显示
-    }
-    LED_SetLowBatteryProtection(g_PowerProtect); // 根据电量过低保护标志设置 LED 的保护状态，物理上锁定或解锁 LED 输出
-    Indic_W_Breath_Poll_10ms();
-    Indic_Red_Blink_Control_Dispatch();
-    Indic_Red_Blink_Poll_10ms();
+        // 获取计时器的值
+        time_clk++;
 
-#if 1
-    if (time_clk - tick > 200)
-    {
-        tick = time_clk;
-        SILABS_LOG("tick=%d", tick);
-        extern uint16_t g_ChargeTimeSec;
-        extern uint16_t g_ADTemperature;
-        SILABS_LOG("bat Temperature=%d", g_ADTemperature);
-        SILABS_LOG("charge time=%d", g_ChargeTimeSec);
-        SILABS_LOG("bat status=%d", eg_BatStatus);
-        SILABS_LOG("identify=%d", g_Identify);
+        // 获取电源状态
+        GetExternPowerFlag();
 
-        //  check_interrupt_injection_status(5);
-        //   CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
-        //  my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
-        //  my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
-        //  sl_pwm_start(&sl_pwm_w_led0);
-        //  sl_pwm_start(&sl_pwm_Indic_led0);
+        // 电源管理 用于电源状态的切换
+        PowerSwitchAssignment();
 
-        // write_led_example();
-    }
+        LED_Tick10ms();                              // LED 驱动的定时器滴答函数，处理渐变效果和状态更新
+        LED_SetLowBatteryProtection(g_PowerProtect); // 根据电量过低保护标志设置 LED 的保护状态，物理上锁定或解锁 LED 输出
+        // 电源模式
+        if (eg_PowerStatus == false)
+        {
+            // 电池模式
+            if (time_clk - time_detect_bat > 100) // 1s 检测一次电池状态
+            {
+                time_detect_bat = time_clk;
+                GetDisChargeStatus();
+                SILABS_LOG("Battery Status=%d", eg_BatStatus);
+                extern unsigned int g_ADBatLowVal;
+                SILABS_LOG("BatVol=%d mv", g_ADBatLowVal * 3);
+                if (eg_BatStatus == Bat_LowVolProt)
+                {
+                    g_PowerProtect = true; // 设置电量过低保护标志，禁止所有操作
+                }
+            }
+            BatOutEn();
+        }
+        else
+        {
+            // 外部供电模式
+            ChargeTimeUpdata(); // 充电时间更新
+            BatOutDis();
+            ChargeLogic(ChargeDetect());            // 400ms 充电逻辑处理一次，根据充电检测结果调整充电状态
+            ChargeCurrentCtrlOut(led_get_status()); // 根据 LED 状态调整充电电流，控制充电速度
+            change_led_Indic(eg_BatStatus);         // 根据电池状态调整指示灯显示
+        }
+        // 指示灯相关逻辑
+        Indic_W_Breath_Poll_10ms();
+        Indic_Red_Blink_Control_Dispatch();
+        Indic_Red_Blink_Poll_10ms();
+
+        // usb供电 不休眠
+        // led亮着 不休眠
+        sleep_Timeout(&normalAndLow, ((eg_PowerStatus == true) || ((eg_PowerStatus == false) && (led_get_status()) && (g_PowerProtect == false))));
+        // 调用 sleep_Timeout 函数，传入当前时钟计数器和 clearFlag 标志
+        if (normalAndLow == false) // 如果 IdleTimeout 返回 true，说明满足某些条件，可以进入低功耗模式
+        {
+            SILABS_LOG("满足进入低功耗模式的条件，执行相关操作...");
+            module_Deinit(); // 反初始化模块，释放资源，准备进入低功耗模式
+        }
+
+#if debugLog
+        dump_power_debug();
+        if (time_clk - debugTick > 200)
+        {
+            debugTick = time_clk;
+            SILABS_LOG("tick=%d", debugTick);
+            extern uint16_t g_ChargeTimeSec;
+            extern uint16_t g_ADTemperature;
+            SILABS_LOG("bat Temperature=%d", g_ADTemperature);
+            SILABS_LOG("charge time=%d", g_ChargeTimeSec);
+            SILABS_LOG("bat status=%d", eg_BatStatus);
+            //  SILABS_LOG("identify=%d", g_Identify);
+
+            //  check_interrupt_injection_status(5);
+            //   CheckTickResolution(); // 检查系统 Tick 的时间分辨率，确保定时器逻辑的正确性
+            //  my_pwm_set_duty_cycle_v1000(&sl_pwm_w_led0, 500); // 设置占空比为50%
+            //  my_pwm_set_duty_cycle_v1000(&sl_pwm_Indic_led0, 250); // 设置占空比为25%
+            //  sl_pwm_start(&sl_pwm_w_led0);
+            //  sl_pwm_start(&sl_pwm_Indic_led0);
+
+            // write_led_example();
+        }
 #endif
+        // 返回值可以用来控制是否继续执行循环，或者是切换到不同的处理模式
+    }
+    return normalAndLow;
 }
 
 /**

@@ -16,6 +16,7 @@ add_executable(MatterLightOverThread
     # Add additional sources here 
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/AppMatterHandlers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/entry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/MyCustomMonitor.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/button.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp

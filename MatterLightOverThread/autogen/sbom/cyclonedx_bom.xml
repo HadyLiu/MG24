@@ -10,7 +10,7 @@ referenced in this SBOM.)
 -->
 <bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
   <metadata>
-    <timestamp>2026-06-09T07:23:41Z</timestamp>
+    <timestamp>2026-06-10T05:55:42Z</timestamp>
     <authors>
       <author>
         <name>Silicon Laboratories, Inc.</name>
@@ -955,6 +955,26 @@ referenced in this SBOM.)
             <expression>Apache 2.0</expression>
           </licenses>
         </component>
+        <component bom-ref="silabs.matter:2.8.1:matter_icd_core" type="library">
+          <name>ICD Server Configuration</name>
+          <version>2.8.1</version>
+	      <supplier>
+	        <name>Silicon Laboratories Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.matter:2.8.1:matter_icd_management" type="library">
+          <name>ICD Management Server Cluster</name>
+          <version>2.8.1</version>
+	      <supplier>
+	        <name>Silicon Laboratories Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Apache 2.0</expression>
+          </licenses>
+        </component>
       </components>
     </component>
     <component bom-ref="silabs.simplicity_sdk:2025.12.2" type="library">
@@ -966,16 +986,6 @@ referenced in this SBOM.)
       <components>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:EFR32MG24B010F1536IM40" type="library">
           <name>EFR32MG24B010F1536IM40</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfrco" type="library">
-          <name>High Frequency RC Oscillator (HFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -1046,6 +1056,16 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:spidrv_eusart" type="library">
           <name>SPIDRV EUSART</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_nvm3" type="library">
+          <name>NVM3 Service for TrustZone Secure Key Library</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -1274,16 +1294,6 @@ referenced in this SBOM.)
             <expression>MSLA</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:ot_stack_ftd" type="library">
-          <name>Stack (FTD)</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:ot_platform_abstraction" type="library">
           <name>Platform Abstraction</name>
           <version>2025.12.2</version>
@@ -1346,6 +1356,16 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:sl_main_kernel" type="library">
           <name>SL Main Kernel</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_config" type="library">
+          <name>tz_service_config</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -2022,6 +2042,16 @@ referenced in this SBOM.)
 	      </supplier>
           <licenses>
             <expression>MSLA</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_nvm3_common" type="library">
+          <name>NVM3 and ITS service helper component for TrustZone secure library</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
           </licenses>
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:hal_sysrtc" type="library">
@@ -3219,8 +3249,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_nvm3" type="library">
-          <name>NVM3 Service for TrustZone Secure Key Library</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:ot_stack_mtd" type="library">
+          <name>Stack (MTD)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -3229,18 +3259,8 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_config" type="library">
-          <name>tz_service_config</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_nvm3_common" type="library">
-          <name>NVM3 and ITS service helper component for TrustZone secure library</name>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfrco" type="library">
+          <name>High Frequency RC Oscillator (HFRCO)</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>

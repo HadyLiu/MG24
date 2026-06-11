@@ -84,7 +84,8 @@ sm15135e_pixel_t my_led;
  */
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
 {
-    uint32_t sm_r = 0, sm_g = 0, sm_b = 0;
+    uint32_t    sm_r = 0, sm_g = 0, sm_b = 0;
+    static bool standby = false;
 
     LED_W_SetDuty(w); // 直接控制白光通道的 PWM 占空比，达到独立调节白光亮度的目的
 
@@ -105,8 +106,9 @@ void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
     {
         sm_b = 0xFFFF;
     }
-    sm15135e_fill_default(&my_led);
-    // 注意：SM15135E 的 RGBW 通道映射可能与物理连接不同，需根据实际电路调整参数顺序
+
+    // 输出为0时 芯片进入休眠模式，节省功耗
+    sm15135e_set_all_gain(&my_led, SM15135E_GAIN_101_1MA); // 全通道设置为最大电流 198mA，确保亮度输出足够
     sm15135e_set_rgbwy(&my_led,
                        sm_b, // Red (红)
                        sm_g, // Green (绿)
@@ -114,5 +116,6 @@ void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
                        0,    // White (冷白)
                        0     // Yellow/Warm (暖黄)
     );
+
     sm15135e_send_frame(&my_led);
 }

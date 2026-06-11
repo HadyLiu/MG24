@@ -3,7 +3,7 @@
   "specVersion" : "1.6",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-06-09T07:23:41Z",
+    "timestamp" : "2026-06-10T05:55:42Z",
     "authors" : [ {
       "name" : "Silicon Laboratories, Inc."
     } ],
@@ -1137,6 +1137,30 @@
       "licenses" : [ {
         "expression" : "Apache 2.0"
       } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.matter:2.8.1:matter_icd_core",
+      "name" : "ICD Server Configuration",
+      "version" : "2.8.1",
+      "supplier" : {
+        "name" : "Silicon Laboratories Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.matter:2.8.1:matter_icd_management",
+      "name" : "ICD Management Server Cluster",
+      "version" : "2.8.1",
+      "supplier" : {
+        "name" : "Silicon Laboratories Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Apache 2.0"
+      } ]
     } ]
   }, {
     "scope" : "required",
@@ -1152,18 +1176,6 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:EFR32MG24B010F1536IM40",
       "name" : "EFR32MG24B010F1536IM40",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfrco",
-      "name" : "High Frequency RC Oscillator (HFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -1248,6 +1260,18 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:spidrv_eusart",
       "name" : "SPIDRV EUSART",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_nvm3",
+      "name" : "NVM3 Service for TrustZone Secure Key Library",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -1518,18 +1542,6 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:ot_stack_ftd",
-      "name" : "Stack (FTD)",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:ot_platform_abstraction",
       "name" : "Platform Abstraction",
       "version" : "2025.12.2",
@@ -1604,6 +1616,18 @@
       "type" : "library",
       "bom-ref" : "silabs.simplicity_sdk:2025.12.2:sl_main_kernel",
       "name" : "SL Main Kernel",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_config",
+      "name" : "tz_service_config",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -2406,6 +2430,18 @@
       },
       "licenses" : [ {
         "expression" : "MSLA"
+      } ]
+    }, {
+      "scope" : "required",
+      "type" : "library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_nvm3_common",
+      "name" : "NVM3 and ITS service helper component for TrustZone secure library",
+      "version" : "2025.12.2",
+      "supplier" : {
+        "name" : "Silicon Laboratories, Inc."
+      },
+      "licenses" : [ {
+        "expression" : "Zlib"
       } ]
     }, {
       "scope" : "required",
@@ -3821,8 +3857,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_nvm3",
-      "name" : "NVM3 Service for TrustZone Secure Key Library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:ot_stack_mtd",
+      "name" : "Stack (MTD)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."
@@ -3833,20 +3869,8 @@
     }, {
       "scope" : "required",
       "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_config",
-      "name" : "tz_service_config",
-      "version" : "2025.12.2",
-      "supplier" : {
-        "name" : "Silicon Laboratories, Inc."
-      },
-      "licenses" : [ {
-        "expression" : "Zlib"
-      } ]
-    }, {
-      "scope" : "required",
-      "type" : "library",
-      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:tz_service_nvm3_common",
-      "name" : "NVM3 and ITS service helper component for TrustZone secure library",
+      "bom-ref" : "silabs.simplicity_sdk:2025.12.2:device_init_hfrco",
+      "name" : "High Frequency RC Oscillator (HFRCO)",
       "version" : "2025.12.2",
       "supplier" : {
         "name" : "Silicon Laboratories, Inc."

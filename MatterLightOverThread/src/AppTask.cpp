@@ -147,8 +147,6 @@ void AppTask::AppTaskMain(void *pvParameter)
     AppEvent           event;
     osMessageQueueId_t sAppEventQueue = *(static_cast<osMessageQueueId_t *>(pvParameter));
 
-    extern void entry_Init(void);
-    entry_Init();
     // Initialization that needs to happen before the BaseInit is called here as the BaseApplication::Init() will call
     // the AppInit() after BaseInit.
 
@@ -182,18 +180,22 @@ void AppTask::AppTaskMain(void *pvParameter)
 
     SILABS_LOG("App Task started");
 
+    // 创建一个自定义的监控任务，用于执行用户自定义的循环处理逻辑
+    extern void CreateCustomMonitorTask(void);
+    CreateCustomMonitorTask();
+
     while (true)
     {
         // 修改定时器的等待方式为非阻塞，每隔10ms检查一次事件队列，同时执行my_custom_loop_app_process()函数
-        osStatus_t eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, 10); // osWaitForever);
+        osStatus_t eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, osWaitForever);
         while (eventReceived == osOK)
         {
             sAppTask.DispatchEvent(&event);
             eventReceived = osMessageQueueGet(sAppEventQueue, &event, nullptr, 0);
         }
-        // 每隔10ms执行一次entry_Loop()，你可以在这个函数中添加你自己的代码
-        extern void entry_Loop(void);
-        entry_Loop();
+        // // 每隔10ms执行一次entry_Loop()，你可以在这个函数中添加你自己的代码
+        // extern void entry_Loop(void);
+        // entry_Loop();
     }
 }
 

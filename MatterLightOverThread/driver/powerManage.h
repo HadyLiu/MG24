@@ -117,6 +117,7 @@ extern TypedefBatEnum eg_BatStatus; /* 电池状态 */
 #define SetTriggerDetectionChargingChip() (eg_ChargingChip_TriggerDetection = true)
 
 void powerManage_adc_Init(void);
+void powerManage_adc_DeInit(void);
 bool DetectTemp(void);            // 检测温度
 void PowerManageInit(void);       // 初始化
 void PowerSwitchAssignment(void); // 电源切换

@@ -90,9 +90,9 @@
 // <i> Enable default App task
 // <i> Default: On (for non-RCP apps)
 #if OPENTHREAD_RADIO
-#define SL_OPENTHREAD_ENABLE_APP_TASK  0
+#define SL_OPENTHREAD_ENABLE_APP_TASK 0
 #else
-#define SL_OPENTHREAD_ENABLE_APP_TASK  0
+#define SL_OPENTHREAD_ENABLE_APP_TASK 0
 #endif
 
 // </h>
@@ -100,11 +100,10 @@
 // <i> Enable Serial task
 // <i> Default: On (for non-RCP apps)
 #if OPENTHREAD_RADIO
-#define SL_OPENTHREAD_ENABLE_SERIAL_TASK  (0)
+#define SL_OPENTHREAD_ENABLE_SERIAL_TASK (0)
 #else
 #define SL_OPENTHREAD_ENABLE_SERIAL_TASK (1)
 #endif
 
 // </h>
 // <<< end of configuration section >>>
-

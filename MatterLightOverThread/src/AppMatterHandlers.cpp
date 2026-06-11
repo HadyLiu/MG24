@@ -39,6 +39,8 @@ using namespace chip::DeviceLayer;
 // =================================================================
 void MyActionInitiatedBridge(int aAction, uint8_t *aValue, bool lightOn)
 {
+    extern void ConditionalWake_up(void);
+    ConditionalWake_up(); // 每次行动请求都触发唤醒，确保系统及时响应用户操作
     SILABS_LOG("====> [matter] 收到行动请求: %d <====\n", aAction);
 
     //  判断是否是开关
@@ -102,6 +104,8 @@ void MyColorEventHandlerBridge(uint8_t action, void *valueData, uint16_t X, uint
     {
         return;
     }
+    extern void ConditionalWake_up(void);
+    ConditionalWake_up(); // 每次行动请求都触发唤醒，确保系统及时响应用户操作
 
     // 将泛型指针强转为官方标准颜色数据结构体
     auto *colorData = reinterpret_cast<RGBLEDWidget::ColorData_t *>(valueData);
@@ -292,6 +296,8 @@ void MyUserIdentifyStartHandler(Identify *identify)
     extern void    LED_SetBlink(uint8_t brightness, uint8_t color_index, uint16_t period_ms, uint16_t count);
     extern uint8_t led_get_brightness(void);
     extern uint8_t led_get_color_index(void);
+    extern void    ConditionalWake_up(void);
+    ConditionalWake_up(); // 每次行动请求都触发唤醒，确保系统及时响应用户操作
     LED_SetBlink(led_get_brightness(), led_get_color_index(), 800, 2);
 }
 
@@ -324,24 +330,27 @@ void InitUserIdentifyCluster()
 //  ================= 4. 配网成功通知 =================
 static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
 {
+    static bool is_animation_triggered = false; // 静态变量作为锁，确保配对成功动画只触发一次
+
+    if (chip::Server::GetInstance().GetFabricTable().FabricCount() == 0)
+    {
+        is_animation_triggered = false;
+    }
+
     switch (event->Type)
     {
     // 🎯 核心事件：配网完成（手机成功将设备加入家庭网络）
     case DeviceEventType::kCommissioningComplete:
         SILABS_LOG("🎯 Matter Connection Established: Commissioning Complete!");
-
-        // 运行配对成功特效
-        extern void TriggerPairingSuccessAnimation(void);
-        TriggerPairingSuccessAnimation();
+        if (!is_animation_triggered)
+        {
+            is_animation_triggered = true; // 上锁
+            extern void TriggerPairingSuccessAnimation(void);
+            TriggerPairingSuccessAnimation();
+        }
         break;
 
-    // 辅助判定事件：手机通过蓝牙与设备建立安全会话连接（处于扫码配对中间状态）
-    case DeviceEventType::kCHIPoBLEConnectionEstablished:
-    {
-        SILABS_LOG("BLE connection established with phone.");
-        break;
-    }
-
+    case DeviceEventType::kCHIPoBLEConnectionEstablished: SILABS_LOG("BLE connection established with phone."); break;
     default: break;
     }
 }

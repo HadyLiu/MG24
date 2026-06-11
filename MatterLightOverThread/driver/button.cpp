@@ -66,6 +66,9 @@ static void MyButtonStateMachineHandler(AppEvent *aEvent)
     uint8_t         button = btn_event->ButtonEvent.ButtonIdx;
     uint8_t         action = btn_event->ButtonEvent.Action;
 
+    // 每次按键事件都触发唤醒，确保系统及时响应用户操作
+    extern void ConditionalWake_up(void);
+    ConditionalWake_up();
     if (action == kInternalEdgePress)
     {
         s_my_last_button = button;

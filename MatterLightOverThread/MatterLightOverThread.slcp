@@ -84,6 +84,9 @@ component:
   id: matter_groups
 - package: matter
   vendor: silabs
+  id: matter_icd_core
+- package: matter
+  vendor: silabs
   id: matter_identify
 - package: matter
   vendor: silabs
