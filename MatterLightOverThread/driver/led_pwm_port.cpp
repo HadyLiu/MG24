@@ -18,7 +18,9 @@ void my_pwm_set_duty_cycle_10bit_resolution(sl_pwm_instance_t *pwm, uint16_t dut
 #if defined(_SILICON_LABS_32B_SERIES_2)
     // 适用于 Series 2 芯片 (如 EFR32MG24)
     uint32_t top = TIMER_TopGet(pwm->timer);
-    TIMER_CompareBufSet(pwm->timer, pwm->channel, (top * duty_val) >> 10);
+    uint32_t compare_val = (top * duty_val); // 右移9位相当于除以512
+    compare_val /= 638;
+    TIMER_CompareBufSet(pwm->timer, pwm->channel, compare_val);
 #else
     // 适用于 Series 3 芯片
     uint32_t top = sl_hal_timer_get_top(pwm->timer);
@@ -84,8 +86,7 @@ sm15135e_pixel_t my_led;
  */
 void LED_HW_SetWRGB(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
 {
-    uint32_t    sm_r = 0, sm_g = 0, sm_b = 0;
-    static bool standby = false;
+    uint32_t sm_r = 0, sm_g = 0, sm_b = 0;
 
     LED_W_SetDuty(w); // 直接控制白光通道的 PWM 占空比，达到独立调节白光亮度的目的
 

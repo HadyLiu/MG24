@@ -9,6 +9,7 @@
             "defines": [
                 "CHIP_HAVE_CONFIG_H=1",
                 "EFR32MG24B210F1536IM48=1", // 根据你具体的芯片型号修改
+                "_SILICON_LABS_32B_SERIES_2=1",
                 "SILABS_BOARD_DEFAULT=1",
                 "SL_MATTER_RGB_LED_ENABLED=1",
                 "ARM_MATH_CM4=1",
