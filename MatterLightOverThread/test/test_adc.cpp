@@ -3,7 +3,7 @@
 
 #if TEST_ADC
 
-#include "../driver/iadc_driver.h"
+#include "../driver/hal/IadcHal.h"
 
 //实例化ADC对象
 IadcDriver adcA8(gpioPortA, 8); // PA08

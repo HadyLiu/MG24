@@ -1,6 +1,8 @@
 #include "cmsis_os2.h"
 #include "sl_power_manager.h"
 #include "lib/support/logging/CHIPLogging.h"
+#include "../app/AppOrchestrator.h"
+#include "app/WakeControl.h"
 
 #define MONITOR_TASK_STACK_SIZE 2048
 static osThreadId_t s_MonitorTaskHandle = nullptr;
@@ -8,11 +10,7 @@ static osThreadId_t s_MonitorTaskHandle = nullptr;
 #define KEY_WAKEUP_FLAG      0x00000002U
 #define NETWORK_WAKEUP_FLAG  0x00000004U
 
-// 声明你的业务初始化和高频周期处理函数
-extern void entry_Init(void);
-extern bool entry_Loop(bool *InterruptWake_up);
-
-static bool normalAndLow = true; // 当前是否处于正常模式（true）还是低频模式（false）的标志，由电量过低保护逻辑控制
+static bool normalAndLow = true;
 static bool ConditionalWake_upState = true;
 
 //
@@ -40,12 +38,12 @@ void ConditionalWake_up(void)
 static void CustomMonitorTask_Handler(void *argument)
 {
     (void)argument;
-    entry_Init();
+    AppOrchestrator::instance().init();
     ChipLogProgress(NotSpecified, "Custom Monitor Task started.");
 
     while (true)
     {
-        normalAndLow = entry_Loop(&ConditionalWake_upState);
+        normalAndLow = AppOrchestrator::instance().tick10ms(&ConditionalWake_upState);
         if (normalAndLow) // 如果返回 true，说明需要进入高频模式
         {
             // 正常模式

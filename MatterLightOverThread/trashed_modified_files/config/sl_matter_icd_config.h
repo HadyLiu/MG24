@@ -7,13 +7,13 @@
 
 // <o SL_IDLE_MODE_DURATION_S>  Idle Mode Duration (sec)
 // <i> Duration the ICD device remains in idle mode between check-ins
-// <i> Longer duration reduces power consumption but increases response latency
-// <i> Default: 600 (10 minutes)
+// <i> Longer duration reduces power consumption but increases response
+// latency / <i> Default: 600 (10 minutes)
 #define SL_IDLE_MODE_DURATION_S 5
 
 // <o SL_SHORT_IDLE_MODE_DURATION_S>  Short Idle Mode Duration (sec)
-// <i> A shorter idle mode duration when a LIT capable device is operating as a SIT
-// <i> Default value is to use the same value as SL_IDLE_MODE_DURATION_S
+// <i> A shorter idle mode duration when a LIT capable device is operating as
+// a SIT / <i> Default value is to use the same value as SL_IDLE_MODE_DURATION_S
 #define SL_SHORT_IDLE_MODE_DURATION_S SL_IDLE_MODE_DURATION_S
 
 // <o SL_ACTIVE_MODE_DURATION_MS>  Active Mode Duration (ms)
@@ -28,13 +28,16 @@
 #define SL_ACTIVE_MODE_THRESHOLD 500
 
 // <o SL_ICD_SUPPORTED_CLIENTS_PER_FABRIC>  ICD Supported Clients
-// <i> Maximum number of clients that can register with this ICD device per fabric
-// <i> Default: 2 clients
+// <i> Maximum number of clients that can register with this ICD device per
+// fabric /
+//    <i> Default : 2 clients
 #define SL_ICD_SUPPORTED_CLIENTS_PER_FABRIC 2
 
 // <o SL_TRANSPORT_IDLE_INTERVAL>  Transport Idle Interval (ms)
-// <i> Controllers wait this long before retrying communication with sleeping device
-// <i> Default: 15000 milliseconds (15 seconds)
+// <i> Controllers wait this long before retrying communication with
+// sleeping
+//  / device /
+//<i> Default : 15000 milliseconds(15 seconds)
 #define SL_TRANSPORT_IDLE_INTERVAL 1000
 
 // <o SL_TRANSPORT_ACTIVE_INTERVAL>  Transport Active Interval (ms)
@@ -50,13 +53,20 @@
 
 // <q CHIP_CONFIG_ENABLE_ICD_DSLS>  Enable Dynamic SIT-LIT Switching
 // <i> Dynamic Switching from Short Idle Time to Long Idle Time (Default: 0)
-// <i> Set to true if device supports dynamic switching from SIT to LIT operating modes (DSLS)
+// <i> Set to true if device supports dynamic switching from SIT to LIT
+//
+// operating modes(DSLS)
 #define CHIP_CONFIG_ENABLE_ICD_DSLS 0
 
 // <q SL_ICD_ENABLE_SELECTIVE_SLEEP>  Enable Dynamic DTIM-LI-based Switching
-// <i> Dynamic Switching from DTIM based to Long Interval based sleep (Default: 1)
-// <i> Set to true, if device supports dynamic switching from DTIM based to Long Interval based sleep (Selective Sleep)
-// <i> This feature is used to reduce power consumption in devices that support both DTIM and Long Interval based sleep modes.
+// <i> Dynamic Switching from DTIM based to Long Interval based sleep
+/// (Default : 1) / <i> Set to true,
+// if device supports dynamic switching from
+//     / DTIM based to Long Interval based sleep(Selective Sleep) /
+//     <i> This feature /
+//     is used to reduce power
+//     consumption in devices that support both DTIM and /
+//     Long Interval based sleep modes.
 #define SL_ICD_ENABLE_SELECTIVE_SLEEP 1
 
 // <<< end of configuration section >>>

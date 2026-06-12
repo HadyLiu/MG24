@@ -26,29 +26,21 @@ set(APP_LAYER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/IndicatorService.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightEngine.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/PowerMonitor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal/NvmStorage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal/PwmHal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal/SpiRgbHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/SystemTime.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/NvmStorage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/PwmHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/SpiRgbHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/SpiSm15135eHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/led_pwm.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/PinHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/IadcHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/IndicatorHal.cpp
+
 )
 
 add_executable(MatterLightOverThread
     ${APP_LAYER_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/entry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/MyCustomMonitor.cpp
-
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/button.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/iadc_driver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_mode_convert.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_pwm_port.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_red_indic.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_white_indic.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/led_wrgb.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/pinManage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/powerManage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/sm15135e.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/swimHost.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
-
     ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp
 )
 
@@ -60,7 +52,7 @@ target_include_directories(MatterLightOverThread PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../policy
     ${CMAKE_CURRENT_SOURCE_DIR}/../service
-    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal
 )
 
 target_compile_definitions(MatterLightOverThread PUBLIC
