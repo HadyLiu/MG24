@@ -27,70 +27,6 @@ void PowerSwitchAssignment(void);
 void change_led_Indic(uint8_t charge_status);
 void CommissioningFirstBreath_Poll(void);
 
-static bool s_first_commission_breath_active = false;
-
-static bool IsCommissioningFirstBreathRequested(void)
-{
-    if (LED_IsFirstCommissionDone())
-    {
-        return false;
-    }
-    if (!IsMatterUnprovisioned())
-    {
-        return false;
-    }
-    if (!led_get_status() || g_PowerProtect)
-    {
-        return false;
-    }
-    return true;
-}
-
-void CommissioningFirstBreath_Stop(void)
-{
-    if (!s_first_commission_breath_active)
-    {
-        return;
-    }
-
-    s_first_commission_breath_active = false;
-    LED_StopEffect();
-    SILABS_LOG("[commission] First commissioning white breath stopped");
-}
-
-static void CommissioningFirstBreath_Start(void)
-{
-    led_color_t white = led_get_color_table(0);
-
-    s_first_commission_breath_active = true;
-    LED_SetBreath(LED_BRIGHTNESS_MAX, white, 0);
-    SILABS_LOG("[commission] First commissioning white breath started");
-}
-
-void CommissioningFirstBreath_Poll(void)
-{
-    if (!IsCommissioningFirstBreathRequested())
-    {
-        if (s_first_commission_breath_active)
-        {
-            CommissioningFirstBreath_Stop();
-        }
-        return;
-    }
-
-    if (s_first_commission_breath_active)
-    {
-        return;
-    }
-
-    if (!LED_IsUserEffectIdle())
-    {
-        return;
-    }
-
-    CommissioningFirstBreath_Start();
-}
-
 /**
  * @brief 📬 初始化阶段：在这里设置好所有的硬件和软件资源，准备好迎接后续的业务逻辑
  */
@@ -112,7 +48,6 @@ void entry_Init(void)
     SILABS_LOG("[app]Power completed");
 
     LED_Init(); // 初始化 LED 状态
-    CommissioningFirstBreath_Poll();
 }
 
 /**
@@ -235,7 +170,6 @@ bool entry_Loop(bool *InterruptWake_up)
 
         LED_Tick10ms();                              // LED 驱动的定时器滴答函数，处理渐变效果和状态更新
         LED_SetLowBatteryProtection(g_PowerProtect); // 根据电量过低保护标志设置 LED 的保护状态，物理上锁定或解锁 LED 输出
-        CommissioningFirstBreath_Poll();             // 开箱首次配网白光呼吸（与充电 Indic 呼吸独立）
         // 电源模式
         if (eg_PowerStatus == false)
         {

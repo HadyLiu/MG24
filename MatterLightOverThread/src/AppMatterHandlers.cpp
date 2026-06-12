@@ -346,9 +346,7 @@ void InitUserIdentifyCluster()
 }
 
 bool IsMatterUnprovisioned(void)
-{
-    return chip::Server::GetInstance().GetFabricTable().FabricCount() == 0;
-}
+{ return chip::Server::GetInstance().GetFabricTable().FabricCount() == 0; }
 
 //  ================= 4. 配网成功通知 =================
 static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
@@ -365,8 +363,6 @@ static void OnMatterDeviceEvent(const ChipDeviceEvent *event, intptr_t arg)
     // 🎯 核心事件：配网完成（手机成功将设备加入家庭网络）
     case DeviceEventType::kCommissioningComplete:
         SILABS_LOG("🎯 Matter Connection Established: Commissioning Complete!");
-        LED_SetFirstCommissionDone();
-        CommissioningFirstBreath_Stop();
         if (!is_animation_triggered)
         {
             is_animation_triggered = true;

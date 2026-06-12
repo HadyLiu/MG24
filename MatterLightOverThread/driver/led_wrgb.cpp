@@ -2,8 +2,6 @@
 
 led_ctrl_t g_led;
 
-static bool s_first_commission_done = false;
-
 /* 出厂默认 color2（约2450K），亮度100% */
 const led_color_t g_color_table[LED_COLOR_COUNT] = {
     //   W,    R,    G,    B
@@ -42,11 +40,9 @@ static const uint16_t g_ease_quad_table_4096[81] = {
 
 MixedLightingEffects_t g_mixed_effects[5];
 
-bool            LED_LoadStateFromFlash(void);
-void            LED_SaveStateToFlash(void);
-static void     LED_LoadFirstCommissionFlagFromFlash(void);
-static uint16_t led_clamp_u16(uint16_t v, uint16_t min, uint16_t max);
-
+bool LED_LoadStateFromFlash(void);
+void LED_SaveStateToFlash(void);
+// static void     LED_LoadFirstCommissionFlagFromFlash(void);
 static uint16_t led_clamp_u16(uint16_t v, uint16_t min, uint16_t max)
 { return (v <= min) ? min : ((v >= max) ? max : v); }
 static uint8_t led_clamp_u8(uint8_t v, uint8_t min, uint8_t max)
@@ -438,7 +434,7 @@ void LED_Init(void)
     g_led.raw_color = g_color_table[0];
     g_led.cur_color = (led_color_t){0, 0, 0, 0}; // 显式置空，等待 Flash 复原
 
-    LED_LoadFirstCommissionFlagFromFlash();
+    // LED_LoadFirstCommissionFlagFromFlash();
     LED_LoadStateFromFlash();
     g_led.change_origin = LED_ORIGIN_LOCAL_KEY;
     if (g_led.is_on || g_led.brightness > 0)
@@ -514,39 +510,39 @@ bool LED_LoadStateFromFlash(void)
     return true;
 }
 
-static void LED_LoadFirstCommissionFlagFromFlash(void)
-{
-    uint8_t flag = 0;
-
-    Ecode_t err = nvm3_readData(nvm3_defaultHandle, NVM3_KEY_FIRST_COMMISSION_DONE, &flag, sizeof(flag));
-    s_first_commission_done = (err == ECODE_NVM3_OK && flag == FIRST_COMMISSION_DONE_MAGIC);
-}
-
-bool LED_IsFirstCommissionDone(void)
-{
-    return s_first_commission_done;
-}
-
-void LED_SetFirstCommissionDone(void)
-{
-    if (s_first_commission_done)
-    {
-        return;
-    }
-
-    s_first_commission_done = true;
-    uint8_t flag = FIRST_COMMISSION_DONE_MAGIC;
-    Ecode_t err = nvm3_writeData(nvm3_defaultHandle, NVM3_KEY_FIRST_COMMISSION_DONE, &flag, sizeof(flag));
-    if (err == ECODE_NVM3_OK && nvm3_repackNeeded(nvm3_defaultHandle))
-    {
-        nvm3_repack(nvm3_defaultHandle);
-    }
-}
-
-bool LED_IsUserEffectIdle(void)
-{
-    return !g_led.mix_lighting_effects && g_led.effect_mode == LED_EFFECT_NONE && !g_led.fading;
-}
+// static void LED_LoadFirstCommissionFlagFromFlash(void)
+//{
+//     uint8_t flag = 0;
+//
+//     Ecode_t err = nvm3_readData(nvm3_defaultHandle, NVM3_KEY_FIRST_COMMISSION_DONE, &flag, sizeof(flag));
+//     s_first_commission_done = (err == ECODE_NVM3_OK && flag == FIRST_COMMISSION_DONE_MAGIC);
+// }
+//
+// bool LED_IsFirstCommissionDone(void)
+//{
+//     return s_first_commission_done;
+// }
+//
+// void LED_SetFirstCommissionDone(void)
+//{
+//     if (s_first_commission_done)
+//     {
+//         return;
+//     }
+//
+//     s_first_commission_done = true;
+//     uint8_t flag = FIRST_COMMISSION_DONE_MAGIC;
+//     Ecode_t err = nvm3_writeData(nvm3_defaultHandle, NVM3_KEY_FIRST_COMMISSION_DONE, &flag, sizeof(flag));
+//     if (err == ECODE_NVM3_OK && nvm3_repackNeeded(nvm3_defaultHandle))
+//     {
+//         nvm3_repack(nvm3_defaultHandle);
+//     }
+// }
+//
+// bool LED_IsUserEffectIdle(void)
+//{
+//     return !g_led.mix_lighting_effects && g_led.effect_mode == LED_EFFECT_NONE && !g_led.fading;
+// }
 
 void LED_SaveStateToFlash(void)
 {
