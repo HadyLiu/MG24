@@ -37,8 +37,8 @@
 // #define USE_BATTERY_RESISTANCE /* 使用电池阻值来判断电池类型 */
 
 /***************** define  ********************/
-#define BatDisChargeLowWarnVal (2233) /* y = 6.7 *(1/ 3) = 2233      */
-#define BatDisChargeLowVal     (2000) /* y = 6.0 *(1/ 3) = 2000       */
+#define BatDisChargeLowWarnVal (2300) /* 6.9V * (1/3) = 2300 mV ADC */
+#define BatDisChargeLowVal     (2000) /* 6.0V * (1/3) = 2000 mV ADC */
 
 ///***   充电设置配置  8190*3/5860=  ***/
 // #define BatHighWarnVol (89364230) /* ((4095*4095*(4.55+0.187)*9)/(2.00*4)) = 89364230   提示保护      */
@@ -52,7 +52,8 @@
 #define BatLimitI                     (6700) /*     NG      (4095*(3.6/2)/3.3)*3=7445      (采集)    USB输入过压    */
 #define NTCDetectBat                  (3092) /*  > 29.884K  (299/(299+20))*3.3*1000 = 3092          NTC检测是否存在电池*/
 #define NTCLowValTemp                 (2026) /* > 31.819K   (31.819/(31.819+20))*3.3*1000 = 2026   NTC温度过低 */
-#define NTCOverValTemp                (591)  /* < 4.365K    (4.365/(4.365+20))*3.3*1000 = 591       NTC温度过高 */
+#define NTCOverValTemp                (591)  /* < 4.365K 过温 */
+#define NTCRecoverValTemp             (660)  /* > 5K 恢复滞回 */
 #define NTCBatUsedOverValTemp         (1349) /* < 4.365K    (4095*2.468/(2.468+20))*3=1349           NTC温度过高 */
 #define USBInOverCurt                 (0)    /* 5952   2000/(0.28*1.2)  1.2A   (采集)    USB输入瞬间过流 */
 #define NTCVlaueCtrl                  (0)    /* 36+39.497    <1.32V (采集)     NTC温度过高 */

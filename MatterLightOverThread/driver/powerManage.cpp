@@ -1,4 +1,5 @@
 #include "powerManage.h"
+#include "led_red_indic.h"
 
 /********************
  * power status
@@ -115,6 +116,15 @@ uint16_t get_bat_adc_vol(void)
  */
 uint16_t get_temp_adc_vol(void)
 { return adcC5.ReadVoltageMilliVolts(); }
+
+bool DetectTemp(void)
+{
+    BoostEn();
+    sl_udelay_wait(2000);
+    g_ADTemperature = get_temp_adc_vol();
+    BoostDis();
+    return true;
+}
 
 /****************************************
  * Init function
@@ -415,11 +425,24 @@ void ChargeLogic(bool ReceptionStatus)
         {
             break;
         }
-        // if (g_ADTemperature < NTCOverValTemp)
-        // {
-        //     eg_BatStatus = Bat_HighTemp;
-        //     break;
-        // }
+        DetectTemp();
+        if (g_ADTemperature > NTCDetectBat)
+        {
+            eg_BatStatus = Bat_Nobat;
+            break;
+        }
+        if (eg_BatStatus == Bat_HighTemp)
+        {
+            if (g_ADTemperature < NTCRecoverValTemp)
+                eg_BatStatus = Bat_InCharge;
+            else
+                break;
+        }
+        else if (g_ADTemperature < NTCOverValTemp)
+        {
+            eg_BatStatus = Bat_HighTemp;
+            break;
+        }
         // if (false)
         // {
         //     eg_BatStatus = Bat_NonRecharge;
@@ -474,5 +497,27 @@ void ChargeCurrentCtrlOut(unsigned char status)
             ChargePwmOff();
             ChargeSwitchOff();
         }
+    }
+}
+
+void PowerSwitchAssignment(void)
+{
+    if (eg_PowerStatus != eg_UpPowerStatus)
+    {
+        eg_PowerStatus = eg_UpPowerStatus;
+        if (eg_PowerStatus == true)
+            eg_BatStatus = Bat_ChargeInit;
+        else
+            eg_BatStatus = Bat_DisCharge;
+
+        extern bool g_PowerProtect;
+        g_PowerProtect = false;
+
+        PowerManageInit();
+
+        extern void Indic_W_Breath_Stop(void);
+        extern void Indic_Red_Blink_Normal_Flag_Set(bool enable, const blink_normal_cfg_t *cfg);
+        Indic_W_Breath_Stop();
+        Indic_Red_Blink_Normal_Flag_Set(false, NULL);
     }
 }

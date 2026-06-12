@@ -12,9 +12,27 @@ project(
 # which contains the content of the SLC project
 include(MatterLightOverThread.cmake)
 
+set(APP_LAYER_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../app/AppOrchestrator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/MatterBridge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/BatteryPolicy.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/ButtonPolicy.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/CommissioningManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/FactoryResetManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/IdentifyEffect.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/ButtonInput.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/ColorConverter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/ColorLibrary.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/IndicatorService.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightEngine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/PowerMonitor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal/NvmStorage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal/PwmHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal/SpiRgbHal.cpp
+)
+
 add_executable(MatterLightOverThread
-    # Add additional sources here 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/AppMatterHandlers.cpp
+    ${APP_LAYER_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/entry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/MyCustomMonitor.cpp
 
@@ -31,15 +49,18 @@ add_executable(MatterLightOverThread
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/swimHost.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../driver/time.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp # 测试用例
-
+    ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp
 )
 
 
 target_include_directories(MatterLightOverThread PUBLIC
-    # Add additional include paths here
-    #${CMAKE_CURRENT_SOURCE_DIR}/../app
-    #${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/app
+    ${CMAKE_CURRENT_SOURCE_DIR}/../app
+    ${CMAKE_CURRENT_SOURCE_DIR}/../integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../policy
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service
+    ${CMAKE_CURRENT_SOURCE_DIR}/../driver/hal
 )
 
 target_compile_definitions(MatterLightOverThread PUBLIC
