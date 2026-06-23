@@ -2744,7 +2744,7 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:hal_gpio" type="library">
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:HalGpio" type="library">
           <name>GPIO</name>
           <version>2025.12.2</version>
 	      <supplier>

@@ -1321,7 +1321,7 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.si
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-cmsis_common
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-mbedtls_slcrypto_driver
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_system
-Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-hal_gpio
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-HalGpio
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-memory_manager_region
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-bootloader_app_properties
 Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2 CONTAINS SPDXRef-silabs.simplicity_sdk-2025.12.2-bootloader_interface_s2
@@ -3296,14 +3296,14 @@ Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_system CONTAINED_BY 
 
 ## Package Information
 PackageName: GPIO
-SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-hal_gpio
+SPDXID: SPDXRef-silabs.simplicity_sdk-2025.12.2-HalGpio
 PackageVersion: 2025.12.2
 PrimaryPackagePurpose: LIBRARY
 PackageDownloadLocation: NOASSERTION
 PackageSupplier: Organization: Silicon Laboratories, Inc.
 PackageLicenseConcluded: Zlib
 ## Relationships
-Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-hal_gpio CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
+Relationship: SPDXRef-silabs.simplicity_sdk-2025.12.2-HalGpio CONTAINED_BY SPDXRef-silabs.simplicity_sdk-2025.12.2
 
 ## Package Information
 PackageName: Memory Manager region

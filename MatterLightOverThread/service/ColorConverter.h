@@ -8,7 +8,7 @@
  */
 #pragma once
 
-#include "app/LightTypes.h"
+#include "LightTypes.h"
 #include <stdint.h>
 
 /** @brief Matter 色彩空间到本地 WRGB 的转换器 */
@@ -20,22 +20,42 @@ public:
    * @param kelvin 色温（2200~6500，超出限幅）
    * @return WRGB（0~1023）
    */
-  static WrgbColor fromColorTemperature(uint32_t kelvin);
+  static LightTypes::WrgbColor FromColorTemperature(uint32_t kelvin);
+
+  /**
+   * @brief WRGB → 色温(K)
+   * @param color 输入的 WRGB 颜色结构体（0~1023）
+   * @return uint32_t 还原后的色温（2200~6500K）
+   * @note 根据正向分段函数的特殊性，通过 R 和 B 通道反向推导 kelvin
+   */
+  static uint32_t ToColorTemperature(const LightTypes::WrgbColor& color);
 
   /**
    * @brief HSV → WRGB（W=0）
-   * @param hue        色相 0~254
-   * @param saturation 饱和度 0~254
-   * @param value      明度 0~254
+   * @param hsv 输入的 HSV 结构体 (H: 0~254, S: 0~254, V: 0~254)
    * @return WRGB（0~1023）
    */
-  static WrgbColor fromHsv(uint8_t hue, uint8_t saturation, uint8_t value);
+  static LightTypes::WrgbColor FromHsv(LightTypes::HsvColor hsv);
+
+  /**
+   * @brief WRGB → HSV
+   * @param color 局限于 RGB 分量的颜色结构体（忽略 W 通道）
+   * @return HsvColor 还原后的 HSV 结构体 (H: 0~254, S: 0~254, V: 0~254)
+   */
+  static LightTypes::HsvColor ToHsv(const LightTypes::WrgbColor& color);
 
   /**
    * @brief CIE XY → WRGB（W=0）
-   * @param x CIE x（0~65535）
-   * @param y CIE y（0~65535）
+   * @param xy 输入的 CIE XY 结构体（0~65535）
    * @return WRGB（0~1023）
    */
-  static WrgbColor fromXy(uint16_t x, uint16_t y);
+  static LightTypes::WrgbColor FromXy(LightTypes::XyColor xy);
+
+  /**
+   * @brief WRGB → CIE XY
+   * @param color 输入的 WRGB 颜色结构体（0~1023）
+   * @return LightTypes::XyColor 还原后的 CIE XY 结构体（16位定点化，0~65535）
+   * @note 根据正向分段函数的特殊性，通过 RGB 分量反向推导 x、y
+   */
+  static LightTypes::XyColor ToXy(const LightTypes::WrgbColor& color);
 };

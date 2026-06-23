@@ -1,7 +1,29 @@
 
-// LED_SetBlink(50, 6, 800, 3); // 上电后闪烁提示，亮度 50%，颜色索引 3，周期 800ms，闪烁 3 次
-// LED_SetBreath(65, 6, 0); // 上电后呼吸提示，亮度 50%，颜色索引 6，周期 3200ms，持续呼吸
-// ResetMatterNetworkConfiguration(); // 初始化配网状态，设置好默认的灯效序列
-// Indic_W_Breath_Start(100); // 启动独立的白光呼吸灯，亮度 100%
-// Indic_Red_Blink_Start(400, 3);
-// Indic_Red_Mixed_Blink_Start(400, 5, 2400, 3);
+
+// 测试灯效
+void TestLightEffectEngine()
+{
+  // 测试单次效果：红色淡入，持续 500ms
+  LightEffectEngine::Instance().StartEffect(
+      LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+      (const uint16_t[]){0U, 1023U, 0U, 0U}, 255U, 500U);
+}
+
+void TestLightSequence()
+{
+  static const LightSequenceScheduler::SequenceStep pairingNetworkShow[] = {
+      // 红色亮起 3200ms -> 绿色亮起 3200ms
+      {LightEffectProcessor::CalcBreath80BytesFactor,
+       {0U, 1023U, 0U, 0U},
+       255U,
+       3200U,
+       0U},
+      {LightEffectProcessor::CalcBreath80BytesFactor,
+       {0U, 0U, 1023U, 0U},
+       255U,
+       3200U,
+       0U}};
+
+  // 核心调用：传入剧本、步数、且开启 LoopForever 标志位
+  LightSequenceScheduler::Instance().StartSequence(pairingNetworkShow, 2, true);
+}

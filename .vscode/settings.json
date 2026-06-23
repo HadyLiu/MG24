@@ -9,5 +9,6 @@
     // 兜底策略设为 none，确保如果路径解析失败也不会用默认的 LLVM 覆盖你的规则
     "C_Cpp.clang_format_fallbackStyle": "none",
     // 显式指定使用 VS Code 内置的 clang-format
-    "C_Cpp.clang_format_path": ""
+    "C_Cpp.clang_format_path": "",
+    "cmake.sourceDirectory": "/home/hadyliu/workSpace/silabs/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake"
 }

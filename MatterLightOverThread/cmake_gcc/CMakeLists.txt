@@ -13,46 +13,50 @@ project(
 include(MatterLightOverThread.cmake)
 
 set(APP_LAYER_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../app/AppOrchestrator.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../integration/MatterBridge.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/BatteryPolicy.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/ButtonPolicy.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/CommissioningManager.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/FactoryResetManager.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../policy/IdentifyEffect.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/ButtonInput.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/HalGpio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/HalExti.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/HalIadc.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/HalNvmstorage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/HalPwm.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/HalSpiSm15135e.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/BspLedIndicatorRed.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/BspLedIndicatorWhite.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/BspLedWrgb.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/BspPowerMonitor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/BspSleepTimer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/BspUartLog.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/MatterBridge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/ButtonInput.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/LightEffectProcessor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/LightEffectEngine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/LightSequenceScheduler.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/ColorConverter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/ColorLibrary.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/IndicatorService.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightEngine.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/PowerMonitor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/SystemTime.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/NvmStorage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/PwmHal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/SpiRgbHal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/SpiSm15135eHal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/led_pwm.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/PinHal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/IadcHal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/IndicatorHal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/ButtonService.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/MatterBridgeServer.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightDecisionCenter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightNvmStorage.cpp
 
 )
 
 add_executable(MatterLightOverThread
     ${APP_LAYER_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/MyCustomMonitor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../test/test_adc.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/entry.cpp
 )
 
 
 target_include_directories(MatterLightOverThread PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/app
-    ${CMAKE_CURRENT_SOURCE_DIR}/../app
-    ${CMAKE_CURRENT_SOURCE_DIR}/../integration
-    ${CMAKE_CURRENT_SOURCE_DIR}/../policy
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service
     ${CMAKE_CURRENT_SOURCE_DIR}/../hal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp
+    #${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service      
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares
+   # ${CMAKE_CURRENT_SOURCE_DIR}/../policy
+    #${CMAKE_CURRENT_SOURCE_DIR}/../service
+    #${CMAKE_CURRENT_SOURCE_DIR}/../app
 )
 
 target_compile_definitions(MatterLightOverThread PUBLIC
