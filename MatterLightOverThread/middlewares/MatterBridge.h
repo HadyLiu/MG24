@@ -16,15 +16,42 @@
 #include "MatterMailPacket.h"
 #include <cstdint>
 
+#include <app-common/zap-generated/attributes/Accessors.h>
+#include <app/clusters/color-control-server/color-control-server.h>
+#include <app/clusters/identify-server/identify-server.h>
+
+#include "AppConfig.h"
+
+// 引入官方的结构体定义，用于解析指针
+#include "LightingManager.h"
+#include "RGBLEDWidget.h"
+
+// 重置网络的核心函数声明
+#include <app/server/Server.h>
+#include <app/server/Server.h> // 必须明确包含此头文件，解决 Server 未定义问题
+#include <platform/CHIPDeviceLayer.h>
+#include <setup_payload/SetupPayload.h>
+
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+#include <platform/OpenThread/GenericThreadStackManagerImpl_OpenThread.h>
+#endif
+
+// 引入 OpenThread 原生 API 所需的头文件
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
+#include <openthread/dataset.h>
+#include <openthread/instance.h>
+#include <platform/OpenThread/OpenThreadUtils.h>
+#endif
+
 /**
  * @brief Matter 集成桥：仅负责组包并投递邮件
  */
 class MatterBridge
 {
 public:
-  using MailPoster         = void (*)(const MatterMailMsg& msg);
-  using ReportBypassQuery  = bool (*)();
-  using UnprovisionedQuery = bool (*)();
+  /* 本地 Matter 下发回调 */
+  using MatterDownlinkCallback =
+      void (*)(const MatterDownlinkUploadPayload& mdc);
 
   static MatterBridge& Instance()
   {
@@ -32,38 +59,54 @@ public:
     return matterBridge;
   }
 
-  void SetMailPoster(MailPoster poster);
-  void SetReportBypassQuery(ReportBypassQuery query);
-  void SetUnprovisionedQuery(UnprovisionedQuery query);
+  /* @brief 初始化 Matter 桥 */
+  void Init();
 
-  void OnActionInitiated(int action, uint8_t* value, bool lightOn);
-  void OnColorEvent(uint8_t action, void* valueData, uint16_t x, uint16_t y);
+  /* Matter 下发回调*/
+  void RegisterMatterDownlinkLocal(MatterDownlinkCallback callback);
 
-  void UploadOnOff(bool on);
-  void UploadBrightnessPercent(uint8_t percent);
-  void UploadColorFromCycleIndex(uint8_t cycleIndex);
-  void UploadColorHsv(uint8_t hue, uint8_t saturation);
+  /* 本地上报 */
+  void UploadMatterLocalReport(const MatterDownlinkUploadPayload& muc);
 
-  bool IsUnprovisioned();
-  void OpenCommissioningWindow();
-  void CloseCommissioningWindow();
-  void TriggerSoftNetworkReset();
+  // ##################
+  //  连接到 Matter 底层接口
+  //  ##################
 
-  bool IsReportBypassEnabled();
-  bool IsMatterReportBypassEnabled()
-  {
-    return IsReportBypassEnabled();
-  }
+  /* 读取开关与亮度 */
+  void MatterOnBrightnessBridge(int aAction, uint8_t* aValue);
+  /* 读取颜色相关 */
+  void MatterColorBridge(uint8_t action, void* valueData);
 
-  /*注册设备事件 */
-  void RegisterDeviceEvents();
+  /* 抑制matter下发后回传 */
+  bool IsMatterReportBypassEnabled();
 
 private:
-  MatterBridge() = default;
+  MatterBridge()  = default;
+  ~MatterBridge() = default;
 
-  void PostMail(const MatterMailMsg& msg) const;
+  static bool g_bypass_zcl_callback;
 
-  MailPoster m_mailPoster{nullptr};
-  ReportBypassQuery m_reportBypassQuery{nullptr};
-  UnprovisionedQuery m_unprovisionedQuery{nullptr};
+  /* 本地 Matter 下发回调 */
+  MatterDownlinkCallback m_matterDownlinkCallback{nullptr};
+  /* Matter 下发载荷 */
+  MatterDownlinkUploadPayload m_matterDownlinkUploadPayload{};
+
+  void SetOn(bool isOn);
+  void SetBrightness(uint8_t brightness);
+  void SetHsv(uint8_t hue, uint8_t saturation);
+  void SetCt(uint16_t colorTemperature);
+  void SetXy(uint16_t x, uint16_t y);
+
+  void MatterUploadSwitch(bool is_on);
+  void MatterUploadBrightness(uint8_t driver_brightness_percent);
+
+  void RegisterDeviceEventListener(void);
+  void TriggerNetworkResetWithoutReboot(void);
+
+  static void Safe_Upload_OnOff_Callback(intptr_t context);
+  static void Safe_Upload_Brightness_Callback(intptr_t context);
+  static void
+  OnMatterDeviceEvent(const chip::DeviceLayer::ChipDeviceEvent* event,
+                      intptr_t arg);
+  static void DoSoftNetworkResetHandler(intptr_t arg);
 };

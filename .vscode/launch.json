@@ -8,7 +8,7 @@
             "serverpath": "/home/hadyliu/.silabs/slt/installs/archive/exx32-v6.0.32/JLinkGDBServerCLExe",
             "servertype": "jlink",
             "gdbPath": "/home/hadyliu/.silabs/slt/installs/archive/exx32-v6.0.32/arm-none-eabi-gdb",
-            "device": "EFR32MG24BxxxF1536",
+            "device": "EFR32MG24B010F1536IM40",
             "svdFile": "",
             "runToEntryPoint": "main",
             "rtos": "FreeRTOS",

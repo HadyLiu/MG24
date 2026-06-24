@@ -101,14 +101,8 @@ AppTask AppTask::sAppTask;
 CHIP_ERROR AppTask::AppInit()
 {
   CHIP_ERROR err = CHIP_NO_ERROR;
+
   // 将自定义按键中断回调函数注册到芯片平台，以便在按键事件发生时能够正确地触发我们的状态机逻辑
-  // extern void inject_btn0_double_edge_interrupt_ext(void);
-  // inject_btn0_double_edge_interrupt_ext();
-
-  // SILABS_LOG("Custom button interrupt handler registered");
-  // chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(
-  //    AppTask::ButtonEventHandler);
-
   chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(
       [](uint8_t button, uint8_t action) {
         const bool pressed =
@@ -257,6 +251,8 @@ void AppTask::LightActionEventHandler(AppEvent* aEvent)
     }
   }
 }
+bool g_Xy_ready = false;
+uint16_t g_Xy[2];
 
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
 void AppTask::LightControlEventHandler(AppEvent* aEvent)
@@ -282,6 +278,7 @@ void AppTask::LightControlEventHandler(AppEvent* aEvent)
   switch (light_action)
   {
   case LightingManager::COLOR_ACTION_XY: {
+
     sLightLED.SetColorFromXY(colorData.xy.x, colorData.xy.y);
   }
   break;
@@ -297,12 +294,25 @@ void AppTask::LightControlEventHandler(AppEvent* aEvent)
     ChipLogProgress(NotSpecified, "LightMgr:Unknown");
     break;
   }
-  // extern void MyColorEventHandlerBridge(uint8_t action, void* valueData,
-  //                                       uint16_t X, uint16_t Y);
-  //   MyColorEventHandlerBridge(aEvent->LightControlEvent.Action,
-  //                            &(aEvent->LightControlEvent.Value),
-  //                            colorData.xy.x,
-  //                           colorData.xy.y);
+  // 将颜色数据通过 MatterBridge
+  if (light_action != LightingManager::COLOR_ACTION_XY)
+  {
+    MatterBridge::Instance().MatterColorBridge(light_action, &colorData);
+  }
+  // else if (light_action == LightingManager::COLOR_ACTION_XY)
+  //{
+  //   if (g_Xy_ready == true)
+  //   {
+  //     g_Xy_ready = false;
+  //     RGBLEDWidget::ColorData_t colorDataXY;
+  //     colorDataXY.xy.x = g_Xy[0];
+  //     colorDataXY.xy.y = g_Xy[1];
+
+  //    SILABS_LOG("LightMgr: COLOR_ACTION_XY: x=%u, y=%u", g_Xy[0], g_Xy[1]);
+
+  //    MatterBridge::Instance().MatterColorBridge(light_action, &colorDataXY);
+  //  }
+  //}
 }
 #endif // (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED)
 
@@ -361,6 +371,8 @@ void AppTask::ActionInitiated(LightingManager::Action_t aAction, int32_t aActor,
   // extern void MyActionInitiatedBridge(int aAction, uint8_t* aValue,
   //                                    bool lighOn);
   // MyActionInitiatedBridge(static_cast<int>(aAction), aValue, lightOn);
+  MatterBridge::Instance().MatterOnBrightnessBridge(static_cast<int>(aAction),
+                                                    aValue);
 }
 
 void AppTask::ActionCompleted(LightingManager::Action_t aAction)

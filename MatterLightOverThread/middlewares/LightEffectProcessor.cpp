@@ -301,7 +301,7 @@ uint32_t LightEffectProcessor::GetBlink(uint32_t start, uint32_t end,
     factor = 0;
   }
 
-  return blendingOperator(start, end, factor);
+  return blendingOperator(0, end, factor);
 }
 
 /**

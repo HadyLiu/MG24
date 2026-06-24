@@ -59,6 +59,11 @@
 #ifndef APP_LOG_ENTRY_APP
 #define APP_LOG_ENTRY_APP 1 ///< 应用编排层
 #endif
+
+#ifndef LOG_LIGHT_DC_APP
+#define LOG_LIGHT_DC_APP 1 ///< 主灯决策中心
+#endif
+/** @} */
 ///< 底层日志实现接口，基于 UART 输出
 
 /**
@@ -112,3 +117,6 @@
 #define LOG_APP(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_APP, fmt, ##__VA_ARGS__)
 /** @} */
 #define LOG_ENTRY(fmt, ...) APP_LOG_IMPL(APP_LOG_ENTRY_APP, fmt, ##__VA_ARGS__)
+
+#define LOG_LIGHT_DC(fmt, ...)                                                 \
+  APP_LOG_IMPL(LOG_LIGHT_DC_APP, fmt, ##__VA_ARGS__)

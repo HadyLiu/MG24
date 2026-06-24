@@ -153,19 +153,31 @@ void MatterPostAttributeChangeCallback(
       s_x_ready = false;
       s_y_ready = false;
 
+      extern bool g_Xy_ready;
+      g_Xy_ready = true;
+
+      extern uint16_t g_Xy[2];
+      g_Xy[0] = s_raw_x;
+      g_Xy[1] = s_raw_y;
+
       // 因为 X 和 Y 都是 16 位（2字节），我们用一个 4
       // 字节的数组把它们捆绑在一起
       uint16_t combined_xy[2];
-      uint16_t out_ex,
-          out_ey; // 声明外部全局变量，实际定义在 LightingManager.cpp 中
-      out_ex         = s_raw_x; // 更新全局变量
-      out_ey         = s_raw_y; // 更新全局变量
+      // uint16_t out_ex,
+      //     out_ey; // 声明外部全局变量，实际定义在 LightingManager.cpp 中
+      // out_ex         = s_raw_x; // 更新全局变量
+      // out_ey         = s_raw_y; // 更新全局变量
       combined_xy[0] = s_raw_x; // 塞入高保真 X
       combined_xy[1] = s_raw_y; // 塞入高保真 Y
+      RGBLEDWidget::ColorData_t colorDataXY;
+      colorDataXY.xy.x = combined_xy[0];
+      colorDataXY.xy.y = combined_xy[1];
+      SILABS_LOG("Combined XY: X=%u, Y=%u", combined_xy[0], combined_xy[1]);
 
-      // 3. 🚀 继续调用官方函数！但注意：我们传的是捆绑好的 combined_xy 指针！
-      // 这样，主任务队列收到事件时，就能同时拿到最新、最纯净的 X 和 Y 了！
-      // 传我们打包好的纯净数据
+      MatterBridge::Instance().MatterColorBridge(
+          LightingManager::COLOR_ACTION_XY, &colorDataXY);
+
+      // 我们打包好的纯净数据
       LightMgr().InitiateLightCtrlAction(
           AppEvent::kEventType_Light, LightingManager::COLOR_ACTION_XY,
           attributeId, reinterpret_cast<uint8_t*>(combined_xy));

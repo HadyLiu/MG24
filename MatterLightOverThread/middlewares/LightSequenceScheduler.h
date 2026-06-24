@@ -19,7 +19,7 @@ public:
   struct SequenceStep
   {
     LightEffectEngine::EffectRenderAction pAction; ///< 调光纯算子指针
-    uint16_t targetChannels[5];                    ///< 各通道逻辑目标值
+    uint16_t targetChannels[4];                    ///< 各通道逻辑目标值
     uint8_t brightness;  ///< 当前步骤的全局主亮度 (0~255)
     uint16_t durationMs; ///< 当前步骤持续时间 (ms)
     uint8_t repeatCount; ///< 当前单步重复执行次数（0表示执行1次）

@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "/home/hadyliu/.silabs/slt/installs/conan/p/cmake1c02712053792/p/bin/cmake --preset project",
             "options": {
-                "cwd": "/home/hadyliu/SimplicityStudio/v6_workspace/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake"
+                "cwd": "${workspaceFolder}/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake"
             }
         },
         {
@@ -14,7 +14,7 @@
             "type": "shell",
             "command": "/home/hadyliu/.silabs/slt/installs/conan/p/cmake1c02712053792/p/bin/cmake --build --preset default_config",
             "options": {
-                "cwd": "/home/hadyliu/SimplicityStudio/v6_workspace/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake"
+                "cwd": "${workspaceFolder}/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake"
             }
         },
         {
@@ -23,8 +23,8 @@
             "command": "/home/hadyliu/.silabs/slt/installs/archive/commander/commander",
             "args": [
                 "flash",
-                "/home/hadyliu/SimplicityStudio/v6_workspace/Li-Bat_MatterLight_EFR32MG24B010F1536IM40/artifact/Li-Bat_MatterLight_EFR32MG24B010F1536IM40-full.s37",
-               /* "--halt"*/
+                "${workspaceFolder}/artifact/Li-Bat_MatterLight_EFR32MG24B010F1536IM40-full.s37",
+                /* "--halt"*/
                 "--serialno",
                 "440350761",
                 "--device",

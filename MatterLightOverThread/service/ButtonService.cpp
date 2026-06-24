@@ -102,7 +102,6 @@ void ButtonService::OnDoublePress(uint8_t buttonIdx)
 void ButtonService::OnLongPressStart(uint8_t buttonIdx)
 {
   LOG_BTN("[ButtonService] 长按开始 btn=%u", buttonIdx);
-  PostKeyEventRaw(KeyEventType::LongPressClearNet);
 }
 
 /**
@@ -114,6 +113,16 @@ void ButtonService::OnLongPressStart(uint8_t buttonIdx)
 void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
 {
   LOG_BTN("[ButtonService] 长按脉冲 btn=%u count=%u", buttonIdx, count);
+
+  if (count == 25U)
+  {
+    PostKeyEventRaw(KeyEventType::LongPressClearNetLighting);
+  }
+  else if (count == 50U)
+  {
+    // 开始清除配网
+    PostKeyEventRaw(KeyEventType::LongPressClearNet);
+  }
 }
 
 /**
@@ -126,7 +135,7 @@ void ButtonService::OnLongPressRelease(uint8_t buttonIdx, uint16_t durationMs)
 {
   LOG_BTN("[ButtonService] 长按松开 btn=%u duration=%ums", buttonIdx,
           durationMs);
-  if (durationMs >= 700U)
+  if (durationMs >= 5000U && durationMs < 10000U)
   {
     PostKeyEventRaw(KeyEventType::LongPressStopNet);
   }

@@ -355,9 +355,9 @@ LightTypes::WrgbColor ColorConverter::FromXy(LightTypes::XyColor xy)
 
   // 5. 最终输出传递给 PWM 驱动的 10位 RGB 值
   // 从 0-255 映射到 0-1023
-  c.r = ((uint16_t)(r_f)) << 10;
-  c.g = ((uint16_t)(g_f)) << 10;
-  c.b = ((uint16_t)(b_f)) << 10;
+  c.r = ((uint16_t)(r_f * 1023.0f));
+  c.g = ((uint16_t)(g_f * 1023.0f));
+  c.b = ((uint16_t)(b_f * 1023.0f));
   return c;
 }
 

@@ -52,43 +52,53 @@ const LightDecisionCenter::EffectRenderAction
  * @param pStorage  持久化适配器指针
  * @return 无
  */
-void LightDecisionCenter::Init(LightSequenceScheduler *pSequence,
-                               LightStorageProvider *pStorage) {
-  if ((pSequence == nullptr) || (pStorage == nullptr)) {
+void LightDecisionCenter::Init(LightSequenceScheduler* pSequence,
+                               LightStorageProvider* pStorage)
+{
+  if ((pSequence == nullptr) || (pStorage == nullptr))
+  {
     return;
   }
 
-  m_pSequence = pSequence;
-  m_pStorage = pStorage;
-  m_sceneState = LightSceneState::Normal;
+  m_pSequence    = pSequence;
+  m_pStorage     = pStorage;
+  m_sceneState   = LightSceneState::Normal;
   m_isBatteryLow = false;
 
   const bool readOk = m_pStorage->Read(
-      reinterpret_cast<uint8_t *>(&m_userTargetParam), sizeof(PersistParam_T));
-  if (!readOk || !IsPersistValid(m_userTargetParam)) {
+      reinterpret_cast<uint8_t*>(&m_userTargetParam), sizeof(PersistParam_T));
+  if (!readOk || !IsPersistValid(m_userTargetParam))
+  {
     LoadDefaults();
     SafeSaveToStorage();
   }
 
-  if (m_userTargetParam.brightness > 0U) {
+  if (m_userTargetParam.brightness > 0U)
+  {
     m_lastValidBrightness = m_userTargetParam.brightness;
   }
 
   ApplyArbitratedResult();
 }
 
-void LightDecisionCenter::RegisterMatterReporter(
-    MatterReportCallback callback) {
+/* 注册 Matter 上报回调 */
+void LightDecisionCenter::RegisterMatterReporter(MatterReportCallback callback)
+{
   m_matterReporter = callback;
 }
 
+/* 注册配网控制回调 */
 void LightDecisionCenter::RegisterNetControlCallback(
-    NetControlCallback callback) {
+    NetControlCallback callback)
+{
   m_netControl = callback;
 }
 
-void LightDecisionCenter::InvokeNetControlRaw(NetControlAction action) {
-  if (m_netControl != nullptr) {
+/* 触发全量 Matter 上报（入网后由 entry 接线调用） */
+void LightDecisionCenter::InvokeNetControlRaw(NetControlAction action)
+{
+  if (m_netControl != nullptr)
+  {
     m_netControl(action);
   }
 }
@@ -99,67 +109,67 @@ void LightDecisionCenter::InvokeNetControlRaw(NetControlAction action) {
  * @return 无
  * @note 低电量时直接丢弃；变更后保存 NVM 并可选上报 Matter。
  */
-void LightDecisionCenter::ProcessKeyEvent(KeyEventType event) {
-  if (m_isBatteryLow) {
+void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
+{
+  if (m_isBatteryLow)
+  {
     return;
   }
-
-  switch (event) {
+  LOG_LIGHT_DC("处理按键事件: %u", static_cast<uint8_t>(event));
+  switch (event)
+  {
   case KeyEventType::ShortPressCycleBrightness: {
-    const uint8_t brightness = kBrightnessLevels[m_brightnessCycleIndex % 3U];
-    m_userTargetParam.brightness = brightness;
-    m_userTargetParam.op_id =
-        BrightnessIndexToOpId(m_brightnessCycleIndex % 3U);
-    m_sceneState = LightSceneState::Normal;
-
-    if (brightness > 0U) {
-      m_lastValidBrightness = brightness;
-    }
-
     m_brightnessCycleIndex++;
-    if (m_brightnessCycleIndex >= 3U) {
+    if (m_brightnessCycleIndex >= 3U)
+    {
       m_brightnessCycleIndex = 0U;
     }
+    const uint8_t brightness     = kBrightnessLevels[m_brightnessCycleIndex];
+    m_lastValidBrightness        = brightness;
+    m_userTargetParam.brightness = brightness;
+    m_userTargetParam.op_id = BrightnessIndexToOpId(m_brightnessCycleIndex);
+    m_sceneState            = LightSceneState::Normal;
 
-    SafeSaveToStorage();
+    //  SafeSaveToStorage();
     ApplyArbitratedResult();
-    ReportToMatterIfRegistered();
-    break;
+    //  ReportToMatterIfRegistered();
   }
+  break;
 
   case KeyEventType::DoublePressCycleColor: {
     m_colorCycleIndex++;
-    if (m_colorCycleIndex >= kColorPaletteCount) {
+    if (m_colorCycleIndex >= kColorPaletteCount)
+    {
       m_colorCycleIndex = 0U;
     }
 
     memcpy(m_userTargetParam.wrgb, kColorPalette[m_colorCycleIndex],
            sizeof(m_userTargetParam.wrgb));
     m_userTargetParam.op_id = LightEffectOpId::LinearLerp;
-    m_sceneState = LightSceneState::Normal;
+    m_sceneState            = LightSceneState::Normal;
 
-    SafeSaveToStorage();
+    // SafeSaveToStorage();
     ApplyArbitratedResult();
-    ReportToMatterIfRegistered();
+    // ReportToMatterIfRegistered();
     break;
   }
-
-  case KeyEventType::LongPressClearNet: {
+    // 长按达到配网灯效触发阈值
+  case KeyEventType::LongPressClearNetLighting: {
     m_sceneState = LightSceneState::NetConfiguring;
-    InvokeNetControlRaw(NetControlAction::ClearAndOpen);
     StartNetConfigSequence();
     break;
   }
-
+    // 长按松开，停止配网灯效并恢复默认状态
   case KeyEventType::LongPressStopNet: {
-    if (m_sceneState == LightSceneState::NetConfiguring) {
+    if (m_sceneState == LightSceneState::NetConfiguring)
+    {
       m_sceneState = LightSceneState::Normal;
-      InvokeNetControlRaw(NetControlAction::Close);
-      m_pSequence->StopSequence();
-      LoadDefaults();
-      SafeSaveToStorage();
-      ApplyArbitratedResult();
-      ReportToMatterIfRegistered();
+      // InvokeNetControlRaw(NetControlAction::Close);
+      // m_pSequence->StopSequence();
+      // LoadDefaults();
+      // SafeSaveToStorage();
+      // ApplyArbitratedResult();
+      // ReportToMatterIfRegistered();
     }
     break;
   }
@@ -176,29 +186,34 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event) {
  * @param opId        渐变算子
  * @return 无
  */
-void LightDecisionCenter::ProcessMatterCommand(const uint16_t *pWrgbBuffer,
+void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer,
                                                uint8_t brightness,
-                                               LightEffectOpId opId) {
-  if (pWrgbBuffer == nullptr) {
+                                               LightEffectOpId opId)
+{
+  if (pWrgbBuffer == nullptr)
+  {
     return;
   }
 
-  if (m_isBatteryLow && (brightness > 0U)) {
+  if (m_isBatteryLow && (brightness > 0U))
+  {
     return;
   }
 
   memcpy(m_userTargetParam.wrgb, pWrgbBuffer, sizeof(m_userTargetParam.wrgb));
   m_userTargetParam.brightness = brightness;
-  m_userTargetParam.op_id = opId;
+  m_userTargetParam.op_id      = opId;
 
-  if (brightness > 0U) {
+  if (brightness > 0U)
+  {
     m_lastValidBrightness = brightness;
   }
 
-  SafeSaveToStorage();
+  // SafeSaveToStorage();
 
   if ((m_sceneState == LightSceneState::Normal) ||
-      (m_sceneState == LightSceneState::LowBattery)) {
+      (m_sceneState == LightSceneState::LowBattery))
+  {
     m_sceneState = LightSceneState::Normal;
     ApplyArbitratedResult();
   }
@@ -209,16 +224,20 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t *pWrgbBuffer,
  * @param isLow true=进入强控灭灯；false=恢复上次亮度
  * @return 无
  */
-void LightDecisionCenter::ProcessBatteryEvent(bool isLow) {
+void LightDecisionCenter::ProcessBatteryEvent(bool isLow)
+{
   m_isBatteryLow = isLow;
 
-  if (m_isBatteryLow) {
+  if (m_isBatteryLow)
+  {
     m_sceneState = LightSceneState::LowBattery;
     m_pSequence->StopSequence();
     m_userTargetParam.brightness = 0U;
     ReportToMatterIfRegistered();
-  } else if (m_sceneState == LightSceneState::LowBattery) {
-    m_sceneState = LightSceneState::Normal;
+  }
+  else if (m_sceneState == LightSceneState::LowBattery)
+  {
+    m_sceneState                 = LightSceneState::Normal;
     m_userTargetParam.brightness = m_lastValidBrightness;
     SafeSaveToStorage();
     ApplyArbitratedResult();
@@ -226,8 +245,10 @@ void LightDecisionCenter::ProcessBatteryEvent(bool isLow) {
   }
 }
 
-void LightDecisionCenter::ProcessMatterCommissioningComplete() {
-  if (m_isBatteryLow) {
+void LightDecisionCenter::ProcessMatterCommissioningComplete()
+{
+  if (m_isBatteryLow)
+  {
     return;
   }
 
@@ -236,32 +257,41 @@ void LightDecisionCenter::ProcessMatterCommissioningComplete() {
   ReportStateToMatter();
 }
 
-void LightDecisionCenter::ProcessMatterIdentify(bool active) {
-  if (m_isBatteryLow) {
+void LightDecisionCenter::ProcessMatterIdentify(bool active)
+{
+  if (m_isBatteryLow)
+  {
     return;
   }
 
-  if (active) {
+  if (active)
+  {
     m_sceneState = LightSceneState::MatterIdentifying;
     StartIdentifySequence();
-  } else if (m_sceneState == LightSceneState::MatterIdentifying) {
+  }
+  else if (m_sceneState == LightSceneState::MatterIdentifying)
+  {
     m_sceneState = LightSceneState::Normal;
     m_pSequence->StopSequence();
     ApplyArbitratedResult();
   }
 }
 
-void LightDecisionCenter::ReportStateToMatter() {
+void LightDecisionCenter::ReportStateToMatter()
+{
   ReportToMatterIfRegistered();
 }
 
-uint8_t LightDecisionCenter::GetCurrentBrightness() const {
+uint8_t LightDecisionCenter::GetCurrentBrightness() const
+{
   return m_userTargetParam.brightness;
 }
 
-void LightDecisionCenter::GetCurrentWrgb(uint16_t *outChannels,
-                                         uint8_t count) const {
-  if (outChannels == nullptr) {
+void LightDecisionCenter::GetCurrentWrgb(uint16_t* outChannels,
+                                         uint8_t count) const
+{
+  if (outChannels == nullptr)
+  {
     return;
   }
 
@@ -275,22 +305,27 @@ void LightDecisionCenter::GetCurrentWrgb(uint16_t *outChannels,
  * @return 无
  * @note 仅在 Normal 场景且非低电量时渲染。
  */
-void LightDecisionCenter::ApplyArbitratedResult() {
-  if (m_sceneState != LightSceneState::Normal) {
+void LightDecisionCenter::ApplyArbitratedResult()
+{
+  if (m_sceneState != LightSceneState::Normal)
+  {
     return;
   }
 
-  if (m_isBatteryLow) {
+  if (m_isBatteryLow)
+  {
     return;
   }
 
   uint8_t opIndex = static_cast<uint8_t>(m_userTargetParam.op_id);
-  if (opIndex >= static_cast<uint8_t>(LightEffectOpId::MaxOperators)) {
+  if (opIndex >= static_cast<uint8_t>(LightEffectOpId::MaxOperators))
+  {
     opIndex = static_cast<uint8_t>(LightEffectOpId::LinearLerp);
   }
 
   EffectRenderAction pAction = kActionTable[opIndex];
-  if (pAction == nullptr) {
+  if (pAction == nullptr)
+  {
     return;
   }
 
@@ -302,39 +337,45 @@ void LightDecisionCenter::ApplyArbitratedResult() {
  * @brief 防抖写入 NVM（memcmp 无变化则跳过擦写）
  * @return 无
  */
-void LightDecisionCenter::SafeSaveToStorage() {
-  if (m_pStorage == nullptr) {
+void LightDecisionCenter::SafeSaveToStorage()
+{
+  if (m_pStorage == nullptr)
+  {
     return;
   }
 
   static PersistParam_T lastSavedParam = {0};
-  m_userTargetParam.magic = kPersistMagic;
+  m_userTargetParam.magic              = kPersistMagic;
 
-  if (memcmp(&m_userTargetParam, &lastSavedParam, sizeof(PersistParam_T)) !=
-      0) {
-    if (m_pStorage->Write(reinterpret_cast<const uint8_t *>(&m_userTargetParam),
-                          sizeof(PersistParam_T))) {
+  if (memcmp(&m_userTargetParam, &lastSavedParam, sizeof(PersistParam_T)) != 0)
+  {
+    if (m_pStorage->Write(reinterpret_cast<const uint8_t*>(&m_userTargetParam),
+                          sizeof(PersistParam_T)))
+    {
       lastSavedParam = m_userTargetParam;
     }
   }
 }
 
-void LightDecisionCenter::LoadDefaults() {
-  m_userTargetParam.magic = kPersistMagic;
+void LightDecisionCenter::LoadDefaults()
+{
+  m_userTargetParam.magic      = kPersistMagic;
   m_userTargetParam.brightness = kDefaultBrightness;
-  m_userTargetParam.op_id = LightEffectOpId::LinearLerp;
-  m_userTargetParam.wrgb[0] = 1023U;
-  m_userTargetParam.wrgb[1] = 0U;
-  m_userTargetParam.wrgb[2] = 0U;
-  m_userTargetParam.wrgb[3] = 0U;
-  m_userTargetParam.reserved = 0U;
-  m_lastValidBrightness = kDefaultBrightness;
-  m_brightnessCycleIndex = 0U;
-  m_colorCycleIndex = 0U;
+  m_userTargetParam.op_id      = LightEffectOpId::LinearLerp;
+  m_userTargetParam.wrgb[0]    = 1023U;
+  m_userTargetParam.wrgb[1]    = 0U;
+  m_userTargetParam.wrgb[2]    = 0U;
+  m_userTargetParam.wrgb[3]    = 0U;
+  m_userTargetParam.reserved   = 0U;
+  m_lastValidBrightness        = kDefaultBrightness;
+  m_brightnessCycleIndex       = 0U;
+  m_colorCycleIndex            = 0U;
 }
 
-bool LightDecisionCenter::IsPersistValid(const PersistParam_T &param) const {
-  if (param.magic != kPersistMagic) {
+bool LightDecisionCenter::IsPersistValid(const PersistParam_T& param) const
+{
+  if (param.magic != kPersistMagic)
+  {
     return false;
   }
 
@@ -342,35 +383,43 @@ bool LightDecisionCenter::IsPersistValid(const PersistParam_T &param) const {
   return opIndex < static_cast<uint8_t>(LightEffectOpId::MaxOperators);
 }
 
-void LightDecisionCenter::StartNetConfigSequence() {
-  static const LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
-      {LightEffectProcessor::CalcBreath80BytesFactor,
+void LightDecisionCenter::StartNetConfigSequence()
+{
+  LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
+      {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, 800U, 2U},
+      {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, 2400U, 0U},
+      {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 255U, 2000U, 0U},
+      {LightEffectProcessor::GetBlink, {1023U, 0U, 0U, 0U}, 255U, 800U, 1U},
+      {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
        {1023U, 0U, 0U, 0U},
        255U,
-       1600U,
-       0U},
-      {LightEffectProcessor::GetBlink, {1023U, 0U, 0U, 0U}, 255U, 800U, 0U}};
+       400U,
+       0U}};
+  memcpy(kNetConfigSteps[0].targetChannels, m_userTargetParam.wrgb,
+         sizeof(m_userTargetParam.wrgb));
+  memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb,
+         sizeof(m_userTargetParam.wrgb));
 
-  m_pSequence->StartSequence(kNetConfigSteps, 2U, true);
+  m_pSequence->StartSequence(kNetConfigSteps, 5U, false);
 }
 
-void LightDecisionCenter::StartIdentifySequence() {
-  static const LightSequenceScheduler::SequenceStep kIdentifySteps[] = {
-      {LightEffectProcessor::CalcBreath80BytesFactor,
-       {0U, 1023U, 0U, 0U},
-       255U,
-       1600U,
-       0U},
-      {LightEffectProcessor::CalcBreath80BytesFactor,
+void LightDecisionCenter::StartIdentifySequence()
+{
+  LightSequenceScheduler::SequenceStep kIdentifySteps[] = {
+      {LightEffectProcessor::GetBlink, {1023U, 0U, 0U, 0U}, 255U, 800U, 2U},
+      {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
        {0U, 0U, 1023U, 0U},
        255U,
-       1600U,
+       400U,
        0U}};
+  memcpy(kIdentifySteps[1].targetChannels, m_userTargetParam.wrgb,
+         sizeof(m_userTargetParam.wrgb));
 
   m_pSequence->StartSequence(kIdentifySteps, 2U, true);
 }
 
-void LightDecisionCenter::StartCommissioningSuccessSequence() {
+void LightDecisionCenter::StartCommissioningSuccessSequence()
+{
   static const LightSequenceScheduler::SequenceStep kSuccessSteps[] = {
       {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
        {1023U, 0U, 0U, 0U},
@@ -387,8 +436,10 @@ void LightDecisionCenter::StartCommissioningSuccessSequence() {
 }
 
 LightEffectOpId
-LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessIndex) const {
-  switch (brightnessIndex) {
+LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessIndex) const
+{
+  switch (brightnessIndex)
+  {
   case 0U:
     return LightEffectOpId::Bezier40FadeIn;
   case 1U:
@@ -399,8 +450,10 @@ LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessIndex) const {
   }
 }
 
-void LightDecisionCenter::ReportToMatterIfRegistered() {
-  if (m_matterReporter == nullptr) {
+void LightDecisionCenter::ReportToMatterIfRegistered()
+{
+  if (m_matterReporter == nullptr)
+  {
     return;
   }
 

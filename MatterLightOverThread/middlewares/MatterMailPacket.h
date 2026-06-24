@@ -4,45 +4,59 @@
  * @author hady
  * @date 2026-06-16
  * @layer Middleware
- * @note MatterBridge 投递 MatterMailMsg；MatterBridgeServer 消费并执行 Matter 栈操作。
+ * @note MatterBridge 投递 MatterMailMsg；MatterBridgeServer 消费并执行 Matter
+ * 栈操作。
  */
 #pragma once
 
 #include <stdint.h>
 
-/** @brief 上行属性上报 */
-static constexpr uint8_t kMatterCategoryUpload = 0x01U;
-/** @brief 配网 / 复位 / 事件注册等控制 */
-static constexpr uint8_t kMatterCategoryControl = 0x02U;
-/** @brief Matter 下行到本地灯光（暂 stub，待 LightEngine 接入） */
-static constexpr uint8_t kMatterCategoryDownlink = 0x03U;
-
-/**
- * @brief Matter 邮箱命令码
- */
-struct MatterMailCmd
+enum class MatterDownlinkUpdateElement : uint8_t
 {
-  static constexpr uint8_t kUploadOnOff           = 0x01U;
-  static constexpr uint8_t kUploadBrightness      = 0x02U;
-  static constexpr uint8_t kUploadColorCt         = 0x03U;
-  static constexpr uint8_t kUploadColorHsv        = 0x04U;
-  static constexpr uint8_t kOpenCommissioning     = 0x10U;
-  static constexpr uint8_t kCloseCommissioning      = 0x11U;
-  static constexpr uint8_t kSoftNetworkReset        = 0x12U;
-  static constexpr uint8_t kRegisterDeviceEvents    = 0x20U;
-  static constexpr uint8_t kDownlinkAction          = 0x30U;
-  static constexpr uint8_t kDownlinkColor           = 0x31U;
+  kNone = 0x00U,      /**< 无效 */
+  kOn,                /**< 开关 */
+  kBrightness,        /**< 亮度 */
+  kHsv,               /**< hsv */
+  kCt,                /**< ct */
+  kXy,                /**< xy */
+  kIdentify,          /**< 标识 */
+  kCommissioningDone, /**< 配网完成 */
+  kNetworkConnected   /**< 网络已连接 */
 };
 
-/**
- * @brief Matter 邮箱载荷（静态队列元素，无动态分配）
- */
-struct alignas(1) MatterMailMsg
+/** @brief 下行状态载荷 */
+struct MatterDownlinkUploadPayload
 {
-  uint8_t category; ///< kMatterCategory*
-  uint8_t cmd;      ///< MatterMailCmd::k*
-  uint8_t byte0;
-  uint8_t byte1;
-  uint16_t word0;
-  uint16_t word1;
+  bool on;
+  uint8_t brightness;
+  MatterDownlinkUpdateElement element;
+  uint8_t reserved; ///< 字节对齐预留
+
+  union
+  {
+    struct
+    {
+      uint8_t hue;
+      uint8_t saturation;
+    } hsv;
+
+    struct
+    {
+      uint16_t colorTemperature;
+    } ct;
+
+    struct
+    {
+      uint16_t x;
+      uint16_t y;
+    } xy;
+  } color;
+};
+
+/** @brief 下行提示载荷 */
+enum class MatterDownlinkHintPayload : uint8_t
+{
+  kIdentify = 0x00U,  /**< 标识 */
+  kCommissioningDone, /**< 配网完成 */
+  kNetworkConnected   /**< 网络已连接 */
 };
