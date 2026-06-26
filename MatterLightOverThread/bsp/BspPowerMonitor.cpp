@@ -36,10 +36,10 @@
  */
 BspPowerMonitor::BspPowerMonitor()
     : batIadc_(BAT_VOLTAGE_PORT, BAT_VOLTAGE_PIN),
-      ntcIadc_(BAT_NTC_PORT, BAT_NTC_PIN), batEnIo_(BAT_EN_PORT, BAT_EN_PIN),
+      ntcIadc_(BAT_NTC_PORT, BAT_NTC_PIN),
+      usbIadc_(USB_IN_PORT, USB_IN_PIN), batEnIo_(BAT_EN_PORT, BAT_EN_PIN),
       chargeEnIo_(CHARGE_EN_PORT, CHARGE_EN_PIN),
       chargeSpeedIo_(CHARGE_SPEED_PORT, CHARGE_SPEED_PIN),
-      usbExti_(USB_IN_PORT, USB_IN_PIN, HalExti::EdgeTrigger::BOTH),
       chargeStatExti_(LAMP_STATUS_PORT, LAMP_STATUS_PIN,
                       HalExti::EdgeTrigger::BOTH)
 {
@@ -70,28 +70,13 @@ void BspPowerMonitor::Init()
   chargeSpeedIo_.Init(SL_GPIO_MODE_WIRED_AND,
                       HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
 
-  // 3. 注册并拉起底层 EXTI 外部中断（指向 Impl 后缀的私有静态中断桥梁）
-  usbExti_.RegisterCallback(BspPowerMonitor::UsbIsrBridgeCallbackImpl, this);
-  usbExti_.Init();
-
+  // 3. 注册并拉起充电状态 EXTI（USB 插拔经 PA08 ADC 轮询，不用数字 EXTI）
   chargeStatExti_.RegisterCallback(
       BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl, this);
   chargeStatExti_.Init();
 
-  // 4. 同步读取初始现场状态
-  HalGpio::GpioPinStateEnum usb_pin_state = usbExti_.GetGpioPinState();
-  usbStatus_ = (usb_pin_state == HalGpio::GpioPinStateEnum::GPIO_PIN_SET)
-                   ? UsbConnectionStatusEnum::UsbConnected
-                   : UsbConnectionStatusEnum::UsbNotConnected;
-
-  // 如果开机时 USB 就在位，在确保安全的前提下直接联动开启充电
-  // if (usbStatus_ == UsbConnectionStatusEnum::UsbConnected &&
-  //    GetBatteryTempStatus() == BatteryTempStatusEnum::TEMP_NORMAL &&
-  //    GetBatteryVoltStatus() != BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY)
-  //{
-  //  chargeState_ = true;
-  //  chargeEnIo_.SetGpioPinState(HalGpio::GpioPinStateEnum::GPIO_PIN_SET);
-  //}
+  // 4. 同步读取 USB 初始状态（ADC）
+  PollUsbStatusRaw();
 }
 
 /**
@@ -201,6 +186,19 @@ void BspPowerMonitor::SetBatteryChargeEnable(bool enable, uint8_t fast)
 }
 
 /**
+ * @brief 注册 USB 状态变化回调函数
+ * @param callback 用户自定义的回调函数指针
+ * @param context  用户自定义的上下文指针（可为 nullptr）
+ * @note 该函数允许应用层注册一个回调函数，当 USB 状态发生变化时被调用
+ */
+void BspPowerMonitor::RegisterUsbNotifyCallback(PfUsbCallback callback,
+                                                void* const context)
+{
+  appCallback_ = callback;
+  appContext_  = context;
+}
+
+/**
  * @brief 充电芯片状态中断回调（双边沿捕获，视觉与语法隔离 Impl 后缀）
  */
 void BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl(uint8_t pin,
@@ -218,8 +216,8 @@ void BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl(uint8_t pin,
     // 更新时间戳现场
     self->lastInterruptMs_ = currentMs;
 
-    // 1.6Hz 方波半周期大约为 416ms。放宽硬件误差区间到 300ms ~ 550ms
-    if (deltaMs >= 300 && deltaMs <= 550)
+    // 1.6Hz 方波半周期大约为 416ms。放宽硬件误差区间到 300ms ~ 600ms
+    if (deltaMs >= 300 && deltaMs <= 600)
     {
       self->pulseCounter_++;
       if (self->pulseCounter_ >= 3)
@@ -300,28 +298,59 @@ BatteryVoltStatusEnum BspPowerMonitor::GetBatteryVoltStatus()
   return BatteryVoltStatusEnum::VOLT_NORMAL;
 }
 
-BatteryTempStatusEnum BspPowerMonitor::GetBatteryTempStatus()
+/**
+ * @brief 读取 USB 输入电压（PA08 / USB_AD，经分压还原）
+ */
+HalStateEnum BspPowerMonitor::GetUsbInputVoltageRaw(uint16_t* usbMv)
 {
-  return BatteryTempStatusEnum::TEMP_NORMAL;
+  HalStateEnum state     = HalStateEnum::HAL_ERROR;
+  uint32_t usbVoltageMv = 0U;
+
+  usbIadc_.Init();
+  osDelay(10);
+  usbVoltageMv = usbIadc_.ReadVoltageMilliVolts();
+  usbIadc_.DeInit(gpioModePushPull, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
+
+  if (usbVoltageMv != 0U)
+  {
+    usbVoltageMv = usbVoltageMv * 3U;
+    if (usbMv != nullptr)
+    {
+      *usbMv = static_cast<uint16_t>(usbVoltageMv);
+    }
+    state = HalStateEnum::HAL_OK;
+  }
+
+  return state;
 }
 
 /**
- * @brief USB 插入/拔出检测中断中转桥梁（Impl 后缀）
+ * @brief 轮询 PA08(USB_AD) 检测 USB 插拔
  */
-void BspPowerMonitor::UsbIsrBridgeCallbackImpl(uint8_t pin, bool pin_state,
-                                               void* ctx)
+void BspPowerMonitor::PollUsbStatusRaw()
 {
-  (void)pin;
-  if (ctx != nullptr)
+  uint16_t usbMv = 0U;
+  if (GetUsbInputVoltageRaw(&usbMv) != HalStateEnum::HAL_OK)
   {
-    BspPowerMonitor* self = static_cast<BspPowerMonitor*>(ctx);
-    if (pin_state)
+    return;
+  }
+
+  const UsbConnectionStatusEnum newStatus =
+      (usbMv >= static_cast<uint16_t>(PowerInLimitVol))
+          ? UsbConnectionStatusEnum::UsbConnected
+          : UsbConnectionStatusEnum::UsbNotConnected;
+
+  if (newStatus != usbStatus_)
+  {
+    usbStatus_ = newStatus;
+    if (appCallback_ != nullptr)
     {
-      self->usbStatus_ = UsbConnectionStatusEnum::UsbConnected;
-    }
-    else
-    {
-      self->usbStatus_ = UsbConnectionStatusEnum::UsbNotConnected;
+      appCallback_(usbStatus_);
     }
   }
+}
+
+BatteryTempStatusEnum BspPowerMonitor::GetBatteryTempStatus()
+{
+  return BatteryTempStatusEnum::TEMP_NORMAL;
 }

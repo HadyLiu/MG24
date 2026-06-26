@@ -94,6 +94,12 @@ void LightDecisionCenter::RegisterNetControlCallback(
   m_netControl = callback;
 }
 
+void LightDecisionCenter::RegisterBatteryWarnIndicatorCallback(
+    BatteryWarnIndicatorCallback callback)
+{
+  m_batteryWarnIndicator = callback;
+}
+
 /* 触发全量 Matter 上报（入网后由 entry 接线调用） */
 void LightDecisionCenter::InvokeNetControlRaw(NetControlAction action)
 {
@@ -125,6 +131,7 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
       m_brightnessCycleIndex = 0U;
     }
     const uint8_t brightness     = kBrightnessLevels[m_brightnessCycleIndex];
+    NotifyBatteryWarnIfNeeded(brightness);
     m_lastValidBrightness        = brightness;
     m_userTargetParam.brightness = brightness;
     m_userTargetParam.op_id = BrightnessIndexToOpId(m_brightnessCycleIndex);
@@ -195,6 +202,7 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer,
     return;
   }
 
+  NotifyBatteryWarnIfNeeded(brightness);
   if (m_isBatteryLow && (brightness > 0U))
   {
     return;
@@ -242,6 +250,42 @@ void LightDecisionCenter::ProcessBatteryEvent(bool isLow)
     SafeSaveToStorage();
     ApplyArbitratedResult();
     ReportToMatterIfRegistered();
+  }
+}
+
+void LightDecisionCenter::ProcessBatteryVoltLevel(BatteryVoltLevel level)
+{
+  switch (level)
+  {
+  case BatteryVoltLevel::CriticalEmpty:
+    m_isBatteryLowWarning = false;
+    ProcessBatteryEvent(true);
+    break;
+  case BatteryVoltLevel::LowWarning:
+    m_isBatteryLowWarning = true;
+    break;
+  case BatteryVoltLevel::Normal:
+  default:
+    m_isBatteryLowWarning = false;
+    if (m_isBatteryLow)
+    {
+      ProcessBatteryEvent(false);
+    }
+    break;
+  }
+}
+
+void LightDecisionCenter::NotifyBatteryWarnIfNeeded(uint8_t targetBrightness)
+{
+  if (targetBrightness == 0U)
+  {
+    return;
+  }
+
+  if ((m_isBatteryLow || m_isBatteryLowWarning) &&
+      (m_batteryWarnIndicator != nullptr))
+  {
+    m_batteryWarnIndicator();
   }
 }
 
@@ -298,6 +342,11 @@ void LightDecisionCenter::GetCurrentWrgb(uint16_t* outChannels,
   const uint8_t copyCount = (count > 4U) ? 4U : count;
   memcpy(outChannels, m_userTargetParam.wrgb,
          static_cast<size_t>(copyCount) * sizeof(uint16_t));
+}
+
+void LightDecisionCenter::RefreshOutputIfAllowed()
+{
+  ApplyArbitratedResult();
 }
 
 /**

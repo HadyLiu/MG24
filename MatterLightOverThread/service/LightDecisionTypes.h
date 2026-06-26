@@ -48,6 +48,62 @@ enum class NetControlAction : uint8_t
 };
 
 /**
+ * @brief 电池电压等级（Service 层抽象，由 PowerServer 从 BSP 映射）
+ */
+enum class BatteryVoltLevel : uint8_t
+{
+  Normal = 0,   /**< 电压正常 */
+  LowWarning,   /**< 低电量提示（仍可运行） */
+  CriticalEmpty /**< 临界电量（强控灭灯） */
+};
+
+/**
+ * @brief USB 充电状态（Service 层抽象，由 PowerServer 从 BSP 映射）
+ */
+enum class UsbChargeState : uint8_t
+{
+  Idle = 0, /**< 未充电 / 初始 */
+  Charging, /**< 充电中 */
+  Done,     /**< 充满 */
+  Fault     /**< 充电故障 */
+};
+
+/**
+ * @brief 充电综合电池状态（数值越小优先级越高）
+ * @note PowerServer 按优先级表仲裁后输出，供指示灯策略扩展。
+ */
+enum class BatteryChargeStatus : uint8_t
+{
+  ChargeFault   = 0, /**< 充电芯片故障 / 无电池充电 */
+  TempFault     = 1, /**< 电池温度异常 */
+  CriticalEmpty = 2, /**< 临界电量，停充保护 */
+  Charging      = 3, /**< 充电中（快慢充由 useFastCharge 区分） */
+  ChargeDone    = 4, /**< 已充满 */
+  LowWarning    = 5, /**< 低电量提示（USB 在位且仍可充电） */
+  Idle          = 6  /**< USB 在位但未进入有效充电 */
+};
+
+/**
+ * @brief 充电指示灯灯效（预留，entry 后续接 LightEffectProcessor）
+ */
+enum class ChargeIndicatorEffect : uint8_t
+{
+  Off = 0,     /**< 熄灭 */
+  WhiteBreath, /**< 白灯呼吸：LightEffectProcessor::CalcBreath80BytesFactor */
+  RedBlink     /**< 红灯闪烁：LightEffectProcessor::GetBlink */
+};
+
+/**
+ * @brief 充电综合状态快照（状态 + 灯效 + 快慢充）
+ */
+struct BatteryChargeSnapshot
+{
+  BatteryChargeStatus status;      /**< 仲裁后的电池/充电状态 */
+  ChargeIndicatorEffect indicator; /**< 建议指示灯灯效 → entry/IndicatorEffectEngine */
+  bool useFastCharge;              /**< true=快充，false=慢充 */
+};
+
+/**
  * @brief 渐变算子业务 ID
  * @note 持久化与 Matter 下行共用；下标映射 LightDecisionCenter::kActionTable。
  */

@@ -31,12 +31,13 @@ set(APP_LAYER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/ButtonInput.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/LightEffectProcessor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/LightEffectEngine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/IndicatorEffectEngine.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/LightSequenceScheduler.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/ColorConverter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/ButtonService.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/MatterBridgeServer.cpp
-
+    ${CMAKE_CURRENT_SOURCE_DIR}/../service/PowerServer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightDecisionCenter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../service/LightNvmStorage.cpp
 

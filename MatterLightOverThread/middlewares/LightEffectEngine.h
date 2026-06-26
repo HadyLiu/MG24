@@ -10,7 +10,7 @@
  */
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 /**
  * @class LightEffectEngine
@@ -41,14 +41,11 @@ public:
   using EffectRenderAction = uint32_t (*)(uint32_t start, uint32_t end,
                                           uint16_t elapsedMs, uint16_t totalMs);
 
-  /** @brief 物理层多通道 PWM 输出回调，由 entry 注入 BspLedWrgb */
-  using BspMultiChannelCallback = void (*)(const uint16_t* channelDuties);
-
-  /** @brief 定时器启停回调，由 entry 注入 BspTimer::Control */
-  using TimerControlCallback = void (*)(bool start);
-
   /** @brief 单步特效结束回调，供 LightSequenceScheduler 链式推进 */
   using MixedTimingCallback = void (*)();
+
+  /** @brief 物理输出活跃状态变化回调（供 PowerServer 评估电池供电） */
+  using OutputActivityCallback = void (*)(bool isActive);
 
   /**
    * @brief 获取引擎单例
@@ -60,22 +57,10 @@ public:
     return instance;
   }
 
-  /**
-   * @brief 初始化引擎
-   * @param callback           多通道 PWM 输出回调（entry → BspLedWrgb）
-   * @param channelCount       激活通道数（WRGB 通常为 4）
-   * @param outputPwmMaxBits   硬件 PWM 位宽（如 10 → 0~1023）
-   * @param operatorPwmMaxBits 算子 Q
-   * 格式位宽（LightEffectProcessor::GetMaxFactorBits）
-   * @return 无
-   */
-  void Init(BspMultiChannelCallback callback, uint8_t channelCount,
-            uint8_t outputPwmMaxBits, uint8_t operatorPwmMaxBits);
+  /* 初始化引擎 */
+  void Init();
 
-  /**
-   * @brief 查询引擎状态
-   * @return 当前 EngineState
-   */
+  /* 查询引擎状态 */
   EngineState GetEngineState() const;
 
   /* 检查当前是否有任意 WRGB 通道正在物理输出 */
@@ -116,26 +101,17 @@ public:
   void UpdateInputSnapshot(const uint16_t* channels, uint8_t count,
                            uint8_t brightness);
 
-  /**
-   * @brief 停止当前特效
-   * @param clearHardwareOutput true 时清零物理输出并刷新 BSP
-   * @return 无
-   */
+  /** 停止当前特效 */
   void StopCurrentEffect(bool clearHardwareOutput);
 
-  /**
-   * @brief 注册定时器控制回调
-   * @param callback entry 注入的 BspTimer 启停函数
-   * @return 无
-   */
-  void RegisterTimerControlCallback(TimerControlCallback callback);
-
-  /**
-   * @brief 注册链式时序结束回调
-   * @param callback LightSequenceScheduler 桥接函数
-   * @return 无
-   */
+  /* 注册链式时序结束回调 */
   void RegisterMixedTimingCallback(MixedTimingCallback callback);
+
+  /** @brief 注册物理输出活跃状态变化回调 */
+  void RegisterOutputActivityCallback(OutputActivityCallback callback);
+
+  /** @brief 电池通路就绪后重推当前物理 PWM（USB→电池切换后调用） */
+  void RefreshHardwareOutput();
 
   /**
    * @brief 启动单次灯效
@@ -165,6 +141,13 @@ private:
   LightEffectEngine(const LightEffectEngine&)            = delete;
   LightEffectEngine& operator=(const LightEffectEngine&) = delete;
 
+  /// 内部工具函数
+  void TimerStartStop(bool start);
+  void LightOutput(uint16_t* channelDuties);
+  uint8_t LedGetNumberOfChannels();
+  uint8_t LedGetMaxPwmBits();
+  uint8_t LedGetOperatorMaxPwmBits();
+
   /** @brief 逻辑通道值限幅至算子输入范围 */
   uint16_t ClampChannel(uint16_t value) const;
   /** @brief 物理 PWM 限幅至硬件满量程 */
@@ -187,9 +170,9 @@ private:
 
   uint16_t m_originTargetColor[kMaxChannelsSupported]; /**< 逻辑 RGBW（100%） */
 
-  BspMultiChannelCallback m_pBspCallback;
-  TimerControlCallback m_pTimerCtrlCallback;
   MixedTimingCallback m_mixedTimingCallback;
+  OutputActivityCallback m_outputActivityCallback{nullptr};
+  bool m_lastOutputActive{false};
   EffectRenderAction m_pCurrentAction;
 
   uint8_t m_activeChannels;

@@ -9,20 +9,76 @@
  *       算子输入/输出均为物理 PWM 域，blendingOperator 返回值须 >>12。
  */
 #include "LightEffectEngine.h"
+#include "BspLedWrgb.h"
+#include "BspTimer.h"
+#include "LightEffectProcessor.h"
 #include <cstring>
+
+/* 定时器相关 */
+static BspTimer s_lightRenderTimer; /**< 灯效渲染 10ms */
+
+void LightEffectEngine::TimerStartStop(bool start)
+{
+  if (start)
+  {
+    s_lightRenderTimer.TurnOnOff(true);
+  }
+  else if (s_lightRenderTimer.IsRunning())
+  {
+    s_lightRenderTimer.TurnOnOff(false);
+  }
+}
+
+/* 链接底层输出接口 */
+void LightEffectEngine::LightOutput(uint16_t* channelDuties)
+{
+  BspLedWrgb::Instance().LedWrgbSetDuty(channelDuties[0], channelDuties[1],
+                                        channelDuties[2], channelDuties[3]);
+
+  bool nowActive = false;
+  for (uint8_t i = 0U; i < m_activeChannels; ++i)
+  {
+    if (channelDuties[i] > 0U)
+    {
+      nowActive = true;
+      break;
+    }
+  }
+  // 有变化则回调
+  if (nowActive != m_lastOutputActive)
+  {
+    m_lastOutputActive = nowActive;
+    if (m_outputActivityCallback != nullptr)
+    {
+      m_outputActivityCallback(nowActive);
+    }
+  }
+}
+
+uint8_t LightEffectEngine::LedGetNumberOfChannels()
+{
+  /// 获取底层 WRGB 通道数
+  return BspLedWrgb::Instance().GetLedMaxNum();
+}
+
+uint8_t LightEffectEngine::LedGetMaxPwmBits()
+{
+  /// 获取底层 WRGB PWM 位宽
+  return BspLedWrgb::Instance().GetMaxPwmBits();
+}
+
+uint8_t LightEffectEngine::LedGetOperatorMaxPwmBits()
+{
+  /// 获取算子满量程值
+  return LightEffectProcessor::GetMaxFactorBits();
+}
 
 /**
  * @brief 初始化引擎
- * @param callback           多通道 PWM 输出回调
- * @param channelCount       激活通道数
- * @param outputPwmMaxBits   硬件 PWM 位宽
- * @param operatorPwmMaxBits 算子 Q 格式位宽（通常为 12）
- * @return 无
  */
-void LightEffectEngine::Init(BspMultiChannelCallback callback,
-                             uint8_t channelCount, uint8_t outputPwmMaxBits,
-                             uint8_t operatorPwmMaxBits)
+void LightEffectEngine::Init()
 {
+  uint8_t channelCount = LedGetNumberOfChannels();
   if (channelCount > kMaxChannelsSupported)
   {
     m_activeChannels = kMaxChannelsSupported;
@@ -36,14 +92,12 @@ void LightEffectEngine::Init(BspMultiChannelCallback callback,
   m_pCurrentAction   = nullptr;
   m_globalBrightness = 0U;
 
-  m_operatorMaxPwmBits = operatorPwmMaxBits;
-  m_outputMaxPwmBits   = outputPwmMaxBits;
+  m_operatorMaxPwmBits = LedGetOperatorMaxPwmBits();
+  m_outputMaxPwmBits   = LedGetMaxPwmBits();
 
   m_totalClockMs        = 0U;
   m_singleEffectRunTime = 0U;
   m_totalDurationMs     = 0U;
-  m_pBspCallback        = callback;
-  m_pTimerCtrlCallback  = nullptr;
   m_mixedTimingCallback = nullptr;
 
   memset(m_originTargetColor, 0, sizeof(m_originTargetColor));
@@ -52,6 +106,12 @@ void LightEffectEngine::Init(BspMultiChannelCallback callback,
   memset(m_currentOutColor, 0, sizeof(m_currentOutColor));
   memset(m_currentOutPhysicalValueColor, 0,
          sizeof(m_currentOutPhysicalValueColor));
+
+  s_lightRenderTimer.Init(
+      [](uint16_t elapsedMs) {
+        LightEffectEngine::Instance().UpdateTicks(elapsedMs);
+      },
+      10U, this);
 }
 
 /**
@@ -112,17 +172,6 @@ void LightEffectEngine::GetTargetColor(uint16_t* outChannels,
 }
 
 /**
- * @brief 注册定时器控制回调
- * @param callback entry 注入的 BspTimer 启停函数
- * @return 无
- */
-void LightEffectEngine::RegisterTimerControlCallback(
-    TimerControlCallback callback)
-{
-  m_pTimerCtrlCallback = callback;
-}
-
-/**
  * @brief 注册链式时序结束回调
  * @param callback LightSequenceScheduler 桥接函数
  * @return 无
@@ -131,6 +180,22 @@ void LightEffectEngine::RegisterMixedTimingCallback(
     MixedTimingCallback callback)
 {
   m_mixedTimingCallback = callback;
+}
+
+/**
+ * @brief 注册物理输出活跃状态变化回调
+ * @param callback
+ * @return 无
+ */
+void LightEffectEngine::RegisterOutputActivityCallback(
+    OutputActivityCallback callback)
+{
+  m_outputActivityCallback = callback;
+}
+
+void LightEffectEngine::RefreshHardwareOutput()
+{
+  LightOutput(m_currentOutPhysicalValueColor);
 }
 
 /**
@@ -194,10 +259,8 @@ void LightEffectEngine::RenderCurrentEffectFrame()
         static_cast<uint16_t>(rawMixed >> m_operatorMaxPwmBits));
   }
 
-  if (m_pBspCallback != nullptr)
-  {
-    m_pBspCallback(m_currentOutPhysicalValueColor);
-  }
+  // led输出
+  LightOutput(m_currentOutPhysicalValueColor);
 }
 
 /**
@@ -210,19 +273,19 @@ void LightEffectEngine::StopCurrentEffect(bool clearHardwareOutput)
   m_state          = EngineState::Idle;
   m_pCurrentAction = nullptr;
 
-  if (m_pTimerCtrlCallback != nullptr)
-  {
-    m_pTimerCtrlCallback(false);
-  }
-
+  TimerStartStop(false);
   if (clearHardwareOutput)
   {
     memset(m_currentOutPhysicalValueColor, 0,
            sizeof(m_currentOutPhysicalValueColor));
-    if (m_pBspCallback != nullptr)
-    {
-      m_pBspCallback(m_currentOutPhysicalValueColor);
-    }
+
+    // led输出
+    LightOutput(m_currentOutPhysicalValueColor);
+  }
+  else
+  {
+    // led输出
+    LightOutput(m_currentOutPhysicalValueColor);
   }
 }
 
@@ -260,10 +323,8 @@ void LightEffectEngine::StartEffect(EffectRenderAction pAction,
         CalcPhysicalPwmRaw(m_originTargetColor[i], m_globalBrightness);
   }
 
-  if (m_pTimerCtrlCallback != nullptr)
-  {
-    m_pTimerCtrlCallback(true);
-  }
+  // 启动定时器
+  TimerStartStop(true);
 }
 
 /**
@@ -296,10 +357,12 @@ void LightEffectEngine::UpdateTicks(uint32_t elapsedMs)
     m_state          = EngineState::Idle;
     m_pCurrentAction = nullptr;
 
-    if (m_pTimerCtrlCallback != nullptr)
-    {
-      m_pTimerCtrlCallback(false);
-    }
+    // led输出
+    LightOutput(m_currentOutPhysicalValueColor);
+
+    /// 运行完毕后，停止定时器并触发回调
+    TimerStartStop(false);
+
     if (m_mixedTimingCallback != nullptr)
     {
       m_mixedTimingCallback();

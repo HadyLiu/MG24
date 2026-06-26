@@ -74,7 +74,12 @@
  * @param ... 可变参数，与 fmt 对应
  */
 #if APP_LOG_ENABLED
-#define APP_LOG_IMPL(en, fmt, ...) BspUartLog::DebugLog(en, fmt, ##__VA_ARGS__)
+#define APP_LOG_IMPL(en, fmt, ...)                                             \
+  BspUartLog::DebugLog(en, "[%s:%d] " fmt,                                     \
+                       __builtin_strrchr(__FILE__, '/')                        \
+                           ? __builtin_strrchr(__FILE__, '/') + 1              \
+                           : __FILE__,                                         \
+                       __LINE__, ##__VA_ARGS__)
 
 #else
 #define APP_LOG_IMPL(en, fmt, ...) ((void)0)

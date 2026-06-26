@@ -81,6 +81,13 @@ public:
   /** @brief 极低电量强控（true=禁止亮灯并上报关） */
   void ProcessBatteryEvent(bool isLow);
 
+  /** @brief 电池电压等级变化（Normal / LowWarning / CriticalEmpty） */
+  void ProcessBatteryVoltLevel(BatteryVoltLevel level);
+
+  /** @brief 低电量警告指示回调（entry → 红灯闪烁），在用户尝试开灯时触发 */
+  using BatteryWarnIndicatorCallback = void (*)();
+  void RegisterBatteryWarnIndicatorCallback(BatteryWarnIndicatorCallback callback);
+
   /** @brief Matter 配网成功 → 成功时序灯效 + 全量上报 */
   void ProcessMatterCommissioningComplete();
 
@@ -101,6 +108,9 @@ public:
 
   /** @brief 回读当前逻辑 WRGB */
   void GetCurrentWrgb(uint16_t* outChannels, uint8_t count) const;
+
+  /** @brief 电池通路就绪后恢复主灯输出（非低电且亮度>0 时重下发灯效） */
+  void RefreshOutputIfAllowed();
 
 private:
   LightDecisionCenter()                                      = default;
@@ -128,14 +138,17 @@ private:
   LightEffectOpId BrightnessIndexToOpId(uint8_t brightnessIndex) const;
   void ReportToMatterIfRegistered();
   void InvokeNetControlRaw(NetControlAction action);
+  void NotifyBatteryWarnIfNeeded(uint8_t targetBrightness);
 
   LightSequenceScheduler* m_pSequence{nullptr};
   LightStorageProvider* m_pStorage{nullptr};
   MatterReportCallback m_matterReporter{nullptr};
   NetControlCallback m_netControl{nullptr};
+  BatteryWarnIndicatorCallback m_batteryWarnIndicator{nullptr};
 
   LightSceneState m_sceneState{LightSceneState::Normal};
   bool m_isBatteryLow{false};
+  bool m_isBatteryLowWarning{false};
   uint8_t m_lastValidBrightness{128U};
   uint8_t m_brightnessCycleIndex{0U};
   uint8_t m_colorCycleIndex{0U};

@@ -1,4 +1,5 @@
 #include "HalExti.h"
+#include "sl_device_gpio.h"
 
 bool HalExti::s_isInitialized = false;
 
@@ -41,20 +42,28 @@ bool HalExti::Init()
 
   sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_INPUT_PULL, false);
 
-  sl_status_t status =
-      sl_gpio_configure_external_interrupt(&gpio, &m_assignedIntNo,
-                                           true, // em2Wakeup = true
-                                           nullptr, nullptr);
+  sl_gpio_interrupt_flag_t flags = SL_GPIO_INTERRUPT_RISING_FALLING_EDGE;
+  if (m_trigger == EdgeTrigger::RISING)
+  {
+    flags = SL_GPIO_INTERRUPT_RISING_EDGE;
+  }
+  else if (m_trigger == EdgeTrigger::FALLING)
+  {
+    flags = SL_GPIO_INTERRUPT_FALLING_EDGE;
+  }
+
+  m_assignedIntNo = SL_GPIO_INTERRUPT_UNAVAILABLE;
+  sl_status_t status = sl_gpio_configure_external_interrupt(
+      &gpio, &m_assignedIntNo, flags, nullptr, nullptr);
   if (status != SL_STATUS_OK)
   {
     return false;
   }
 
-  // 绑定物理中断并将当前对象指针 (this) 登记到官方 Context 槽位
+  // 绑定 GPIOINT 分发到 NativeIsrHandler
   GPIOINT_CallbackRegisterExt(
       gpio.pin, (GPIOINT_IrqCallbackPtrExt_t)HalExti::NativeIsrHandler, this);
 
-  Enable(true);
   return true;
 }
 

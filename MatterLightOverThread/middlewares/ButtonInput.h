@@ -10,6 +10,7 @@
 #pragma once
 
 #include "ButtonEventPacket.h"
+#include <cstdint>
 
 /**
  * @brief 按键输入状态机（无 RTOS / 无硬件定时器依赖）
@@ -18,8 +19,7 @@ class ButtonInput
 {
 public:
   /** @brief 语义事件投递回调，由 entry 注册至 ButtonService::MailPoster */
-  using MailPoster           = void (*)(const ButtonMailMsg& msg);
-  using TimerControlCallback = void (*)(bool start);
+  using MailPoster = void (*)(const ButtonMailMsg& msg);
 
   enum class State : uint8_t
   {
@@ -44,9 +44,6 @@ public:
    * @return 无
    */
   void Init();
-
-  // 注册定时器控制回调（由 entry 注入）
-  void RegisterTimerControlCallback(TimerControlCallback ctrlCallback);
 
   /* 注册邮箱投递函数（由 entry 注入） */
   void RegisterMailPosterCallback(MailPoster poster);
@@ -73,12 +70,12 @@ private:
   ButtonInput()  = default;
   ~ButtonInput() = default;
 
-  void PostFinalEvent(uint8_t button, uint8_t action, uint16_t payload);
+  void TimerStartStop(bool start);
 
+  void PostFinalEvent(uint8_t button, uint8_t action, uint16_t payload);
   void ResetLongPulseIndex();
 
   MailPoster m_mailPoster{nullptr};
-  TimerControlCallback m_timerCtrl{nullptr};
 
   State m_state{State::Idle};
   uint8_t m_lastButton{0};

@@ -63,10 +63,13 @@ public:
   void Init();
 
   /* Matter 下发回调*/
-  void RegisterMatterDownlinkLocal(MatterDownlinkCallback callback);
+  void MatterDownlinkLocalRegister(MatterDownlinkCallback callback);
 
   /* 本地上报 */
-  void UploadMatterLocalReport(const MatterDownlinkUploadPayload& muc);
+  void MatterUploadLocalReport(MatterDownlinkUploadPayload muc);
+
+  /* 执行Matter命令 */
+  void MatterExecuteCmd(MatterExecuteElement executeElement);
 
   // ##################
   //  连接到 Matter 底层接口
@@ -97,16 +100,21 @@ private:
   void SetCt(uint16_t colorTemperature);
   void SetXy(uint16_t x, uint16_t y);
 
+  void MatterClearNetwork();
+
   void MatterUploadSwitch(bool is_on);
   void MatterUploadBrightness(uint8_t driver_brightness_percent);
+  void MatterUploadHsv(uint8_t hue, uint8_t saturation);
+  void MatterUploadCt(uint16_t colorTemperature);
+  void MatterUploadXy(uint16_t x, uint16_t y);
 
   void RegisterDeviceEventListener(void);
   void TriggerNetworkResetWithoutReboot(void);
 
+  static void EntryClearNetWork(AppEvent* aEvent);
   static void Safe_Upload_OnOff_Callback(intptr_t context);
   static void Safe_Upload_Brightness_Callback(intptr_t context);
-  static void
-  OnMatterDeviceEvent(const chip::DeviceLayer::ChipDeviceEvent* event,
-                      intptr_t arg);
+  static void OnMatterDeviceEvent(const chip::DeviceLayer::ChipDeviceEvent* event,
+                                  intptr_t arg);
   static void DoSoftNetworkResetHandler(intptr_t arg);
 };

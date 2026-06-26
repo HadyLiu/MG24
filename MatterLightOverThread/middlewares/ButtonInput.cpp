@@ -8,6 +8,7 @@
  *       entry 注册的 MailPoster 投递至 ButtonService 邮箱。
  */
 #include "ButtonInput.h"
+#include "BspTimer.h"
 #include "DebugLog.h"
 
 namespace {
@@ -19,6 +20,20 @@ static constexpr uint32_t LONG_PULSE_MS   = 200U;
 static constexpr uint32_t RELEASE_STOP_MS = 1000U;
 
 } // namespace
+
+static BspTimer s_buttonScanTimer; /**< 按键扫描 10ms */
+
+void ButtonInput::TimerStartStop(bool start)
+{
+  if (start)
+  {
+    s_buttonScanTimer.TurnOnOff(true);
+  }
+  else if (s_buttonScanTimer.IsRunning())
+  {
+    s_buttonScanTimer.TurnOnOff(false);
+  }
+}
 
 /**
  * @brief 复位状态机至 Idle
@@ -35,6 +50,12 @@ void ButtonInput::Init()
   m_longPulseIdx       = 0;
   m_longPressStarted   = false;
   m_doubleClickPending = false;
+
+  s_buttonScanTimer.Init(
+      [](uint16_t elapsedMs) {
+        ButtonInput::Instance().UpdateTicks(elapsedMs);
+      },
+      10U, this);
 }
 
 /**
@@ -50,22 +71,6 @@ void ButtonInput::RegisterMailPosterCallback(MailPoster poster)
     return;
   }
   m_mailPoster = poster;
-}
-
-/**
- * @brief 注册定时器控制回调
- * @param ctrlCallback 定时器控制函数指针
- * @return 无
- */
-void ButtonInput::RegisterTimerControlCallback(
-    TimerControlCallback ctrlCallback)
-{
-  if (ctrlCallback == nullptr)
-  {
-    LOG_BTN("[ButtonInput] RegisterTimerControlCallback: null");
-    return;
-  }
-  m_timerCtrl = ctrlCallback;
 }
 
 /**
@@ -117,10 +122,7 @@ void ButtonInput::PushEdgeEvent(uint8_t button, bool isPressed)
     if (m_state == State::Idle)
     {
       // 【修改点】不再发送扫描控制邮件，直接利用注册的接口函数指针就地启动硬件时钟
-      if (m_timerCtrl != nullptr)
-      {
-        m_timerCtrl(true);
-      }
+      TimerStartStop(true);
       m_state       = State::WaitRelease;
       m_longCountMs = 0;
       ResetLongPulseIndex();
@@ -233,10 +235,7 @@ void ButtonInput::UpdateTicks(uint32_t elapsedMs)
       m_releaseDelayMs = 0;
       // 【修改点】状态机回归
       // Idle，直接利用函数指针就地关闭硬件时钟，系统进入极低功耗
-      if (m_timerCtrl != nullptr)
-      {
-        m_timerCtrl(false);
-      }
+      TimerStartStop(false);
     }
     else
     {

@@ -79,7 +79,7 @@ void ButtonService::PostKeyEventRaw(KeyEventType event)
  */
 void ButtonService::OnShortPress(uint8_t buttonIdx)
 {
-  LOG_BTN("[ButtonService] 短按 btn=%u", buttonIdx);
+  LOG_BTN("短按 btn=%u", buttonIdx);
   PostKeyEventRaw(KeyEventType::ShortPressCycleBrightness);
 }
 
@@ -90,7 +90,7 @@ void ButtonService::OnShortPress(uint8_t buttonIdx)
  */
 void ButtonService::OnDoublePress(uint8_t buttonIdx)
 {
-  LOG_BTN("[ButtonService] 双击 btn=%u", buttonIdx);
+  LOG_BTN("双击 btn=%u", buttonIdx);
   PostKeyEventRaw(KeyEventType::DoublePressCycleColor);
 }
 
@@ -101,7 +101,7 @@ void ButtonService::OnDoublePress(uint8_t buttonIdx)
  */
 void ButtonService::OnLongPressStart(uint8_t buttonIdx)
 {
-  LOG_BTN("[ButtonService] 长按开始 btn=%u", buttonIdx);
+  LOG_BTN("长按开始 btn=%u", buttonIdx);
 }
 
 /**
@@ -112,7 +112,7 @@ void ButtonService::OnLongPressStart(uint8_t buttonIdx)
  */
 void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
 {
-  LOG_BTN("[ButtonService] 长按脉冲 btn=%u count=%u", buttonIdx, count);
+  LOG_BTN("长按脉冲 btn=%u count=%u", buttonIdx, count);
 
   if (count == 25U)
   {
@@ -133,8 +133,7 @@ void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
  */
 void ButtonService::OnLongPressRelease(uint8_t buttonIdx, uint16_t durationMs)
 {
-  LOG_BTN("[ButtonService] 长按松开 btn=%u duration=%ums", buttonIdx,
-          durationMs);
+  LOG_BTN("长按松开 btn=%u duration=%ums", buttonIdx, durationMs);
   if (durationMs >= 5000U && durationMs < 10000U)
   {
     PostKeyEventRaw(KeyEventType::LongPressStopNet);

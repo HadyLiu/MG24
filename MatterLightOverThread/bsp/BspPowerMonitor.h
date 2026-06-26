@@ -63,12 +63,15 @@ public:
   void SetBatteryChargeEnable(bool enable, uint8_t fast = 0);
 
   /* 对外回调注册接口 */
-  typedef void (*PfUsbCallback)(UsbConnectionStatusEnum usbStatus,
-                                void* const context);
+  typedef void (*PfUsbCallback)(UsbConnectionStatusEnum usbStatus);
   void RegisterUsbNotifyCallback(PfUsbCallback callback, void* const context);
 
   /* 供应用层轮询获取状态的接口 */
   ChargeChipStatusEnum GetChargeStatus();
+  bool IsChargeEnabled() const
+  {
+    return chargeState_;
+  }
   BatteryTempStatusEnum GetBatteryTempStatus();
   BatteryVoltStatusEnum GetBatteryVoltStatus();
 
@@ -81,16 +84,19 @@ public:
   HalStateEnum GetBatteryVoltage(uint16_t* batMv = nullptr);
   HalStateEnum GetBatteryNtcVoltage(uint16_t* ntcMv = nullptr);
 
+  /** @brief 轮询 PA08(USB_AD) ADC 检测 USB 插拔，状态变化时触发已注册回调 */
+  void PollUsbStatusRaw();
+
 private:
   /* 硬件抽象与驱动对象 */
   HalIadc batIadc_;
   HalIadc ntcIadc_;
+  HalIadc usbIadc_;
 
   HalGpio batEnIo_;
   HalGpio chargeEnIo_;
   HalGpio chargeSpeedIo_;
 
-  HalExti usbExti_;
   HalExti chargeStatExti_;
 
   /* 状态与计数私有变量 */
@@ -109,7 +115,8 @@ private:
   BspPowerMonitor();
 
   /* 🌟 私有辅助/中断中转函数：严格采用大驼峰 + Impl 后缀，视觉与语法双重隔离 */
-  static void UsbIsrBridgeCallbackImpl(uint8_t pin, bool pin_state, void* ctx);
   static void ChargeStatIsrBridgeCallbackImpl(uint8_t pin, bool pin_state,
                                               void* ctx);
+
+  HalStateEnum GetUsbInputVoltageRaw(uint16_t* usbMv);
 };
