@@ -4,4 +4,4 @@ Matter-Bootloader/cmake_gcc/build
 MatterLightOverThread/cmake_gcc/build
 core.[0-9]*
 .cursor/p*
-
+.cursor*

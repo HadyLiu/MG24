@@ -17,7 +17,7 @@
  */
 void ButtonService::Init()
 {
-  LOG_BTN("[ButtonService] init");
+    LOG_BTN("[ButtonService] init");
 }
 
 /**
@@ -27,7 +27,7 @@ void ButtonService::Init()
  */
 void ButtonService::RegisterKeyEventHandler(KeyEventHandler handler)
 {
-  m_keyHandler = handler;
+    m_keyHandler = handler;
 }
 
 /**
@@ -37,26 +37,26 @@ void ButtonService::RegisterKeyEventHandler(KeyEventHandler handler)
  */
 void ButtonService::DispatchMail(const ButtonMailMsg& msg)
 {
-  switch (msg.action)
-  {
-  case ButtonAction::kShortPress:
-    OnShortPress(msg.buttonIdx);
-    break;
-  case ButtonAction::kDoublePress:
-    OnDoublePress(msg.buttonIdx);
-    break;
-  case ButtonAction::kLongPressStart:
-    OnLongPressStart(msg.buttonIdx);
-    break;
-  case ButtonAction::kLongPressing:
-    OnLongPressing(msg.buttonIdx, msg.longPressCount);
-    break;
-  case ButtonAction::kLongPressRelease:
-    OnLongPressRelease(msg.buttonIdx, msg.longPressCount);
-    break;
-  default:
-    return;
-  }
+    switch (msg.action)
+    {
+    case ButtonAction::kShortPress:
+        OnShortPress(msg.buttonIdx);
+        break;
+    case ButtonAction::kDoublePress:
+        OnDoublePress(msg.buttonIdx);
+        break;
+    case ButtonAction::kLongPressStart:
+        OnLongPressStart(msg.buttonIdx);
+        break;
+    case ButtonAction::kLongPressing:
+        OnLongPressing(msg.buttonIdx, msg.longPressCount);
+        break;
+    case ButtonAction::kLongPressRelease:
+        OnLongPressRelease(msg.buttonIdx, msg.longPressCount);
+        break;
+    default:
+        return;
+    }
 }
 
 /**
@@ -66,10 +66,10 @@ void ButtonService::DispatchMail(const ButtonMailMsg& msg)
  */
 void ButtonService::PostKeyEventRaw(KeyEventType event)
 {
-  if (m_keyHandler != nullptr)
-  {
-    m_keyHandler(event);
-  }
+    if (m_keyHandler != nullptr)
+    {
+        m_keyHandler(event);
+    }
 }
 
 /**
@@ -79,8 +79,8 @@ void ButtonService::PostKeyEventRaw(KeyEventType event)
  */
 void ButtonService::OnShortPress(uint8_t buttonIdx)
 {
-  LOG_BTN("短按 btn=%u", buttonIdx);
-  PostKeyEventRaw(KeyEventType::ShortPressCycleBrightness);
+    LOG_BTN("ShortPress btn=%u", buttonIdx);
+    PostKeyEventRaw(KeyEventType::ShortPressCycleBrightness);
 }
 
 /**
@@ -90,8 +90,8 @@ void ButtonService::OnShortPress(uint8_t buttonIdx)
  */
 void ButtonService::OnDoublePress(uint8_t buttonIdx)
 {
-  LOG_BTN("双击 btn=%u", buttonIdx);
-  PostKeyEventRaw(KeyEventType::DoublePressCycleColor);
+    LOG_BTN("DoublePress btn=%u", buttonIdx);
+    PostKeyEventRaw(KeyEventType::DoublePressCycleColor);
 }
 
 /**
@@ -101,7 +101,7 @@ void ButtonService::OnDoublePress(uint8_t buttonIdx)
  */
 void ButtonService::OnLongPressStart(uint8_t buttonIdx)
 {
-  LOG_BTN("长按开始 btn=%u", buttonIdx);
+    LOG_BTN("LongPressStart btn=%u", buttonIdx);
 }
 
 /**
@@ -112,17 +112,17 @@ void ButtonService::OnLongPressStart(uint8_t buttonIdx)
  */
 void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
 {
-  LOG_BTN("长按脉冲 btn=%u count=%u", buttonIdx, count);
+    LOG_BTN("LongPressing btn=%u count=%u", buttonIdx, count);
 
-  if (count == 25U)
-  {
-    PostKeyEventRaw(KeyEventType::LongPressClearNetLighting);
-  }
-  else if (count == 50U)
-  {
-    // 开始清除配网
-    PostKeyEventRaw(KeyEventType::LongPressClearNet);
-  }
+    if (count == 25U)
+    {
+        PostKeyEventRaw(KeyEventType::LongPressClearNetLighting);
+    }
+    else if (count == 50U)
+    {
+        // 开始清除配网
+        PostKeyEventRaw(KeyEventType::LongPressClearNet);
+    }
 }
 
 /**
@@ -133,9 +133,9 @@ void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
  */
 void ButtonService::OnLongPressRelease(uint8_t buttonIdx, uint16_t durationMs)
 {
-  LOG_BTN("长按松开 btn=%u duration=%ums", buttonIdx, durationMs);
-  if (durationMs >= 5000U && durationMs < 10000U)
-  {
-    PostKeyEventRaw(KeyEventType::LongPressStopNet);
-  }
+    LOG_BTN("LongPressRelease btn=%u duration=%ums", buttonIdx, durationMs);
+    if (durationMs >= 5000U && durationMs < 10000U)
+    {
+        PostKeyEventRaw(KeyEventType::LongPressStopNet);
+    }
 }

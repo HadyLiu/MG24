@@ -74,13 +74,14 @@ enum class UsbChargeState : uint8_t
  */
 enum class BatteryChargeStatus : uint8_t
 {
-  ChargeFault   = 0, /**< 充电芯片故障 / 无电池充电 */
-  TempFault     = 1, /**< 电池温度异常 */
-  CriticalEmpty = 2, /**< 临界电量，停充保护 */
-  Charging      = 3, /**< 充电中（快慢充由 useFastCharge 区分） */
-  ChargeDone    = 4, /**< 已充满 */
-  LowWarning    = 5, /**< 低电量提示（USB 在位且仍可充电） */
-  Idle          = 6  /**< USB 在位但未进入有效充电 */
+  Nobat         = 0, /**< 无电池 */
+  ChargeFault   = 1, /**< 充电芯片故障  */
+  TempFault     = 2, /**< 电池温度异常 */
+  CriticalEmpty = 3, /**< 临界电量，停充保护 */
+  Charging      = 4, /**< 充电中（快慢充由 useFastCharge 区分） */
+  ChargeDone    = 5, /**< 已充满 */
+  LowWarning    = 6, /**< 低电量提示（USB 在位且仍可充电） */
+  Idle          = 7  /**< USB 在位但未进入有效充电 */
 };
 
 /**
@@ -98,9 +99,10 @@ enum class ChargeIndicatorEffect : uint8_t
  */
 struct BatteryChargeSnapshot
 {
-  BatteryChargeStatus status;      /**< 仲裁后的电池/充电状态 */
-  ChargeIndicatorEffect indicator; /**< 建议指示灯灯效 → entry/IndicatorEffectEngine */
-  bool useFastCharge;              /**< true=快充，false=慢充 */
+  BatteryChargeStatus status; /**< 仲裁后的电池/充电状态 */
+  ChargeIndicatorEffect
+      indicator;      /**< 建议指示灯灯效 → entry/IndicatorEffectEngine */
+  bool useFastCharge; /**< true=快充，false=慢充 */
 };
 
 /**

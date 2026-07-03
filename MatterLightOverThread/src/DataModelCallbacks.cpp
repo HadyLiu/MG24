@@ -42,7 +42,7 @@
 #include <MultiProtocolDataModelHelper.h>
 #endif // SL_CATALOG_ZIGBEE_ZCL_FRAMEWORK_CORE_PRESENT
 
-#include "../middlewares/MatterBridge.h"
+#include "../middlewares/inc/MatterBridge.h"
 
 using namespace ::chip;
 using namespace ::chip::app::Clusters;

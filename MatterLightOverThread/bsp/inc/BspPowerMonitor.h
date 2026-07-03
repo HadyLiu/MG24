@@ -64,7 +64,7 @@ public:
 
   /* 对外回调注册接口 */
   typedef void (*PfUsbCallback)(UsbConnectionStatusEnum usbStatus);
-  void RegisterUsbNotifyCallback(PfUsbCallback callback, void* const context);
+  void RegisterUsbNotifyCallback(PfUsbCallback callback);
 
   /* 供应用层轮询获取状态的接口 */
   ChargeChipStatusEnum GetChargeStatus();
@@ -103,13 +103,13 @@ private:
   bool chargeState_;
   UsbConnectionStatusEnum usbStatus_;
   ChargeChipStatusEnum chargeStatus_;
+  BatteryTempStatusEnum batteryTempStatus_;
   uint32_t lastInterruptMs_;
   uint32_t pulseCounter_;
   bool isPulsing_;
 
-  /* 回调函数指针及上下文 */
+  /* 回调函数指针 */
   PfUsbCallback appCallback_;
-  void* appContext_;
 
   /* 构造函数 */
   BspPowerMonitor();
