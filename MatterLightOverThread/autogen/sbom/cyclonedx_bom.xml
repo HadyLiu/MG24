@@ -10,7 +10,7 @@ referenced in this SBOM.)
 -->
 <bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1">
   <metadata>
-    <timestamp>2026-06-12T08:21:47Z</timestamp>
+    <timestamp>2026-07-08T10:50:43Z</timestamp>
     <authors>
       <author>
         <name>Silicon Laboratories, Inc.</name>
@@ -974,16 +974,6 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfrco" type="library">
-          <name>High Frequency RC Oscillator (HFRCO)</name>
-          <version>2025.12.2</version>
-	      <supplier>
-	        <name>Silicon Laboratories, Inc.</name>
-	      </supplier>
-          <licenses>
-            <expression>Zlib</expression>
-          </licenses>
-        </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:device_init_hfxo" type="library">
           <name>High Frequency Crystal Oscillator (HFXO)</name>
           <version>2025.12.2</version>
@@ -1056,6 +1046,16 @@ referenced in this SBOM.)
         </component>
         <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_nvm3" type="library">
           <name>NVM3 Service for TrustZone Secure Key Library</name>
+          <version>2025.12.2</version>
+	      <supplier>
+	        <name>Silicon Laboratories, Inc.</name>
+	      </supplier>
+          <licenses>
+            <expression>Zlib</expression>
+          </licenses>
+        </component>
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:tz_service_psa_crypto" type="library">
+          <name>PSA Crypto Service for TrustZone Secure Key Library</name>
           <version>2025.12.2</version>
 	      <supplier>
 	        <name>Silicon Laboratories, Inc.</name>
@@ -2744,7 +2744,7 @@ referenced in this SBOM.)
             <expression>Zlib</expression>
           </licenses>
         </component>
-        <component bom-ref="silabs.simplicity_sdk:2025.12.2:HalGpio" type="library">
+        <component bom-ref="silabs.simplicity_sdk:2025.12.2:hal_gpio" type="library">
           <name>GPIO</name>
           <version>2025.12.2</version>
 	      <supplier>

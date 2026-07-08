@@ -1,9 +1,9 @@
 /***************************************************************************//**
  * @file
- * @brief DEVICE_INIT_HFRCO Config
+ * @brief Simple Button Driver User Config
  *******************************************************************************
  * # License
- * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2024 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -28,31 +28,35 @@
  *
  ******************************************************************************/
 
-#ifndef SL_DEVICE_INIT_HFRCO_CONFIG_H
-#define SL_DEVICE_INIT_HFRCO_CONFIG_H
+#ifndef SL_SIMPLE_BUTTON_BTN_RST0_CONFIG_H
+#define SL_SIMPLE_BUTTON_BTN_RST0_CONFIG_H
+
+#include "sl_gpio.h"
+#include "sl_simple_button.h"
 
 // <<< Use Configuration Wizard in Context Menu >>>
 
-// <o SL_DEVICE_INIT_HFRCO_BAND> Frequency Band
-// <i> RC Oscillator Frequency Band
-// <cmuHFRCODPLLFreq_1M0Hz=> 1 MHz
-// <cmuHFRCODPLLFreq_2M0Hz=> 2 MHz
-// <cmuHFRCODPLLFreq_4M0Hz=> 4 MHz
-// <cmuHFRCODPLLFreq_7M0Hz=> 7 MHz
-// <cmuHFRCODPLLFreq_13M0Hz=> 13 MHz
-// <cmuHFRCODPLLFreq_16M0Hz=> 16 MHz
-// <cmuHFRCODPLLFreq_19M0Hz=> 19 MHz
-// <cmuHFRCODPLLFreq_26M0Hz=> 26 MHz
-// <cmuHFRCODPLLFreq_32M0Hz=> 32 MHz
-// <cmuHFRCODPLLFreq_38M0Hz=> 38 MHz
-// <cmuHFRCODPLLFreq_48M0Hz=> 48 MHz
-// <cmuHFRCODPLLFreq_56M0Hz=> 56 MHz
-// <cmuHFRCODPLLFreq_64M0Hz=> 64 MHz
-// <cmuHFRCODPLLFreq_80M0Hz=> 80 MHz
-// <i> Default: cmuHFRCODPLLFreq_80M0Hz
-#define SL_DEVICE_INIT_HFRCO_BAND           cmuHFRCODPLLFreq_80M0Hz
-
+// <o SL_SIMPLE_BUTTON_BTN_RST0_MODE>
+// <SL_SIMPLE_BUTTON_MODE_INTERRUPT=> Interrupt
+// <SL_SIMPLE_BUTTON_MODE_POLL_AND_DEBOUNCE=> Poll and Debounce
+// <SL_SIMPLE_BUTTON_MODE_POLL=> Poll
+// <i> Default: SL_SIMPLE_BUTTON_MODE_INTERRUPT
+#define SL_SIMPLE_BUTTON_BTN_RST0_MODE       SL_SIMPLE_BUTTON_MODE_INTERRUPT
 // <<< end of configuration section >>>
 
-#endif // SL_DEVICE_INIT_HFRCO_CONFIG_H
+// <<< sl:start pin_tool >>>
+
+// <gpio> SL_SIMPLE_BUTTON_BTN_RST0
+// $[GPIO_SL_SIMPLE_BUTTON_BTN_RST0]
+#ifndef SL_SIMPLE_BUTTON_BTN_RST0_PORT          
+#define SL_SIMPLE_BUTTON_BTN_RST0_PORT           SL_GPIO_PORT_A
+#endif
+#ifndef SL_SIMPLE_BUTTON_BTN_RST0_PIN           
+#define SL_SIMPLE_BUTTON_BTN_RST0_PIN            6
+#endif
+// [GPIO_SL_SIMPLE_BUTTON_BTN_RST0]$
+
+// <<< sl:end pin_tool >>>
+
+#endif // SL_SIMPLE_BUTTON_BTN_RST0_CONFIG_H
 

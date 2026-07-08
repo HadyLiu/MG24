@@ -172,6 +172,7 @@ component:
 - package: simplicity_sdk
   instance:
   - btn0
+  - btn_rst0
   vendor: silabs
   id: simple_button
 - package: simplicity_sdk
@@ -190,6 +191,9 @@ component:
 - package: simplicity_sdk
   vendor: silabs
   id: tz_service_nvm3
+- package: simplicity_sdk
+  vendor: silabs
+  id: tz_service_psa_crypto
 other_file:
 - path: qr_code_img.png
 define:

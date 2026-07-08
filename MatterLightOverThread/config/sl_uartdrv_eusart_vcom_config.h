@@ -110,12 +110,12 @@
 #define SL_UARTDRV_EUSART_VCOM_TX_PIN            7
 #endif
 
-// EUSART0 RX on PA06
+// EUSART0 RX on PA02
 #ifndef SL_UARTDRV_EUSART_VCOM_RX_PORT          
 #define SL_UARTDRV_EUSART_VCOM_RX_PORT           SL_GPIO_PORT_A
 #endif
 #ifndef SL_UARTDRV_EUSART_VCOM_RX_PIN           
-#define SL_UARTDRV_EUSART_VCOM_RX_PIN            6
+#define SL_UARTDRV_EUSART_VCOM_RX_PIN            2
 #endif
 
 

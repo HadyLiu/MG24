@@ -57,6 +57,7 @@ sl_rail_util_pti_config.h=1201181873
 sl_rail_util_rssi_config.h=-1520981821
 sl_rail_util_sequencer_config.h=-1403550863
 sl_simple_button_btn0_config.h=1429134082
+sl_simple_button_btn_rst0_config.h=1194199626
 sl_simple_button_config.h=1912858619
 sl_simple_led_inst0_config.h=-1222932470
 sl_simple_rgb_pwm_led_led_config.h=-907880187

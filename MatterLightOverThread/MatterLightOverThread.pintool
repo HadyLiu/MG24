@@ -15,7 +15,9 @@
     <property object="PA04" propertyId="pin.reserve" value="Reserved"/>
     <property object="PA05" propertyId="ABModule.selectedRequirement" value="gpio%T%SL_SIMPLE_BUTTON_BTN0%T%sl_simple_button_btn0_config.h"/>
     <property object="PA05" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PA06" propertyId="ABModule.selectedRequirement" value="gpio%T%SL_SIMPLE_BUTTON_BTN_RST0%T%sl_simple_button_btn_rst0_config.h"/>
     <property object="PA06" propertyId="pin.name" value=""/>
+    <property object="PA06" propertyId="pin.reserve" value="Reserved"/>
     <property object="PA07" propertyId="pin.name" value=""/>
     <property object="PA08" propertyId="pin.name" value=""/>
     <property object="PB04" propertyId="pin.name" value=""/>
@@ -26,6 +28,7 @@
     <property object="PC01" propertyId="pin.reserve" value="Reserved"/>
     <property object="PC02" propertyId="pin.name" value=""/>
     <property object="PC02" propertyId="pin.reserve" value="Reserved"/>
+    <property object="PC03" propertyId="pin.name" value=""/>
     <property object="PC04" propertyId="pin.name" value=""/>
     <property object="PC05" propertyId="pin.name" value=""/>
     <property object="PC06" propertyId="pin.name" value=""/>
@@ -39,7 +42,7 @@
     <property object="PORTIO" propertyId="portio.eusart0.enable.tx" value="Enabled"/>
     <property object="PORTIO" propertyId="portio.eusart0.location.cts" value="2"/>
     <property object="PORTIO" propertyId="portio.eusart0.location.rts" value="3"/>
-    <property object="PORTIO" propertyId="portio.eusart0.location.rx" value="6"/>
+    <property object="PORTIO" propertyId="portio.eusart0.location.rx" value="2"/>
     <property object="PORTIO" propertyId="portio.eusart0.location.tx" value="7"/>
     <property object="PORTIO" propertyId="portio.eusart1.enable.rx" value="Enabled"/>
     <property object="PORTIO" propertyId="portio.eusart1.enable.sclk" value="Enabled"/>
@@ -65,6 +68,7 @@
     <property object="PORTIO" propertyId="portio.timer4.location.cc0" value="18"/>
     <property object="PORTIO" propertyId="portio.timer4.location.cc1" value="19"/>
     <property object="PORTIO" propertyId="portio.timer4.location.cc2" value="20"/>
+    <property object="PORTIO" propertyId="portio.usart0.location.rx" value="35"/>
     <property object="PTI" propertyId="ABModule.selectedRequirement" value="pti%T%SL_RAIL_UTIL_PTI%T%sl_rail_util_pti_config.h"/>
     <property object="PTI" propertyId="ABPeripheral.included" value="true"/>
     <property object="TIMER1" propertyId="ABModule.selectedRequirement" value="timer%T%SL_PWM_INDIC_LED0%T%sl_pwm_init_Indic_led0_config.h"/>
