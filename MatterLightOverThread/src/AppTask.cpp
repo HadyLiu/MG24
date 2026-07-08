@@ -52,8 +52,8 @@
 #include "PlatformManager.h"
 #include "sl_simple_button_instances.h"
 
-#include "../middlewares/inc/ButtonInput.h"
-#include "../middlewares/inc/MatterBridge.h"
+#include "../../User/middlewares/inc/ButtonInput.h"
+#include "../../User/middlewares/inc/MatterBridge.h"
 
 #ifdef SL_CATALOG_SIMPLE_LED_LED1_PRESENT
 #define LIGHT_LED 1

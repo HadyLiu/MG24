@@ -13,47 +13,47 @@ project(
 include(MatterLightOverThread.cmake)
 
 set(APP_LAYER_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/src/HalGpio.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/src/HalExti.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/src/HalIadc.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/src/HalNvmstorage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/src/HalPwm.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/src/HalSpiSm15135e.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/src/HalGpio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/src/HalExti.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/src/HalIadc.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/src/HalNvmstorage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/src/HalPwm.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/src/HalSpiSm15135e.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/src/BspLedIndicatorRed.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/src/BspLedIndicatorWhite.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/src/BspLedWrgb.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/src/BspPowerMonitor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/src/BspSleepTimer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/src/BspUartLog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspLedIndicatorRed.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspLedIndicatorWhite.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspLedWrgb.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspPowerMonitor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspSleepTimer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspUartLog.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/src/MatterBridge.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/src/ButtonInput.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/src/LightEffectProcessor.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/src/LightEffectEngine.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/src/IndicatorEffectEngine.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/src/LightSequenceScheduler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/MatterBridge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/ButtonInput.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/LightEffectProcessor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/LightEffectEngine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/IndicatorEffectEngine.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/LightSequenceScheduler.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/src/ColorConverter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/src/ButtonService.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/src/MatterBridgeServer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/src/PowerServer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/src/LightDecisionCenter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/src/LightNvmStorage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/ColorConverter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/ButtonService.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/MatterBridgeServer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/PowerServer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/LightDecisionCenter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/LightNvmStorage.cpp
 
 )
 
 add_executable(MatterLightOverThread
     ${APP_LAYER_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/entry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/entry.cpp
 )
 
 
 target_include_directories(MatterLightOverThread PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../hal/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bsp/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../service/inc      
-    ${CMAKE_CURRENT_SOURCE_DIR}/../middlewares/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/hal/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/inc      
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/inc
    # ${CMAKE_CURRENT_SOURCE_DIR}/../policy
 
 )
