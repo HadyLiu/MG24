@@ -118,6 +118,7 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
     LOG_LIGHT_DC("Button: %u", static_cast<uint8_t>(event));
     switch (event)
     {
+        /* 控制 100%->35%->0% */
     case KeyEventType::ShortPressCycleBrightness: {
         m_brightnessCycleIndex++;
         if (m_brightnessCycleIndex >= 3U)
@@ -136,7 +137,7 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         //  ReportToMatterIfRegistered();
     }
     break;
-
+    /* 切换颜色 */
     case KeyEventType::DoublePressCycleColor: {
         m_colorCycleIndex++;
         if (m_colorCycleIndex >= kColorPaletteCount)
@@ -365,7 +366,7 @@ void LightDecisionCenter::ApplyArbitratedResult()
         return;
     }
 
-    m_pSequence->StartSingleEffect(pAction, m_userTargetParam.wrgb, m_userTargetParam.brightness, kTransitionMs);
+    m_pSequence->StartSingleEffect(pAction, m_userTargetParam.wrgb, m_userTargetParam.brightness, m_TransitionMs);
 }
 
 /**
@@ -450,18 +451,32 @@ void LightDecisionCenter::StartCommissioningSuccessSequence()
     m_pSequence->StartSequence(kSuccessSteps, 2U, false);
 }
 
-LightEffectOpId LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessIndex) const
+/**
+ * @brief 根据亮度索引获取对应渐变算子 ID
+ * @param brightnessIndex 亮度索引（0=100%，1=35%，2=0%）
+ * @return LightEffectOpId 渐变算子 ID
+ * @note 100% -> 35% 使用 Bezier40FadeIn，35% -> 0% 使用 Bezier40FadeOut，其他情况使用 LinearLerp。
+ */
+LightEffectOpId LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessIndex)
 {
+    LightEffectOpId opId = LightEffectOpId::LinearLerp;
     switch (brightnessIndex)
     {
     case 0U:
-        return LightEffectOpId::Bezier40FadeIn;
+        m_TransitionMs = 400; // 淡入 400ms
+        opId           = LightEffectOpId::Bezier40FadeIn;
+        break;
     case 1U:
-        return LightEffectOpId::LinearLerp;
+        m_TransitionMs = 200; // 线性插值 200ms
+        opId           = LightEffectOpId::LinearLerp;
+        break;
     case 2U:
     default:
-        return LightEffectOpId::Bezier40FadeOut;
+        m_TransitionMs = 400; // 淡出400ms
+        opId           = LightEffectOpId::Bezier40FadeOut;
+        break;
     }
+    return opId;
 }
 
 void LightDecisionCenter::ReportToMatterIfRegistered()
