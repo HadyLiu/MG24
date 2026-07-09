@@ -7,13 +7,15 @@
  * @note 物理 PWM 插值模型：
  *       峰值占空比 = 亮度 × kIndicatorPwmMax / 255；
  *       算子返回值须 >>m_operatorBits；红灯闪烁以 duty>0 映射为开关。
- *       白/红双通道独立渲染，可叠加（如充电白呼吸 + 故障红闪）。
+ *       白/红双通道独立渲染，可叠加。
+ *       红闪混合时序：上层组 BlinkSequenceStep[] → StartRedBlinkSequence。
  */
 #include "IndicatorEffectEngine.h"
 #include "BspLedIndicatorRed.h"
 #include "BspLedIndicatorWhite.h"
 #include "BspTimer.h"
 #include "LightEffectProcessor.h"
+#include <cstring>
 
 static BspTimer s_indicatorRenderTimer; /**< 指示灯渲染 10ms tick */
 
@@ -38,12 +40,16 @@ void IndicatorEffectEngine::TimerStartStop(bool start)
  */
 void IndicatorEffectEngine::Init()
 {
-    m_whiteMode      = WhiteEffectMode::None;
-    m_redMode        = RedEffectMode::None;
-    m_whiteDynamic   = DynamicChannelRuntime{};
-    m_redDynamic     = DynamicChannelRuntime{};
-    m_whiteSteadyPwm = 0U;
-    m_operatorBits   = LightEffectProcessor::GetMaxFactorBits();
+    m_whiteMode         = WhiteEffectMode::None;
+    m_redMode           = RedEffectMode::None;
+    m_whiteDynamic      = DynamicChannelRuntime{};
+    m_redDynamic        = DynamicChannelRuntime{};
+    m_whiteSteadyPwm    = 0U;
+    m_redSeqStepIndex   = 0U;
+    m_redSeqRepeatLeft  = 0U;
+    m_redSeqTotalSteps  = 0U;
+    m_redSeqLoopForever = true;
+    m_operatorBits      = LightEffectProcessor::GetMaxFactorBits();
 
     s_indicatorRenderTimer.Init([](uint16_t elapsedMs) { IndicatorEffectEngine::Instance().UpdateTicks(elapsedMs); },
                                 10U, nullptr);
@@ -51,12 +57,13 @@ void IndicatorEffectEngine::Init()
 
 /**
  * @brief 聚合两路通道状态
- * @return 当前 EngineState
+ * @return Idle / Steady / Running
+ * @note BlinkSequence 归入 Running
  */
 IndicatorEffectEngine::EngineState IndicatorEffectEngine::DeriveEngineStateRaw() const
 {
     const bool whiteDynamic = (m_whiteMode == WhiteEffectMode::Breath) || (m_whiteMode == WhiteEffectMode::Blink);
-    const bool redDynamic   = (m_redMode == RedEffectMode::Blink);
+    const bool redDynamic   = (m_redMode == RedEffectMode::Blink) || (m_redMode == RedEffectMode::BlinkSequence);
 
     if (whiteDynamic || redDynamic)
     {
@@ -171,7 +178,8 @@ void IndicatorEffectEngine::SyncRenderTimerRaw()
 }
 
 /**
- * @brief 启动白灯动态灯效
+ * @brief 启动白灯动态灯效（Breath / Blink）
+ * @note 参数完全一致时跳过，避免相位归零
  */
 void IndicatorEffectEngine::StartWhiteDynamicRaw(WhiteEffectMode mode, EffectRenderAction action, uint32_t peakPwm,
                                                  uint16_t cycleMs)
@@ -193,7 +201,8 @@ void IndicatorEffectEngine::StartWhiteDynamicRaw(WhiteEffectMode mode, EffectRen
 }
 
 /**
- * @brief 启动红灯动态灯效
+ * @brief 启动红灯单步动态灯效（Blink）
+ * @note 离开 BlinkSequence 时清 m_redSeq* 状态
  */
 void IndicatorEffectEngine::StartRedDynamicRaw(RedEffectMode mode, EffectRenderAction action, uint32_t peakPwm,
                                                uint16_t cycleMs)
@@ -209,13 +218,103 @@ void IndicatorEffectEngine::StartRedDynamicRaw(RedEffectMode mode, EffectRenderA
     m_redDynamic.peakPwm   = peakPwm;
     m_redDynamic.cycleMs   = cycleMs;
     m_redDynamic.elapsedMs = 0U;
+    if (mode != RedEffectMode::BlinkSequence)
+    {
+        m_redSeqStepIndex  = 0U;
+        m_redSeqRepeatLeft = 0U;
+    }
 
     RenderRedFrameRaw();
     SyncRenderTimerRaw();
 }
 
 /**
+ * @brief 进入混合时序指定步，填充 m_redDynamic 并复位 elapsedMs
+ * @param stepIndex 步索引，须 < m_redSeqTotalSteps
+ */
+void IndicatorEffectEngine::BeginRedBlinkSequenceStepRaw(uint8_t stepIndex)
+{
+    if ((m_redSeqTotalSteps == 0U) || (stepIndex >= m_redSeqTotalSteps))
+    {
+        return;
+    }
+
+    const BlinkSequenceStep& step = m_redSeqSteps[stepIndex];
+    m_redSeqStepIndex             = stepIndex;
+    m_redSeqRepeatLeft            = step.repeatCount;
+    m_redDynamic.pAction          = (step.pAction != nullptr) ? step.pAction : LightEffectProcessor::GetBlink;
+    m_redDynamic.peakPwm          = (step.peakPwm > 0U) ? step.peakPwm : kIndicatorPwmMax;
+    m_redDynamic.cycleMs          = NormalizeBlinkCycleMsRaw(step.cycleMs);
+    m_redDynamic.elapsedMs        = 0U;
+}
+
+/**
+ * @brief 注册红闪混合时序自然播完回调
+ */
+void IndicatorEffectEngine::RegisterRedBlinkSequenceFinishedCallback(EffectFinishedCallback callback)
+{
+    m_redSeqFinishedCallback = callback;
+}
+
+/**
+ * @brief 触发红闪时序播完回调
+ */
+void IndicatorEffectEngine::InvokeRedBlinkSequenceFinishedRaw()
+{
+    if (m_redSeqFinishedCallback != nullptr)
+    {
+        m_redSeqFinishedCallback();
+    }
+}
+
+/**
+ * @brief 非循环时序链播完：红灯熄灭并释放时序状态
+ */
+void IndicatorEffectEngine::FinishRedBlinkSequenceRaw()
+{
+    m_redMode          = RedEffectMode::None;
+    m_redDynamic       = DynamicChannelRuntime{};
+    m_redSeqStepIndex  = 0U;
+    m_redSeqRepeatLeft = 0U;
+    m_redSeqTotalSteps = 0U;
+
+    ApplyRedOnRaw(false);
+    SyncRenderTimerRaw();
+    InvokeRedBlinkSequenceFinishedRaw();
+}
+
+/**
+ * @brief 混合时序步进：优先消耗 repeatLeft，否则切步或整链循环/收尾
+ */
+void IndicatorEffectEngine::AdvanceRedBlinkSequenceStepRaw()
+{
+    if (m_redSeqRepeatLeft > 0U)
+    {
+        m_redSeqRepeatLeft--;
+        m_redDynamic.elapsedMs = 0U;
+        return;
+    }
+
+    const uint8_t nextStep = static_cast<uint8_t>(m_redSeqStepIndex + 1U);
+    if (nextStep >= m_redSeqTotalSteps)
+    {
+        if (m_redSeqLoopForever)
+        {
+            BeginRedBlinkSequenceStepRaw(0U);
+        }
+        else
+        {
+            FinishRedBlinkSequenceRaw();
+        }
+        return;
+    }
+
+    BeginRedBlinkSequenceStepRaw(nextStep);
+}
+
+/**
  * @brief 渲染白灯通道当前帧
+ * @note Breath / Blink 按 elapsedMs % cycleMs 取相位插值
  */
 void IndicatorEffectEngine::RenderWhiteFrameRaw()
 {
@@ -249,6 +348,7 @@ void IndicatorEffectEngine::RenderWhiteFrameRaw()
 
 /**
  * @brief 渲染红灯通道当前帧
+ * @note Blink / BlinkSequence 共用插值路径；红灯输出为 duty>0 开关量
  */
 void IndicatorEffectEngine::RenderRedFrameRaw()
 {
@@ -258,7 +358,8 @@ void IndicatorEffectEngine::RenderRedFrameRaw()
         ApplyRedOnRaw(true);
         break;
 
-    case RedEffectMode::Blink: {
+    case RedEffectMode::Blink:
+    case RedEffectMode::BlinkSequence: {
         if (m_redDynamic.pAction == nullptr)
         {
             ApplyRedOnRaw(false);
@@ -356,6 +457,37 @@ void IndicatorEffectEngine::StartRedBlink(uint16_t cycleMs)
 }
 
 /**
+ * @brief 启动红闪混合时序链
+ * @param steps       步序数组（深拷贝至 m_redSeqSteps）
+ * @param count       步数
+ * @param loopForever 整链是否循环
+ */
+void IndicatorEffectEngine::StartRedBlinkSequence(const BlinkSequenceStep* steps, uint8_t count, bool loopForever)
+{
+    if ((steps == nullptr) || (count == 0U))
+    {
+        return;
+    }
+
+    uint8_t safeCount = count;
+    if (safeCount > kMaxRedBlinkSequenceSteps)
+    {
+        safeCount = kMaxRedBlinkSequenceSteps;
+    }
+
+    memset(m_redSeqSteps, 0, sizeof(m_redSeqSteps));
+    memcpy(m_redSeqSteps, steps, static_cast<size_t>(safeCount) * sizeof(BlinkSequenceStep));
+
+    m_redSeqTotalSteps  = safeCount;
+    m_redSeqLoopForever = loopForever;
+    m_redMode           = RedEffectMode::BlinkSequence;
+    BeginRedBlinkSequenceStepRaw(0U);
+
+    RenderRedFrameRaw();
+    SyncRenderTimerRaw();
+}
+
+/**
  * @brief 停止白灯通道
  */
 void IndicatorEffectEngine::StopWhite()
@@ -383,8 +515,11 @@ void IndicatorEffectEngine::StopRed()
         return;
     }
 
-    m_redMode    = RedEffectMode::None;
-    m_redDynamic = DynamicChannelRuntime{};
+    m_redMode          = RedEffectMode::None;
+    m_redDynamic       = DynamicChannelRuntime{};
+    m_redSeqStepIndex  = 0U;
+    m_redSeqRepeatLeft = 0U;
+    m_redSeqTotalSteps = 0U;
 
     ApplyRedOnRaw(false);
     SyncRenderTimerRaw();
@@ -400,11 +535,14 @@ void IndicatorEffectEngine::Stop()
         return;
     }
 
-    m_whiteMode      = WhiteEffectMode::None;
-    m_redMode        = RedEffectMode::None;
-    m_whiteDynamic   = DynamicChannelRuntime{};
-    m_redDynamic     = DynamicChannelRuntime{};
-    m_whiteSteadyPwm = 0U;
+    m_whiteMode        = WhiteEffectMode::None;
+    m_redMode          = RedEffectMode::None;
+    m_whiteDynamic     = DynamicChannelRuntime{};
+    m_redDynamic       = DynamicChannelRuntime{};
+    m_whiteSteadyPwm   = 0U;
+    m_redSeqStepIndex  = 0U;
+    m_redSeqRepeatLeft = 0U;
+    m_redSeqTotalSteps = 0U;
 
     TimerStartStop(false);
     ApplyWhiteDutyRaw(0U);
@@ -414,6 +552,7 @@ void IndicatorEffectEngine::Stop()
 /**
  * @brief 10ms tick 入口：累加动态通道时间并刷新两路帧
  * @param elapsedMs 距上次 tick 的毫秒增量（固定 10）
+ * @note BlinkSequence 在单步 cycleMs 耗尽时调用 AdvanceRedBlinkSequenceStepRaw
  */
 void IndicatorEffectEngine::UpdateTicks(uint16_t elapsedMs)
 {
@@ -430,6 +569,14 @@ void IndicatorEffectEngine::UpdateTicks(uint16_t elapsedMs)
     if (m_redMode == RedEffectMode::Blink)
     {
         m_redDynamic.elapsedMs += elapsedMs;
+    }
+    else if (m_redMode == RedEffectMode::BlinkSequence)
+    {
+        m_redDynamic.elapsedMs += elapsedMs;
+        if (m_redDynamic.elapsedMs >= static_cast<uint32_t>(m_redDynamic.cycleMs))
+        {
+            AdvanceRedBlinkSequenceStepRaw();
+        }
     }
 
     RenderAllFramesRaw();

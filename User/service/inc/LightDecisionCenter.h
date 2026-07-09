@@ -146,7 +146,7 @@ class LightDecisionCenter
     LightSceneState m_sceneState{LightSceneState::Normal};
     bool            m_isBatteryLow{false};
     bool            m_isBatteryLowWarning{false};
-    uint8_t         m_lastValidBrightness{128U};
+    uint8_t         m_lastValidBrightness{255U};
     uint8_t         m_brightnessCycleIndex{0U};
     uint8_t         m_colorCycleIndex{0U};
     uint16_t        m_TransitionMs{400}; ///< 渐变过渡时间（ms）
@@ -155,7 +155,7 @@ class LightDecisionCenter
 
     static constexpr uint8_t  kPersistMagic       = 0x5AU;
     static constexpr uint16_t kTransitionMs       = 400U;
-    static constexpr uint8_t  kDefaultBrightness  = 128U;
+    static constexpr uint8_t  kDefaultBrightness  = 255U;
     static constexpr uint8_t  kBrightnessLevels[] = {255U, 89U, 0U}; // 100% -> 35% -> 0%
 
     static const EffectRenderAction kActionTable[static_cast<uint8_t>(LightEffectOpId::MaxOperators)];

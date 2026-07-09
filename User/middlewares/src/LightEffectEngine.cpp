@@ -11,6 +11,7 @@
 #include "LightEffectEngine.h"
 #include "BspLedWrgb.h"
 #include "BspTimer.h"
+#include "DebugLog.h"
 #include "LightEffectProcessor.h"
 #include <cstring>
 
@@ -32,6 +33,8 @@ void LightEffectEngine::TimerStartStop(bool start)
 /* 链接底层输出接口 */
 void LightEffectEngine::LightOutput(uint16_t* channelDuties)
 {
+    LOG_LIGHT("[LightEffectEngine] output: %u, %u, %u, %u", channelDuties[0], channelDuties[1], channelDuties[2],
+              channelDuties[3]);
     BspLedWrgb::Instance().LedWrgbSetDuty(channelDuties[0], channelDuties[1], channelDuties[2], channelDuties[3]);
 
     bool nowActive = false;

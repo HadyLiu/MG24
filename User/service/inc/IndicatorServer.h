@@ -5,10 +5,11 @@
  * @date 2026-07-09
  * @layer Service
  * @note 充电状态、低电量警告等输入在此统一仲裁，再驱动 IndicatorEffectEngine。
- *       上层仅投递快照/事件，不直接操作灯效引擎。
+ *       高优先级一次性红闪时序播完后，经引擎结束回调恢复低优先级背景灯效。
  */
 #pragma once
 
+#include "IndicatorEffectEngine.h"
 #include "LightDecisionTypes.h"
 #include <cstdint>
 
@@ -35,7 +36,7 @@ class IndicatorServer
      */
     void OnChargeSnapshot(const BatteryChargeSnapshot& snapshot);
 
-    /** @brief 低电量/临界电量警告（预留：短时红闪提示） */
+    /** @brief 低电量警告：高优先级一次性红闪，播完后恢复背景灯效 */
     void OnBatteryLowWarn();
 
     /** @brief 熄灭全部指示灯并复位仲裁状态 */
@@ -43,6 +44,9 @@ class IndicatorServer
 
     /** @brief 查询当前已下发的灯效位标志 */
     ChargeIndicatorEffect GetAppliedEffects() const;
+
+    /** @brief 引擎红闪时序自然播完入口（Init 内注册至 IndicatorEffectEngine） */
+    void OnHighPriorityEffectFinishedRaw();
 
   private:
     IndicatorServer()                                  = default;
@@ -57,10 +61,13 @@ class IndicatorServer
     ChargeIndicatorEffect ArbitrateOutputRaw() const;
 
     /** @brief 将仲裁结果同步至 IndicatorEffectEngine */
-    void ApplyOutputRaw(ChargeIndicatorEffect effects);
+    void ApplyOutputRaw(ChargeIndicatorEffect effects, bool forceApply = false);
 
     /** @brief 充电输入变化时重新仲裁并下发 */
     void RefreshFromChargeInputRaw();
+
+    /** @brief 启动高优先级一次性红闪时序（播完前背景灯效挂起） */
+    void StartHighPriorityRedSequenceRaw(const IndicatorEffectEngine::BlinkSequenceStep* steps, uint8_t count);
 
     static constexpr uint8_t kDefaultWhiteBreathBrightness = 153U;
 
@@ -68,4 +75,5 @@ class IndicatorServer
     bool                  m_chargeInputValid{false};
     ChargeIndicatorEffect m_chargeEffects{ChargeIndicatorEffect::Off};
     ChargeIndicatorEffect m_lastApplied{ChargeIndicatorEffect::Off};
+    bool                  m_highPriorityActive{false};
 };
