@@ -59,8 +59,8 @@ void MatterBridgeServer::OnMatterDataReceived(MatterDownlinkUploadPayload mdc)
     case MatterDataElement::kHsv:
         // 读取到了 HSV 颜色
         wrgb = ColorConverter::FromHsv({mdc.color.hsv.hue, mdc.color.hsv.saturation, 254});
-        LOG_MATTER("收到 Matter 下行 HSV: H=%d, S=%d ,W=%d, R=%d, G=%d, B=%d\n", mdc.color.hsv.hue, mdc.color.hsv.saturation, wrgb.w, wrgb.r, wrgb.g,
-                   wrgb.b);
+        LOG_MATTER("收到 Matter 下行 HSV: H=%d, S=%d ,W=%d, R=%d, G=%d, B=%d\n", mdc.color.hsv.hue,
+                   mdc.color.hsv.saturation, wrgb.w, wrgb.r, wrgb.g, wrgb.b);
         m_cacheWrgb[0] = wrgb.w;
         m_cacheWrgb[1] = wrgb.r;
         m_cacheWrgb[2] = wrgb.g;
@@ -73,7 +73,8 @@ void MatterBridgeServer::OnMatterDataReceived(MatterDownlinkUploadPayload mdc)
 
         wrgb = ColorConverter::FromColorTemperature(mdc.color.ct.colorTemperature);
 
-        LOG_MATTER("收到 Matter 下行色温: %d,W = %d, R = %d, G = %d, B = %d\n", mdc.color.ct.colorTemperature, wrgb.w, wrgb.r, wrgb.g, wrgb.b);
+        LOG_MATTER("收到 Matter 下行色温: %d,W = %d, R = %d, G = %d, B = %d\n", mdc.color.ct.colorTemperature, wrgb.w,
+                   wrgb.r, wrgb.g, wrgb.b);
         m_cacheWrgb[0] = wrgb.w;
         m_cacheWrgb[1] = wrgb.r;
         m_cacheWrgb[2] = wrgb.g;
@@ -84,7 +85,8 @@ void MatterBridgeServer::OnMatterDataReceived(MatterDownlinkUploadPayload mdc)
         // 读取到了 XY 颜色
 
         wrgb = ColorConverter::FromXy({mdc.color.xy.x, mdc.color.xy.y});
-        LOG_MATTER("收到 Matter 下行 XY: X=%d, Y=%d, W=%d, R=%d, G=%d, B=%d\n", mdc.color.xy.x, mdc.color.xy.y, wrgb.w, wrgb.r, wrgb.g, wrgb.b);
+        LOG_MATTER("收到 Matter 下行 XY: X=%d, Y=%d, W=%d, R=%d, G=%d, B=%d\n", mdc.color.xy.x, mdc.color.xy.y, wrgb.w,
+                   wrgb.r, wrgb.g, wrgb.b);
         m_cacheWrgb[0] = wrgb.w;
         m_cacheWrgb[1] = wrgb.r;
         m_cacheWrgb[2] = wrgb.g;

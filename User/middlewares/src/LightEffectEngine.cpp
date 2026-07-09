@@ -19,58 +19,57 @@ static BspTimer s_lightRenderTimer; /**< 灯效渲染 10ms */
 
 void LightEffectEngine::TimerStartStop(bool start)
 {
-  if (start)
-  {
-    s_lightRenderTimer.TurnOnOff(true);
-  }
-  else if (s_lightRenderTimer.IsRunning())
-  {
-    s_lightRenderTimer.TurnOnOff(false);
-  }
+    if (start)
+    {
+        s_lightRenderTimer.TurnOnOff(true);
+    }
+    else if (s_lightRenderTimer.IsRunning())
+    {
+        s_lightRenderTimer.TurnOnOff(false);
+    }
 }
 
 /* 链接底层输出接口 */
 void LightEffectEngine::LightOutput(uint16_t* channelDuties)
 {
-  BspLedWrgb::Instance().LedWrgbSetDuty(channelDuties[0], channelDuties[1],
-                                        channelDuties[2], channelDuties[3]);
+    BspLedWrgb::Instance().LedWrgbSetDuty(channelDuties[0], channelDuties[1], channelDuties[2], channelDuties[3]);
 
-  bool nowActive = false;
-  for (uint8_t i = 0U; i < m_activeChannels; ++i)
-  {
-    if (channelDuties[i] > 0U)
+    bool nowActive = false;
+    for (uint8_t i = 0U; i < m_activeChannels; ++i)
     {
-      nowActive = true;
-      break;
+        if (channelDuties[i] > 0U)
+        {
+            nowActive = true;
+            break;
+        }
     }
-  }
-  // 有变化则回调
-  if (nowActive != m_lastOutputActive)
-  {
-    m_lastOutputActive = nowActive;
-    if (m_outputActivityCallback != nullptr)
+    // 有变化则回调
+    if (nowActive != m_lastOutputActive)
     {
-      m_outputActivityCallback(nowActive);
+        m_lastOutputActive = nowActive;
+        if (m_outputActivityCallback != nullptr)
+        {
+            m_outputActivityCallback(nowActive);
+        }
     }
-  }
 }
 
 uint8_t LightEffectEngine::LedGetNumberOfChannels()
 {
-  /// 获取底层 WRGB 通道数
-  return BspLedWrgb::Instance().GetLedMaxNum();
+    /// 获取底层 WRGB 通道数
+    return BspLedWrgb::Instance().GetLedMaxNum();
 }
 
 uint8_t LightEffectEngine::LedGetMaxPwmBits()
 {
-  /// 获取底层 WRGB PWM 位宽
-  return BspLedWrgb::Instance().GetMaxPwmBits();
+    /// 获取底层 WRGB PWM 位宽
+    return BspLedWrgb::Instance().GetMaxPwmBits();
 }
 
 uint8_t LightEffectEngine::LedGetOperatorMaxPwmBits()
 {
-  /// 获取算子满量程值
-  return LightEffectProcessor::GetMaxFactorBits();
+    /// 获取算子满量程值
+    return LightEffectProcessor::GetMaxFactorBits();
 }
 
 /**
@@ -78,40 +77,36 @@ uint8_t LightEffectEngine::LedGetOperatorMaxPwmBits()
  */
 void LightEffectEngine::Init()
 {
-  uint8_t channelCount = LedGetNumberOfChannels();
-  if (channelCount > kMaxChannelsSupported)
-  {
-    m_activeChannels = kMaxChannelsSupported;
-  }
-  else
-  {
-    m_activeChannels = channelCount;
-  }
+    uint8_t channelCount = LedGetNumberOfChannels();
+    if (channelCount > kMaxChannelsSupported)
+    {
+        m_activeChannels = kMaxChannelsSupported;
+    }
+    else
+    {
+        m_activeChannels = channelCount;
+    }
 
-  m_state            = EngineState::Idle;
-  m_pCurrentAction   = nullptr;
-  m_globalBrightness = 0U;
+    m_state            = EngineState::Idle;
+    m_pCurrentAction   = nullptr;
+    m_globalBrightness = 0U;
 
-  m_operatorMaxPwmBits = LedGetOperatorMaxPwmBits();
-  m_outputMaxPwmBits   = LedGetMaxPwmBits();
+    m_operatorMaxPwmBits = LedGetOperatorMaxPwmBits();
+    m_outputMaxPwmBits   = LedGetMaxPwmBits();
 
-  m_totalClockMs        = 0U;
-  m_singleEffectRunTime = 0U;
-  m_totalDurationMs     = 0U;
-  m_mixedTimingCallback = nullptr;
+    m_totalClockMs        = 0U;
+    m_singleEffectRunTime = 0U;
+    m_totalDurationMs     = 0U;
+    m_mixedTimingCallback = nullptr;
 
-  memset(m_originTargetColor, 0, sizeof(m_originTargetColor));
-  memset(m_startOutColor, 0, sizeof(m_startOutColor));
-  memset(m_targetOutColor, 0, sizeof(m_targetOutColor));
-  memset(m_currentOutColor, 0, sizeof(m_currentOutColor));
-  memset(m_currentOutPhysicalValueColor, 0,
-         sizeof(m_currentOutPhysicalValueColor));
+    memset(m_originTargetColor, 0, sizeof(m_originTargetColor));
+    memset(m_startOutColor, 0, sizeof(m_startOutColor));
+    memset(m_targetOutColor, 0, sizeof(m_targetOutColor));
+    memset(m_currentOutColor, 0, sizeof(m_currentOutColor));
+    memset(m_currentOutPhysicalValueColor, 0, sizeof(m_currentOutPhysicalValueColor));
 
-  s_lightRenderTimer.Init(
-      [](uint16_t elapsedMs) {
-        LightEffectEngine::Instance().UpdateTicks(elapsedMs);
-      },
-      10U, this);
+    s_lightRenderTimer.Init([](uint16_t elapsedMs) { LightEffectEngine::Instance().UpdateTicks(elapsedMs); }, 10U,
+                            this);
 }
 
 /**
@@ -120,19 +115,19 @@ void LightEffectEngine::Init()
  */
 LightEffectEngine::EngineState LightEffectEngine::GetEngineState() const
 {
-  return m_state;
+    return m_state;
 }
 
 bool LightEffectEngine::IsAnyChannelActive() const
 {
-  for (uint8_t i = 0U; i < m_activeChannels; ++i)
-  {
-    if (m_currentOutPhysicalValueColor[i] > 0U)
+    for (uint8_t i = 0U; i < m_activeChannels; ++i)
     {
-      return true;
+        if (m_currentOutPhysicalValueColor[i] > 0U)
+        {
+            return true;
+        }
     }
-  }
-  return false;
+    return false;
 }
 /**
  * @brief 查询本次特效目标全局亮度
@@ -140,7 +135,7 @@ bool LightEffectEngine::IsAnyChannelActive() const
  */
 uint8_t LightEffectEngine::GetGlobalBrightness() const
 {
-  return m_globalBrightness;
+    return m_globalBrightness;
 }
 
 /**
@@ -149,7 +144,7 @@ uint8_t LightEffectEngine::GetGlobalBrightness() const
  */
 uint8_t LightEffectEngine::GetActiveChannels() const
 {
-  return m_activeChannels;
+    return m_activeChannels;
 }
 
 /**
@@ -158,17 +153,15 @@ uint8_t LightEffectEngine::GetActiveChannels() const
  * @param count       缓冲区通道数
  * @return 无
  */
-void LightEffectEngine::GetTargetColor(uint16_t* outChannels,
-                                       uint8_t count) const
+void LightEffectEngine::GetTargetColor(uint16_t* outChannels, uint8_t count) const
 {
-  if (outChannels == nullptr)
-  {
-    return;
-  }
+    if (outChannels == nullptr)
+    {
+        return;
+    }
 
-  uint8_t copyCount = (count > m_activeChannels) ? m_activeChannels : count;
-  memcpy(outChannels, m_originTargetColor,
-         (static_cast<size_t>(copyCount) * sizeof(uint16_t)));
+    uint8_t copyCount = (count > m_activeChannels) ? m_activeChannels : count;
+    memcpy(outChannels, m_originTargetColor, (static_cast<size_t>(copyCount) * sizeof(uint16_t)));
 }
 
 /**
@@ -176,10 +169,9 @@ void LightEffectEngine::GetTargetColor(uint16_t* outChannels,
  * @param callback LightSequenceScheduler 桥接函数
  * @return 无
  */
-void LightEffectEngine::RegisterMixedTimingCallback(
-    MixedTimingCallback callback)
+void LightEffectEngine::RegisterMixedTimingCallback(MixedTimingCallback callback)
 {
-  m_mixedTimingCallback = callback;
+    m_mixedTimingCallback = callback;
 }
 
 /**
@@ -187,15 +179,14 @@ void LightEffectEngine::RegisterMixedTimingCallback(
  * @param callback
  * @return 无
  */
-void LightEffectEngine::RegisterOutputActivityCallback(
-    OutputActivityCallback callback)
+void LightEffectEngine::RegisterOutputActivityCallback(OutputActivityCallback callback)
 {
-  m_outputActivityCallback = callback;
+    m_outputActivityCallback = callback;
 }
 
 void LightEffectEngine::RefreshHardwareOutput()
 {
-  LightOutput(m_currentOutPhysicalValueColor);
+    LightOutput(m_currentOutPhysicalValueColor);
 }
 
 /**
@@ -205,10 +196,9 @@ void LightEffectEngine::RefreshHardwareOutput()
  */
 uint16_t LightEffectEngine::ClampChannel(uint16_t value) const
 {
-  const uint16_t maxOperatorValue = static_cast<uint16_t>(
-      (static_cast<uint32_t>(1U) << m_operatorMaxPwmBits) - 1U);
+    const uint16_t maxOperatorValue = static_cast<uint16_t>((static_cast<uint32_t>(1U) << m_operatorMaxPwmBits) - 1U);
 
-  return (value > maxOperatorValue) ? maxOperatorValue : value;
+    return (value > maxOperatorValue) ? maxOperatorValue : value;
 }
 
 /**
@@ -218,10 +208,9 @@ uint16_t LightEffectEngine::ClampChannel(uint16_t value) const
  */
 uint16_t LightEffectEngine::ClampOutputChannel(uint16_t value) const
 {
-  const uint16_t maxOutputValue = static_cast<uint16_t>(
-      (static_cast<uint32_t>(1U) << m_outputMaxPwmBits) - 1U);
+    const uint16_t maxOutputValue = static_cast<uint16_t>((static_cast<uint32_t>(1U) << m_outputMaxPwmBits) - 1U);
 
-  return (value > maxOutputValue) ? maxOutputValue : value;
+    return (value > maxOutputValue) ? maxOutputValue : value;
 }
 
 /**
@@ -230,15 +219,14 @@ uint16_t LightEffectEngine::ClampOutputChannel(uint16_t value) const
  * @param brightness 全局亮度 0~255
  * @return 物理占空比；brightness=0 时返回 0
  */
-uint32_t LightEffectEngine::CalcPhysicalPwmRaw(uint32_t channel,
-                                               uint8_t brightness) const
+uint32_t LightEffectEngine::CalcPhysicalPwmRaw(uint32_t channel, uint8_t brightness) const
 {
-  if (brightness == 0U)
-  {
-    return 0U;
-  }
+    if (brightness == 0U)
+    {
+        return 0U;
+    }
 
-  return (channel * brightness + (kMaxBrightness / 2U)) / kMaxBrightness;
+    return (channel * brightness + (kMaxBrightness / 2U)) / kMaxBrightness;
 }
 
 /**
@@ -248,19 +236,17 @@ uint32_t LightEffectEngine::CalcPhysicalPwmRaw(uint32_t channel,
  */
 void LightEffectEngine::RenderCurrentEffectFrame()
 {
-  for (uint8_t i = 0U; i < m_activeChannels; ++i)
-  {
-    const uint32_t rawMixed = m_pCurrentAction(
-        m_startOutColor[i], m_targetOutColor[i],
-        static_cast<uint16_t>(m_singleEffectRunTime), m_totalDurationMs);
+    for (uint8_t i = 0U; i < m_activeChannels; ++i)
+    {
+        const uint32_t rawMixed = m_pCurrentAction(m_startOutColor[i], m_targetOutColor[i],
+                                                   static_cast<uint16_t>(m_singleEffectRunTime), m_totalDurationMs);
 
-    m_currentOutColor[i]              = rawMixed;
-    m_currentOutPhysicalValueColor[i] = ClampOutputChannel(
-        static_cast<uint16_t>(rawMixed >> m_operatorMaxPwmBits));
-  }
+        m_currentOutColor[i]              = rawMixed;
+        m_currentOutPhysicalValueColor[i] = ClampOutputChannel(static_cast<uint16_t>(rawMixed >> m_operatorMaxPwmBits));
+    }
 
-  // led输出
-  LightOutput(m_currentOutPhysicalValueColor);
+    // led输出
+    LightOutput(m_currentOutPhysicalValueColor);
 }
 
 /**
@@ -270,23 +256,22 @@ void LightEffectEngine::RenderCurrentEffectFrame()
  */
 void LightEffectEngine::StopCurrentEffect(bool clearHardwareOutput)
 {
-  m_state          = EngineState::Idle;
-  m_pCurrentAction = nullptr;
+    m_state          = EngineState::Idle;
+    m_pCurrentAction = nullptr;
 
-  TimerStartStop(false);
-  if (clearHardwareOutput)
-  {
-    memset(m_currentOutPhysicalValueColor, 0,
-           sizeof(m_currentOutPhysicalValueColor));
+    TimerStartStop(false);
+    if (clearHardwareOutput)
+    {
+        memset(m_currentOutPhysicalValueColor, 0, sizeof(m_currentOutPhysicalValueColor));
 
-    // led输出
-    LightOutput(m_currentOutPhysicalValueColor);
-  }
-  else
-  {
-    // led输出
-    LightOutput(m_currentOutPhysicalValueColor);
-  }
+        // led输出
+        LightOutput(m_currentOutPhysicalValueColor);
+    }
+    else
+    {
+        // led输出
+        LightOutput(m_currentOutPhysicalValueColor);
+    }
 }
 
 /**
@@ -299,32 +284,30 @@ void LightEffectEngine::StopCurrentEffect(bool clearHardwareOutput)
  * @note 起点 = 当前物理输出；终点 = RGBW×brightness/255；
  *       预计算后渲染循环不再做亮度乘法，保证切换连续。
  */
-void LightEffectEngine::StartEffect(EffectRenderAction pAction,
-                                    const uint16_t* targetChannels,
-                                    uint8_t brightness, uint16_t durationMs)
+void LightEffectEngine::StartEffect(EffectRenderAction pAction, const uint16_t* targetChannels, uint8_t brightness,
+                                    uint16_t durationMs)
 {
-  if ((pAction == nullptr) || (targetChannels == nullptr))
-  {
-    return;
-  }
+    if ((pAction == nullptr) || (targetChannels == nullptr))
+    {
+        return;
+    }
 
-  m_state               = EngineState::Idle;
-  m_pCurrentAction      = pAction;
-  m_totalDurationMs     = durationMs;
-  m_globalBrightness    = brightness;
-  m_singleEffectRunTime = 0U;
-  m_state               = EngineState::Running;
+    m_state               = EngineState::Idle;
+    m_pCurrentAction      = pAction;
+    m_totalDurationMs     = durationMs;
+    m_globalBrightness    = brightness;
+    m_singleEffectRunTime = 0U;
+    m_state               = EngineState::Running;
 
-  for (uint8_t i = 0U; i < m_activeChannels; ++i)
-  {
-    m_originTargetColor[i] = ClampChannel(targetChannels[i]);
-    m_startOutColor[i]     = m_currentOutPhysicalValueColor[i];
-    m_targetOutColor[i] =
-        CalcPhysicalPwmRaw(m_originTargetColor[i], m_globalBrightness);
-  }
+    for (uint8_t i = 0U; i < m_activeChannels; ++i)
+    {
+        m_originTargetColor[i] = ClampChannel(targetChannels[i]);
+        m_startOutColor[i]     = m_currentOutPhysicalValueColor[i];
+        m_targetOutColor[i]    = CalcPhysicalPwmRaw(m_originTargetColor[i], m_globalBrightness);
+    }
 
-  // 启动定时器
-  TimerStartStop(true);
+    // 启动定时器
+    TimerStartStop(true);
 }
 
 /**
@@ -335,37 +318,36 @@ void LightEffectEngine::StartEffect(EffectRenderAction pAction,
  */
 void LightEffectEngine::UpdateTicks(uint32_t elapsedMs)
 {
-  if ((m_state == EngineState::Idle) || (m_pCurrentAction == nullptr))
-  {
-    return;
-  }
-
-  m_totalClockMs += elapsedMs;
-  m_singleEffectRunTime += elapsedMs;
-
-  const bool timedOut =
-      (m_totalDurationMs > 0U) && (m_singleEffectRunTime >= m_totalDurationMs);
-  if (timedOut)
-  {
-    m_singleEffectRunTime = m_totalDurationMs;
-  }
-
-  RenderCurrentEffectFrame();
-
-  if (timedOut)
-  {
-    m_state          = EngineState::Idle;
-    m_pCurrentAction = nullptr;
-
-    // led输出
-    LightOutput(m_currentOutPhysicalValueColor);
-
-    /// 运行完毕后，停止定时器并触发回调
-    TimerStartStop(false);
-
-    if (m_mixedTimingCallback != nullptr)
+    if ((m_state == EngineState::Idle) || (m_pCurrentAction == nullptr))
     {
-      m_mixedTimingCallback();
+        return;
     }
-  }
+
+    m_totalClockMs += elapsedMs;
+    m_singleEffectRunTime += elapsedMs;
+
+    const bool timedOut = (m_totalDurationMs > 0U) && (m_singleEffectRunTime >= m_totalDurationMs);
+    if (timedOut)
+    {
+        m_singleEffectRunTime = m_totalDurationMs;
+    }
+
+    RenderCurrentEffectFrame();
+
+    if (timedOut)
+    {
+        m_state          = EngineState::Idle;
+        m_pCurrentAction = nullptr;
+
+        // led输出
+        LightOutput(m_currentOutPhysicalValueColor);
+
+        /// 运行完毕后，停止定时器并触发回调
+        TimerStartStop(false);
+
+        if (m_mixedTimingCallback != nullptr)
+        {
+            m_mixedTimingCallback();
+        }
+    }
 }

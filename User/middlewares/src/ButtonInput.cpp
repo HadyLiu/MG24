@@ -21,18 +21,18 @@ static constexpr uint32_t RELEASE_STOP_MS = 1000U;
 
 } // namespace
 
-static BspTimer s_buttonScanTimer; /**< 按键扫描 10ms */
+static BspTimer s_buttonScanTimer; /**< 手势状态机 10ms */
 
 void ButtonInput::TimerStartStop(bool start)
 {
-  if (start)
-  {
-    s_buttonScanTimer.TurnOnOff(true);
-  }
-  else if (s_buttonScanTimer.IsRunning())
-  {
-    s_buttonScanTimer.TurnOnOff(false);
-  }
+    if (start)
+    {
+        s_buttonScanTimer.TurnOnOff(true);
+    }
+    else if (s_buttonScanTimer.IsRunning())
+    {
+        s_buttonScanTimer.TurnOnOff(false);
+    }
 }
 
 /**
@@ -41,21 +41,17 @@ void ButtonInput::TimerStartStop(bool start)
  */
 void ButtonInput::Init()
 {
-  LOG_BTN("[ButtonInput] init");
-  m_state              = State::Idle;
-  m_pressDurationMs    = 0;
-  m_longCountMs        = 0;
-  m_doubleClickTimerMs = 0;
-  m_releaseDelayMs     = 0;
-  m_longPulseIdx       = 0;
-  m_longPressStarted   = false;
-  m_doubleClickPending = false;
+    LOG_BTN("[ButtonInput] init");
+    m_state              = State::Idle;
+    m_pressDurationMs    = 0;
+    m_longCountMs        = 0;
+    m_doubleClickTimerMs = 0;
+    m_releaseDelayMs     = 0;
+    m_longPulseIdx       = 0;
+    m_longPressStarted   = false;
+    m_doubleClickPending = false;
 
-  s_buttonScanTimer.Init(
-      [](uint16_t elapsedMs) {
-        ButtonInput::Instance().UpdateTicks(elapsedMs);
-      },
-      10U, this);
+    s_buttonScanTimer.Init([](uint16_t elapsedMs) { ButtonInput::Instance().UpdateTicks(elapsedMs); }, 10U, this);
 }
 
 /**
@@ -65,12 +61,12 @@ void ButtonInput::Init()
  */
 void ButtonInput::RegisterMailPosterCallback(MailPoster poster)
 {
-  if (poster == nullptr)
-  {
-    LOG_BTN("[ButtonInput] RegisterMailPosterCallback: null");
-    return;
-  }
-  m_mailPoster = poster;
+    if (poster == nullptr)
+    {
+        LOG_BTN("[ButtonInput] RegisterMailPosterCallback: null");
+        return;
+    }
+    m_mailPoster = poster;
 }
 
 /**
@@ -79,8 +75,8 @@ void ButtonInput::RegisterMailPosterCallback(MailPoster poster)
  */
 void ButtonInput::ResetLongPulseIndex()
 {
-  m_longPulseIdx     = 0;
-  m_longPressStarted = false;
+    m_longPulseIdx     = 0;
+    m_longPressStarted = false;
 }
 
 /**
@@ -91,19 +87,18 @@ void ButtonInput::ResetLongPulseIndex()
  * @param fromIsr   是否 ISR 上下文
  * @return 无
  */
-void ButtonInput::PostFinalEvent(uint8_t button, uint8_t action,
-                                 uint16_t payload)
+void ButtonInput::PostFinalEvent(uint8_t button, uint8_t action, uint16_t payload)
 {
-  if (m_mailPoster == nullptr)
-  {
-    return;
-  }
+    if (m_mailPoster == nullptr)
+    {
+        return;
+    }
 
-  ButtonMailMsg msg{};
-  msg.buttonIdx      = button;
-  msg.action         = action;
-  msg.longPressCount = payload;
-  m_mailPoster(msg);
+    ButtonMailMsg msg{};
+    msg.buttonIdx      = button;
+    msg.action         = action;
+    msg.longPressCount = payload;
+    m_mailPoster(msg);
 }
 
 /**
@@ -115,70 +110,69 @@ void ButtonInput::PostFinalEvent(uint8_t button, uint8_t action,
  */
 void ButtonInput::PushEdgeEvent(uint8_t button, bool isPressed)
 {
-  m_lastButton = button;
+    m_lastButton = button;
 
-  if (isPressed)
-  {
-    if (m_state == State::Idle)
+    if (isPressed)
     {
-      // 【修改点】不再发送扫描控制邮件，直接利用注册的接口函数指针就地启动硬件时钟
-      TimerStartStop(true);
-      m_state       = State::WaitRelease;
-      m_longCountMs = 0;
-      ResetLongPulseIndex();
+        if (m_state == State::Idle)
+        {
+            // 【修改点】不再发送扫描控制邮件，直接利用注册的接口函数指针就地启动硬件时钟
+            TimerStartStop(true);
+            m_state       = State::WaitRelease;
+            m_longCountMs = 0;
+            ResetLongPulseIndex();
+        }
+        else if (m_state == State::WaitDouble)
+        {
+            m_state              = State::WaitRelease;
+            m_longCountMs        = 0;
+            m_doubleClickPending = true;
+            ResetLongPulseIndex();
+            PostFinalEvent(button, ButtonAction::kDoublePress, 0);
+        }
+        else if (m_state == State::WaitReleaseTimeout)
+        {
+            // 短按已确认后的 1s 停表等待期内允许开始下一次按键
+            m_releaseDelayMs = 0;
+            m_state          = State::WaitRelease;
+            m_longCountMs    = 0;
+            ResetLongPulseIndex();
+        }
     }
-    else if (m_state == State::WaitDouble)
+    else
     {
-      m_state              = State::WaitRelease;
-      m_longCountMs        = 0;
-      m_doubleClickPending = true;
-      ResetLongPulseIndex();
-      PostFinalEvent(button, ButtonAction::kDoublePress, 0);
-    }
-    else if (m_state == State::WaitReleaseTimeout)
-    {
-      // 短按已确认后的 1s 停表等待期内允许开始下一次按键
-      m_releaseDelayMs = 0;
-      m_state          = State::WaitRelease;
-      m_longCountMs    = 0;
-      ResetLongPulseIndex();
-    }
-  }
-  else
-  {
-    if (m_state == State::WaitRelease)
-    {
-      m_pressDurationMs = m_longCountMs;
+        if (m_state == State::WaitRelease)
+        {
+            m_pressDurationMs = m_longCountMs;
 
-      if (m_longCountMs >= LONG_PRESS_MS)
-      {
-        m_doubleClickPending = false;
-        PostFinalEvent(m_lastButton, ButtonAction::kLongPressRelease,
-                       static_cast<uint16_t>(m_longCountMs));
-        m_state          = State::WaitReleaseTimeout;
-        m_releaseDelayMs = RELEASE_STOP_MS;
-      }
-      else if (m_pressDurationMs >= DEBOUNCE_MS)
-      {
-        if (m_doubleClickPending)
-        {
-          m_doubleClickPending = false;
-          m_state              = State::WaitReleaseTimeout;
-          m_releaseDelayMs     = RELEASE_STOP_MS;
+            if (m_longCountMs >= LONG_PRESS_MS)
+            {
+                m_doubleClickPending = false;
+                PostFinalEvent(m_lastButton, ButtonAction::kLongPressRelease, static_cast<uint16_t>(m_longCountMs));
+                m_state          = State::WaitReleaseTimeout;
+                m_releaseDelayMs = RELEASE_STOP_MS;
+            }
+            else if (m_pressDurationMs >= DEBOUNCE_MS)
+            {
+                if (m_doubleClickPending)
+                {
+                    m_doubleClickPending = false;
+                    m_state              = State::WaitReleaseTimeout;
+                    m_releaseDelayMs     = RELEASE_STOP_MS;
+                }
+                else
+                {
+                    m_state              = State::WaitDouble;
+                    m_doubleClickTimerMs = 0;
+                }
+            }
+            else
+            {
+                m_state          = State::WaitReleaseTimeout;
+                m_releaseDelayMs = RELEASE_STOP_MS;
+            }
         }
-        else
-        {
-          m_state              = State::WaitDouble;
-          m_doubleClickTimerMs = 0;
-        }
-      }
-      else
-      {
-        m_state          = State::WaitReleaseTimeout;
-        m_releaseDelayMs = RELEASE_STOP_MS;
-      }
     }
-  }
 }
 
 /**
@@ -188,58 +182,58 @@ void ButtonInput::PushEdgeEvent(uint8_t button, bool isPressed)
  */
 void ButtonInput::UpdateTicks(uint32_t elapsedMs)
 {
-  if (m_state == State::WaitRelease)
-  {
-    m_longCountMs += elapsedMs;
-
-    if (!m_longPressStarted && m_longCountMs >= LONG_PRESS_MS)
+    if (m_state == State::WaitRelease)
     {
-      m_longPressStarted = true;
-      PostFinalEvent(m_lastButton, ButtonAction::kLongPressStart, 0);
-    }
-    else if (m_longPressStarted && m_longCountMs > LONG_PRESS_MS)
-    {
-      const uint32_t relativeTime = m_longCountMs - LONG_PRESS_MS;
-      const uint32_t currIdx      = relativeTime / LONG_PULSE_MS;
+        m_longCountMs += elapsedMs;
 
-      if (currIdx > m_longPulseIdx)
-      {
-        m_longPulseIdx = currIdx;
-        uint16_t count = static_cast<uint16_t>(currIdx);
-        if (count > 250U)
+        if (!m_longPressStarted && m_longCountMs >= LONG_PRESS_MS)
         {
-          count = 250U;
+            m_longPressStarted = true;
+            PostFinalEvent(m_lastButton, ButtonAction::kLongPressStart, 0);
         }
-        PostFinalEvent(m_lastButton, ButtonAction::kLongPressing, count);
-      }
+        else if (m_longPressStarted && m_longCountMs > LONG_PRESS_MS)
+        {
+            const uint32_t relativeTime = m_longCountMs - LONG_PRESS_MS;
+            const uint32_t currIdx      = relativeTime / LONG_PULSE_MS;
+
+            if (currIdx > m_longPulseIdx)
+            {
+                m_longPulseIdx = currIdx;
+                uint16_t count = static_cast<uint16_t>(currIdx);
+                if (count > 250U)
+                {
+                    count = 250U;
+                }
+                PostFinalEvent(m_lastButton, ButtonAction::kLongPressing, count);
+            }
+        }
     }
-  }
-  else if (m_state == State::WaitDouble)
-  {
-    m_doubleClickTimerMs += elapsedMs;
-    if (m_doubleClickTimerMs >= DOUBLE_GAP_MS)
+    else if (m_state == State::WaitDouble)
     {
-      if (m_pressDurationMs >= DEBOUNCE_MS && m_pressDurationMs < LONG_PRESS_MS)
-      {
-        PostFinalEvent(m_lastButton, ButtonAction::kShortPress, 0);
-      }
-      m_state          = State::WaitReleaseTimeout;
-      m_releaseDelayMs = RELEASE_STOP_MS;
+        m_doubleClickTimerMs += elapsedMs;
+        if (m_doubleClickTimerMs >= DOUBLE_GAP_MS)
+        {
+            if (m_pressDurationMs >= DEBOUNCE_MS && m_pressDurationMs < LONG_PRESS_MS)
+            {
+                PostFinalEvent(m_lastButton, ButtonAction::kShortPress, 0);
+            }
+            m_state          = State::WaitReleaseTimeout;
+            m_releaseDelayMs = RELEASE_STOP_MS;
+        }
     }
-  }
-  else if (m_state == State::WaitReleaseTimeout)
-  {
-    if (m_releaseDelayMs <= elapsedMs)
+    else if (m_state == State::WaitReleaseTimeout)
     {
-      m_state          = State::Idle;
-      m_releaseDelayMs = 0;
-      // 【修改点】状态机回归
-      // Idle，直接利用函数指针就地关闭硬件时钟，系统进入极低功耗
-      TimerStartStop(false);
+        if (m_releaseDelayMs <= elapsedMs)
+        {
+            m_state          = State::Idle;
+            m_releaseDelayMs = 0;
+            // 【修改点】状态机回归
+            // Idle，直接利用函数指针就地关闭硬件时钟，系统进入极低功耗
+            TimerStartStop(false);
+        }
+        else
+        {
+            m_releaseDelayMs -= elapsedMs;
+        }
     }
-    else
-    {
-      m_releaseDelayMs -= elapsedMs;
-    }
-  }
 }

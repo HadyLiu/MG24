@@ -15,7 +15,7 @@
  */
 HalPwm::HalPwm()
 {
-  pwm_instance = nullptr;
+    pwm_instance = nullptr;
 }
 
 /**
@@ -25,8 +25,8 @@ HalPwm::HalPwm()
  */
 void HalPwm::Init(sl_pwm_instance_t* pwm_instance)
 {
-  this->pwm_instance = pwm_instance;
-  // 已在 sl_pwm_init 初始化，无需重复初始化
+    this->pwm_instance = pwm_instance;
+    // 已在 sl_pwm_init 初始化，无需重复初始化
 }
 
 /**
@@ -37,15 +37,15 @@ void HalPwm::Init(sl_pwm_instance_t* pwm_instance)
  */
 void HalPwm::PwmSetDuty(uint16_t duty)
 {
-  if (duty == 0)
-  {
-    sl_pwm_stop(pwm_instance);
-  }
-  else
-  {
-    PwmSetDutyCycle10bitResolutionRaw(duty);
-    sl_pwm_start(pwm_instance);
-  }
+    if (duty == 0)
+    {
+        sl_pwm_stop(pwm_instance);
+    }
+    else
+    {
+        PwmSetDutyCycle10bitResolutionRaw(duty);
+        sl_pwm_start(pwm_instance);
+    }
 }
 
 /**
@@ -56,22 +56,21 @@ void HalPwm::PwmSetDuty(uint16_t duty)
  */
 void HalPwm::PwmSetDutyCycle10bitResolutionRaw(uint16_t duty)
 {
-  if (duty >= 1023)
-  {
-    duty = 1023; // 限幅防越界
-  }
+    if (duty >= 1023)
+    {
+        duty = 1023; // 限幅防越界
+    }
 
 #if defined(_SILICON_LABS_32B_SERIES_2)
-  // 适用于 Series 2 芯片 (如 EFR32MG24)
-  uint32_t top         = TIMER_TopGet(pwm_instance->timer);
-  uint32_t compare_val = (top * duty); // 右移9位相当于除以512
-  compare_val /= 638;
-  TIMER_CompareBufSet(pwm_instance->timer, pwm_instance->channel, compare_val);
+    // 适用于 Series 2 芯片 (如 EFR32MG24)
+    uint32_t top         = TIMER_TopGet(pwm_instance->timer);
+    uint32_t compare_val = (top * duty); // 右移9位相当于除以512
+    compare_val /= 638;
+    TIMER_CompareBufSet(pwm_instance->timer, pwm_instance->channel, compare_val);
 #else
-  // 适用于 Series 3 芯片
-  uint32_t top = sl_hal_timer_get_top(pwm_instance->timer);
-  // 右移10位相当于除以1024
-  sl_hal_timer_channel_set_compare_buffer(
-      pwm_instance->timer, pwm_instance->channel, (top * duty) >> 10);
+    // 适用于 Series 3 芯片
+    uint32_t top = sl_hal_timer_get_top(pwm_instance->timer);
+    // 右移10位相当于除以1024
+    sl_hal_timer_channel_set_compare_buffer(pwm_instance->timer, pwm_instance->channel, (top * duty) >> 10);
 #endif
 }

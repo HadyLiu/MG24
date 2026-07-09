@@ -13,10 +13,10 @@
 
 class BspSleepTimer
 {
-public:
-  /* 获取低频计时器的当前 tick 数 */
-  static uint32_t BspGetLowFrequencyTick();
+  public:
+    /* 获取低频计时器的当前 tick 数 */
+    static uint32_t BspGetLowFrequencyTick();
 
-  /** 获取低频计时器的当前毫秒数*/
-  static uint32_t BspGetLowFrequencyMs();
+    /** 获取低频计时器的当前毫秒数*/
+    static uint32_t BspGetLowFrequencyMs();
 };

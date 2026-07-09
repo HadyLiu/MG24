@@ -10,8 +10,7 @@ bool HalExti::s_isInitialized = false;
  * @param trigger 触发方式（上升沿、下降沿或双沿）
  */
 HalExti::HalExti(sl_gpio_port_t port, uint8_t pin, EdgeTrigger trigger)
-    : gpio({port, pin}), m_trigger(trigger), m_assignedIntNo(-1),
-      m_callback(nullptr), m_context(nullptr)
+    : gpio({port, pin}), m_trigger(trigger), m_assignedIntNo(-1), m_callback(nullptr), m_context(nullptr)
 {
 }
 
@@ -20,7 +19,7 @@ HalExti::HalExti(sl_gpio_port_t port, uint8_t pin, EdgeTrigger trigger)
  */
 HalExti::~HalExti()
 {
-  Deinit();
+    Deinit();
 }
 
 /**
@@ -29,42 +28,40 @@ HalExti::~HalExti()
  */
 bool HalExti::Init()
 {
-  if (gpio.pin >= 16)
-  {
-    return false;
-  }
+    if (gpio.pin >= 16)
+    {
+        return false;
+    }
 
-  if (!s_isInitialized)
-  {
-    GPIOINT_Init();
-    s_isInitialized = true;
-  }
+    if (!s_isInitialized)
+    {
+        GPIOINT_Init();
+        s_isInitialized = true;
+    }
 
-  sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_INPUT_PULL, false);
+    sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_INPUT_PULL, false);
 
-  sl_gpio_interrupt_flag_t flags = SL_GPIO_INTERRUPT_RISING_FALLING_EDGE;
-  if (m_trigger == EdgeTrigger::RISING)
-  {
-    flags = SL_GPIO_INTERRUPT_RISING_EDGE;
-  }
-  else if (m_trigger == EdgeTrigger::FALLING)
-  {
-    flags = SL_GPIO_INTERRUPT_FALLING_EDGE;
-  }
+    sl_gpio_interrupt_flag_t flags = SL_GPIO_INTERRUPT_RISING_FALLING_EDGE;
+    if (m_trigger == EdgeTrigger::RISING)
+    {
+        flags = SL_GPIO_INTERRUPT_RISING_EDGE;
+    }
+    else if (m_trigger == EdgeTrigger::FALLING)
+    {
+        flags = SL_GPIO_INTERRUPT_FALLING_EDGE;
+    }
 
-  m_assignedIntNo = SL_GPIO_INTERRUPT_UNAVAILABLE;
-  sl_status_t status = sl_gpio_configure_external_interrupt(
-      &gpio, &m_assignedIntNo, flags, nullptr, nullptr);
-  if (status != SL_STATUS_OK)
-  {
-    return false;
-  }
+    m_assignedIntNo    = SL_GPIO_INTERRUPT_UNAVAILABLE;
+    sl_status_t status = sl_gpio_configure_external_interrupt(&gpio, &m_assignedIntNo, flags, nullptr, nullptr);
+    if (status != SL_STATUS_OK)
+    {
+        return false;
+    }
 
-  // 绑定 GPIOINT 分发到 NativeIsrHandler
-  GPIOINT_CallbackRegisterExt(
-      gpio.pin, (GPIOINT_IrqCallbackPtrExt_t)HalExti::NativeIsrHandler, this);
+    // 绑定 GPIOINT 分发到 NativeIsrHandler
+    GPIOINT_CallbackRegisterExt(gpio.pin, (GPIOINT_IrqCallbackPtrExt_t)HalExti::NativeIsrHandler, this);
 
-  return true;
+    return true;
 }
 
 /**
@@ -73,18 +70,18 @@ bool HalExti::Init()
  */
 void HalExti::Deinit()
 {
-  if (gpio.pin < 16)
-  {
-    Enable(false);
-    sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_DISABLED, false);
-
-    if (m_assignedIntNo != -1)
+    if (gpio.pin < 16)
     {
-      sl_gpio_deconfigure_external_interrupt(m_assignedIntNo);
-      m_assignedIntNo = -1;
+        Enable(false);
+        sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_DISABLED, false);
+
+        if (m_assignedIntNo != -1)
+        {
+            sl_gpio_deconfigure_external_interrupt(m_assignedIntNo);
+            m_assignedIntNo = -1;
+        }
+        GPIOINT_CallbackRegisterExt(gpio.pin, nullptr, nullptr);
     }
-    GPIOINT_CallbackRegisterExt(gpio.pin, nullptr, nullptr);
-  }
 }
 
 /**
@@ -97,8 +94,8 @@ void HalExti::Deinit()
  */
 void HalExti::RegisterCallback(ExtiInstanceCallback_t callback, void* context)
 {
-  m_callback = callback;
-  m_context  = context;
+    m_callback = callback;
+    m_context  = context;
 }
 
 /**
@@ -108,23 +105,22 @@ void HalExti::RegisterCallback(ExtiInstanceCallback_t callback, void* context)
  */
 void HalExti::Enable(bool enable_flag)
 {
-  if (enable_flag)
-  {
-    sl_gpio_enable_interrupts(1 << gpio.pin);
-  }
-  else
-  {
-    sl_gpio_disable_interrupts(1 << gpio.pin);
-  }
+    if (enable_flag)
+    {
+        sl_gpio_enable_interrupts(1 << gpio.pin);
+    }
+    else
+    {
+        sl_gpio_disable_interrupts(1 << gpio.pin);
+    }
 }
 
 HalGpio::GpioPinStateEnum HalExti::GetGpioPinState()
 {
-  bool pin_state;
-  sl_gpio_get_pin_input(&gpio, &pin_state);
+    bool pin_state;
+    sl_gpio_get_pin_input(&gpio, &pin_state);
 
-  return pin_state ? HalGpio::GpioPinStateEnum::GPIO_PIN_SET
-                   : HalGpio::GpioPinStateEnum::GPIO_PIN_RESET;
+    return pin_state ? HalGpio::GpioPinStateEnum::GPIO_PIN_SET : HalGpio::GpioPinStateEnum::GPIO_PIN_RESET;
 }
 
 /**
@@ -138,19 +134,19 @@ HalGpio::GpioPinStateEnum HalExti::GetGpioPinState()
  */
 void HalExti::NativeIsrHandler(uint8_t pin, void* ctx)
 {
-  if (ctx != nullptr)
-  {
-    // 1. 强转回当前类的实例对象
-    HalExti* current_object = static_cast<HalExti*>(ctx);
-
-    // 🌟 2. 核心改动：利用官方标准 API 读取该引脚当前真实的输入电平状态
-    bool pin_state = false;
-    sl_gpio_get_pin_input(&(current_object->gpio), &pin_state);
-
-    // 3. 将 pin 号、读取到的 io 状态、用户自定义上下文一起打包回传给上层
-    if (current_object->m_callback != nullptr)
+    if (ctx != nullptr)
     {
-      current_object->m_callback(pin, pin_state, current_object->m_context);
+        // 1. 强转回当前类的实例对象
+        HalExti* current_object = static_cast<HalExti*>(ctx);
+
+        // 🌟 2. 核心改动：利用官方标准 API 读取该引脚当前真实的输入电平状态
+        bool pin_state = false;
+        sl_gpio_get_pin_input(&(current_object->gpio), &pin_state);
+
+        // 3. 将 pin 号、读取到的 io 状态、用户自定义上下文一起打包回传给上层
+        if (current_object->m_callback != nullptr)
+        {
+            current_object->m_callback(pin, pin_state, current_object->m_context);
+        }
     }
-  }
 }

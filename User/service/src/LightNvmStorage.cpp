@@ -16,14 +16,12 @@
  */
 bool LightNvmStorage::Read(uint8_t* pDest, uint16_t size)
 {
-  if (pDest == nullptr)
-  {
-    return false;
-  }
+    if (pDest == nullptr)
+    {
+        return false;
+    }
 
-  return HalNvmstorage::Instance().ReadData(kLightParamNvmKey, pDest,
-                                            static_cast<size_t>(size)) ==
-         ECODE_NVM3_OK;
+    return HalNvmstorage::Instance().ReadData(kLightParamNvmKey, pDest, static_cast<size_t>(size)) == ECODE_NVM3_OK;
 }
 
 /**
@@ -34,18 +32,17 @@ bool LightNvmStorage::Read(uint8_t* pDest, uint16_t size)
  */
 bool LightNvmStorage::Write(const uint8_t* pSrc, uint16_t size)
 {
-  if (pSrc == nullptr)
-  {
-    return false;
-  }
+    if (pSrc == nullptr)
+    {
+        return false;
+    }
 
-  const Ecode_t code = HalNvmstorage::Instance().WriteData(
-      kLightParamNvmKey, pSrc, static_cast<size_t>(size));
-  if (code != ECODE_NVM3_OK)
-  {
-    return false;
-  }
+    const Ecode_t code = HalNvmstorage::Instance().WriteData(kLightParamNvmKey, pSrc, static_cast<size_t>(size));
+    if (code != ECODE_NVM3_OK)
+    {
+        return false;
+    }
 
-  (void)HalNvmstorage::Instance().RepackIfNeeded();
-  return true;
+    (void)HalNvmstorage::Instance().RepackIfNeeded();
+    return true;
 }

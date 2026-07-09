@@ -11,7 +11,7 @@
  * 2. 显式状态机 PowerRunState：转换集中在 SetRunStateRaw，Poll 统一 switch。
  * 3. Settle 防抖与 8h 充电会话计时独立维护，不与 GPIO 写入耦合。
  * 4. 单入口收拢：FetchPowerMonitorSnapshotRaw() 是唯一 BSP 读入口。
- * 5. 充电评估：EvaluateChargeRaw() 一次算出指示灯状态与充电使能，不再分两套逻辑。
+ * 5. 充电评估：EvaluateChargeRaw() 一次算出综合状态与充电使能；指示灯由 IndicatorServer 仲裁。
  */
 #pragma once
 
@@ -33,8 +33,8 @@ class PowerServer
     using BatteryVoltHandler = void (*)(BatteryVoltLevel level);
 
     /**
-     * @brief 充电综合状态变化回调（→ entry → IndicatorEffectEngine）
-     * @note 白呼吸=充电中；熄灭=充满/空闲；红闪=故障/无电池/过温/临界。
+     * @brief 充电综合状态变化回调（→ IndicatorServer 仲裁指示灯）
+     * @note PowerServer 仅上报充电快照，灯效仲裁由 IndicatorServer 负责。
      */
     using ChargeStatusHandler = void (*)(const BatteryChargeSnapshot& snapshot);
 
@@ -94,15 +94,14 @@ class PowerServer
     };
 
     /**
-     * @brief 充电综合评估结果（指示灯状态 + 硬件使能，一次算出）
-     * @note 指示灯展示什么状态，充电开关就跟什么状态一致，不再分两套逻辑。
+     * @brief 充电综合评估结果（状态 + 硬件使能，一次算出）
+     * @note 充电使能与综合状态同源；指示灯仲裁见 IndicatorServer。
      */
     struct ChargeEvaluation
     {
-        BatteryChargeStatus   status;         /**< 充电综合状态 → 指示灯 */
-        ChargeIndicatorEffect indicator;      /**< 灯效，由 status 映射 */
-        bool                  allowCharge;    /**< 是否允许开充，由 status 推导 */
-        uint8_t               fastChargeFlag; /**< 1=快充(灯灭), 0=慢充(灯亮) */
+        BatteryChargeStatus status;         /**< 充电综合状态 */
+        bool                allowCharge;    /**< 是否允许开充，由 status 推导 */
+        uint8_t             fastChargeFlag; /**< 1=快充(灯灭), 0=慢充(灯亮) */
     };
 
     /**
@@ -161,13 +160,13 @@ class PowerServer
     bool                       ShouldLatchChargeFaultRaw(const PowerMonitorSnapshot& snapshot) const;
     ChargeEvaluation           EvaluateChargeRaw(const PowerMonitorSnapshot& snapshot) const;
     static bool                DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status);
-    void                       ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval);
-    void                       UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasChargeEnabled);
-    void                       RefreshChargeSnapshotRaw();
-    void                       UpdateChargeControlAndNotifyRaw();
+    void ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval, const PowerMonitorSnapshot& snapshot,
+                                        bool chipValid);
+    void UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasChargeEnabled);
+    void RefreshChargeSnapshotRaw();
+    void UpdateChargeControlAndNotifyRaw();
 
-    static BatteryVoltLevel      MapVoltLevelRaw(BatteryVoltStatusEnum status);
-    static ChargeIndicatorEffect MapIndicatorEffectRaw(BatteryChargeStatus status);
+    static BatteryVoltLevel MapVoltLevelRaw(BatteryVoltStatusEnum status);
 
     void TickChargingSessionRaw(uint16_t elapsedMs);
     void ResetChargingSessionRaw();

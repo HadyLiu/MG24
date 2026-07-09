@@ -12,7 +12,7 @@ BspLedIndicatorWhite::BspLedIndicatorWhite() : IndicWhitePwm_()
  */
 void BspLedIndicatorWhite::Init()
 {
-  IndicWhitePwm_.Init(&sl_pwm_Indic_led0);
+    IndicWhitePwm_.Init(&sl_pwm_Indic_led0);
 }
 
 /**
@@ -23,5 +23,5 @@ void BspLedIndicatorWhite::Init()
  */
 void BspLedIndicatorWhite::IndicatorWhiteSetDuty(uint16_t duty)
 {
-  IndicWhitePwm_.PwmSetDuty(duty);
+    IndicWhitePwm_.PwmSetDuty(duty);
 }

@@ -328,26 +328,6 @@ BatteryVoltLevel PowerServer::MapVoltLevelRaw(BatteryVoltStatusEnum status)
     }
 }
 
-/** @brief 充电综合状态 → 建议指示灯灯效 */
-ChargeIndicatorEffect PowerServer::MapIndicatorEffectRaw(BatteryChargeStatus status)
-{
-    switch (status)
-    {
-    case BatteryChargeStatus::Nobat:
-    case BatteryChargeStatus::ChargeFault:
-    case BatteryChargeStatus::TempFault:
-    case BatteryChargeStatus::CriticalEmpty:
-        return ChargeIndicatorEffect::RedBlink;
-    case BatteryChargeStatus::Charging:
-        return ChargeIndicatorEffect::WhiteBreath;
-    case BatteryChargeStatus::ChargeDone:
-    case BatteryChargeStatus::LowWarning:
-    case BatteryChargeStatus::Idle:
-    default:
-        return ChargeIndicatorEffect::Off;
-    }
-}
-
 /**
  * @brief 按优先级表仲裁充电综合状态（EvaluateChargeRaw 内部使用）
  */
@@ -411,8 +391,8 @@ bool PowerServer::DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status)
 }
 
 /**
- * @brief 充电综合评估：状态 + 灯效 + 是否开充，一次算出
- * @note 指示灯状态与充电使能同源，不再维护两套判断逻辑
+ * @brief 充电综合评估：状态 + 是否开充，一次算出
+ * @note 指示灯仲裁由 IndicatorServer 负责。
  */
 PowerServer::ChargeEvaluation PowerServer::EvaluateChargeRaw(const PowerMonitorSnapshot& snapshot) const
 {
@@ -423,24 +403,21 @@ PowerServer::ChargeEvaluation PowerServer::EvaluateChargeRaw(const PowerMonitorS
     const bool chipValid = IsChargeChipReadableNowRaw(snapshot);
     /* 根据芯片有效性、故障状态和会话超时状态决定充电状态 */
     eval.status = ResolveChargeStatusFromSnapshotRaw(snapshot, chipValid, m_chargeFaultLatched, m_chargeSessionTimeout);
-
-    /* 根据充电状态映射指示灯效果 */
-    eval.indicator = MapIndicatorEffectRaw(eval.status);
-    /* 根据充电状态决定是否允许开充 */
     eval.allowCharge = DeriveAllowChargeFromStatusRaw(eval.status);
 
-    LOG_BAT("EvaluateCharge: status=%u, indicator=%u, allowCharge=%d, fastChargeFlag=%u",
-            static_cast<uint8_t>(eval.status), static_cast<uint8_t>(eval.indicator), eval.allowCharge,
-            eval.fastChargeFlag);
+    LOG_BAT("EvaluateCharge: status=%u, allowCharge=%d, fastChargeFlag=%u", static_cast<uint8_t>(eval.status),
+            eval.allowCharge, eval.fastChargeFlag);
     return eval;
 }
 
 /** @brief 将 ChargeEvaluation 写入 m_currentChargeSnapshot */
-void PowerServer::ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval)
+void PowerServer::ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval, const PowerMonitorSnapshot& snapshot,
+                                                 bool chipValid)
 {
     m_currentChargeSnapshot.status        = eval.status;
-    m_currentChargeSnapshot.indicator     = eval.indicator;
     m_currentChargeSnapshot.useFastCharge = (eval.fastChargeFlag != 0U);
+    m_currentChargeSnapshot.chipValid     = chipValid;
+    m_currentChargeSnapshot.chipCharging  = chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGING);
 }
 
 // ----- §5.3 状态机转换（集中入口）-----
@@ -555,7 +532,9 @@ void PowerServer::UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasC
 /** @brief 基于 EvaluateChargeRaw 刷新 m_currentChargeSnapshot */
 void PowerServer::RefreshChargeSnapshotRaw()
 {
-    ApplyChargeSnapshotFromEvalRaw(EvaluateChargeRaw(GetPowerSnapshotRaw()));
+    const PowerMonitorSnapshot& snapshot  = GetPowerSnapshotRaw();
+    const bool                  chipValid = IsChargeChipReadableNowRaw(snapshot);
+    ApplyChargeSnapshotFromEvalRaw(EvaluateChargeRaw(snapshot), snapshot, chipValid);
 }
 
 /**
@@ -572,11 +551,12 @@ void PowerServer::UpdateChargeControlRaw()
     }
 
     const bool             wasChargeEnabled = snapshot.chargeEnabled;
+    const bool             chipValid        = IsChargeChipReadableNowRaw(snapshot);
     const ChargeEvaluation eval             = EvaluateChargeRaw(snapshot);
 
     SetBatteryChargeEnableRaw(eval.allowCharge, eval.fastChargeFlag);
     UpdateChargeSettleAfterDecisionRaw(eval.allowCharge, wasChargeEnabled);
-    ApplyChargeSnapshotFromEvalRaw(eval);
+    ApplyChargeSnapshotFromEvalRaw(eval, snapshot, chipValid);
 }
 
 /** @brief 充电仲裁并上报指示灯变化 */
@@ -640,8 +620,9 @@ void PowerServer::ClearChargeIndicatorRaw()
     if (m_chargeSnapshotValid && (m_chargeStatusHandler != nullptr))
     {
         BatteryChargeSnapshot off{};
-        off.status    = BatteryChargeStatus::Idle;
-        off.indicator = ChargeIndicatorEffect::Off;
+        off.status       = BatteryChargeStatus::Idle;
+        off.chipValid    = false;
+        off.chipCharging = false;
         m_chargeStatusHandler(off);
     }
 
@@ -663,17 +644,19 @@ void PowerServer::EvaluateChargeStatusRaw()
     }
 
     const BatteryChargeSnapshot& snapshot = m_currentChargeSnapshot;
-    const bool indicatorChanged = !m_chargeSnapshotValid || (snapshot.status != m_lastReportedChargeSnapshot.status) ||
-                                  (snapshot.indicator != m_lastReportedChargeSnapshot.indicator);
+    const bool indicatorInputChanged      = !m_chargeSnapshotValid ||
+                                            (snapshot.status != m_lastReportedChargeSnapshot.status) ||
+                                            (snapshot.chipValid != m_lastReportedChargeSnapshot.chipValid) ||
+                                            (snapshot.chipCharging != m_lastReportedChargeSnapshot.chipCharging);
     const bool snapshotChanged =
-        indicatorChanged || (snapshot.useFastCharge != m_lastReportedChargeSnapshot.useFastCharge);
+        indicatorInputChanged || (snapshot.useFastCharge != m_lastReportedChargeSnapshot.useFastCharge);
 
     if (!snapshotChanged)
     {
         return;
     }
 
-    if (indicatorChanged && (m_chargeStatusHandler != nullptr))
+    if (indicatorInputChanged && (m_chargeStatusHandler != nullptr))
     {
         m_chargeStatusHandler(snapshot);
     }

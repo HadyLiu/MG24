@@ -12,6 +12,6 @@
 
 class BspUartLog
 {
-public:
-  static void DebugLog(bool en, const char* fmt, ...);
+  public:
+    static void DebugLog(bool en, const char* fmt, ...);
 };

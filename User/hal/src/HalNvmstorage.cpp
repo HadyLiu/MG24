@@ -15,8 +15,8 @@
  */
 HalNvmstorage& HalNvmstorage::Instance()
 {
-  static HalNvmstorage s_storage;
-  return s_storage;
+    static HalNvmstorage s_storage;
+    return s_storage;
 }
 
 /**
@@ -29,7 +29,7 @@ HalNvmstorage& HalNvmstorage::Instance()
  */
 Ecode_t HalNvmstorage::ReadData(uint32_t key, void* data, size_t len)
 {
-  return nvm3_readData(nvm3_defaultHandle, key, data, len);
+    return nvm3_readData(nvm3_defaultHandle, key, data, len);
 }
 
 /**
@@ -42,7 +42,7 @@ Ecode_t HalNvmstorage::ReadData(uint32_t key, void* data, size_t len)
  */
 Ecode_t HalNvmstorage::WriteData(uint32_t key, const void* data, size_t len)
 {
-  return nvm3_writeData(nvm3_defaultHandle, key, data, len);
+    return nvm3_writeData(nvm3_defaultHandle, key, data, len);
 }
 
 /**
@@ -55,7 +55,7 @@ Ecode_t HalNvmstorage::WriteData(uint32_t key, const void* data, size_t len)
  */
 Ecode_t HalNvmstorage::GetObjectInfo(uint32_t key, uint32_t* type, size_t* len)
 {
-  return nvm3_getObjectInfo(nvm3_defaultHandle, key, type, len);
+    return nvm3_getObjectInfo(nvm3_defaultHandle, key, type, len);
 }
 
 /**
@@ -66,7 +66,7 @@ Ecode_t HalNvmstorage::GetObjectInfo(uint32_t key, uint32_t* type, size_t* len)
  */
 Ecode_t HalNvmstorage::DeleteObject(uint32_t key)
 {
-  return nvm3_deleteObject(nvm3_defaultHandle, key);
+    return nvm3_deleteObject(nvm3_defaultHandle, key);
 }
 
 /**
@@ -76,9 +76,9 @@ Ecode_t HalNvmstorage::DeleteObject(uint32_t key)
  */
 bool HalNvmstorage::RepackIfNeeded()
 {
-  if (nvm3_repackNeeded(nvm3_defaultHandle))
-  {
-    return nvm3_repack(nvm3_defaultHandle) == ECODE_NVM3_OK;
-  }
-  return true;
+    if (nvm3_repackNeeded(nvm3_defaultHandle))
+    {
+        return nvm3_repack(nvm3_defaultHandle) == ECODE_NVM3_OK;
+    }
+    return true;
 }

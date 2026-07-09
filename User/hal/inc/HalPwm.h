@@ -20,31 +20,31 @@
 
 class HalPwm
 {
-public:
-  HalPwm();
-  /**
-   * @brief 初始化白色 LED PWM 驱动
-   * @param pwm_instance 指向 sl_pwm 实例的指针
-   * @return 无
-   */
-  void Init(sl_pwm_instance_t* pwm_instance);
+  public:
+    HalPwm();
+    /**
+     * @brief 初始化白色 LED PWM 驱动
+     * @param pwm_instance 指向 sl_pwm 实例的指针
+     * @return 无
+     */
+    void Init(sl_pwm_instance_t* pwm_instance);
 
-  /**
-   * @brief 设置白色 LED PWM 占空比
-   * @param duty 占空值（0~1023）
-   * @return 无
-   * @note 自动限幅；Series 2 使用 compare/top 比例换算
-   */
-  void PwmSetDuty(uint16_t duty);
+    /**
+     * @brief 设置白色 LED PWM 占空比
+     * @param duty 占空值（0~1023）
+     * @return 无
+     * @note 自动限幅；Series 2 使用 compare/top 比例换算
+     */
+    void PwmSetDuty(uint16_t duty);
 
-private:
-  sl_pwm_instance_t* pwm_instance;
+  private:
+    sl_pwm_instance_t* pwm_instance;
 
-  /**
-   * @brief 使用 10-bit 分辨率设置 PWM 占空比
-   * @param duty 占空值（0~1023）
-   * @return 无
-   * @note 自动限幅；Series 2 使用 compare/top 比例换算
-   */
-  void PwmSetDutyCycle10bitResolutionRaw(uint16_t duty);
+    /**
+     * @brief 使用 10-bit 分辨率设置 PWM 占空比
+     * @param duty 占空值（0~1023）
+     * @return 无
+     * @note 自动限幅；Series 2 使用 compare/top 比例换算
+     */
+    void PwmSetDutyCycle10bitResolutionRaw(uint16_t duty);
 };

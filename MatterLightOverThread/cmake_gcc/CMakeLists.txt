@@ -34,6 +34,7 @@ set(APP_LAYER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/IndicatorEffectEngine.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/LightSequenceScheduler.cpp
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/IndicatorServer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/ColorConverter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/ButtonService.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/MatterBridgeServer.cpp

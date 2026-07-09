@@ -13,23 +13,23 @@
 
 class BspLedIndicatorWhite
 {
-public:
-  // 获取全局唯一实例的静态接口
-  static BspLedIndicatorWhite& Instance()
-  {
-    static BspLedIndicatorWhite bspLedIndicatorWhite;
-    return bspLedIndicatorWhite;
-  }
+  public:
+    // 获取全局唯一实例的静态接口
+    static BspLedIndicatorWhite& Instance()
+    {
+        static BspLedIndicatorWhite bspLedIndicatorWhite;
+        return bspLedIndicatorWhite;
+    }
 
-  /** @brief 初始化白色指示灯 PWM 驱动*/
-  void Init();
+    /** @brief 初始化白色指示灯 PWM 驱动*/
+    void Init();
 
-  /** @brief 设置白色指示灯 PWM 占空比(0-1023) */
-  void IndicatorWhiteSetDuty(uint16_t duty);
+    /** @brief 设置白色指示灯 PWM 占空比(0-1023) */
+    void IndicatorWhiteSetDuty(uint16_t duty);
 
-private:
-  HalPwm IndicWhitePwm_;
+  private:
+    HalPwm IndicWhitePwm_;
 
-  /* 私有构造函数，禁止外部实例化 */
-  BspLedIndicatorWhite();
+    /* 私有构造函数，禁止外部实例化 */
+    BspLedIndicatorWhite();
 };

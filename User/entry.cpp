@@ -9,13 +9,11 @@
  *   ButtonInput ──MailPoster──► ButtonService ──KeyEvent──► LightDecisionCenter
  *   MatterBridgeServer ──Downlink/Event──► (entry) ──► LightDecisionCenter
  *   LightDecisionCenter ──MatterReport/NetControl──► (entry) ──► MatterBridge
- *   PowerServer ──BatteryVolt/ChargeState──► (entry) ──► LightDecisionCenter / 指示灯
+ *   PowerServer ──BatteryVolt/ChargeState──► (entry) ──► LightDecisionCenter / IndicatorServer
  *   LightEffectEngine ──OutputActivity──► (entry) ──► PowerServer
  *   LightDecisionCenter ──► LightSequenceScheduler ──► LightEffectEngine ──►
  * BSP
  */
-#include "BspLedIndicatorRed.h"
-#include "BspLedIndicatorWhite.h"
 #include "BspLedWrgb.h"
 #include "BspPowerMonitor.h"
 #include "BspTimer.h"
@@ -24,7 +22,7 @@
 #include "ButtonService.h"
 #include "ColorConverter.h"
 #include "DebugLog.h"
-#include "IndicatorEffectEngine.h"
+#include "IndicatorServer.h"
 #include "LightDecisionCenter.h"
 #include "LightDecisionTypes.h"
 #include "LightEffectEngine.h"
@@ -43,36 +41,6 @@
 #include "PowerServer.h"
 
 static LightNvmStorage s_lightNvmStorage;
-
-/** @brief 低电量/临界电量时红灯警告（快速亮灭 2 次） */
-static void EntryBatteryWarnBlink(void)
-{
-    // BspLedIndicatorRed::Instance().SetRedIndicator(true);
-    // BspLedIndicatorRed::Instance().SetRedIndicator(false);
-    // BspLedIndicatorRed::Instance().SetRedIndicator(true);
-    // BspLedIndicatorRed::Instance().SetRedIndicator(false);
-}
-
-/** @brief 充电综合状态 → 指示灯（readme：充中呼吸 / 结束熄灭 / 错误红闪） */
-static void EntryOnChargeStatus(const BatteryChargeSnapshot& snapshot)
-{
-    switch (snapshot.indicator)
-    {
-    case ChargeIndicatorEffect::WhiteBreath:
-        IndicatorEffectEngine::Instance().StartWhiteBreath(153U);
-        LOG_BAT("Indicator: white breath (status=%u)", static_cast<uint8_t>(snapshot.status));
-        break;
-    case ChargeIndicatorEffect::RedBlink:
-        IndicatorEffectEngine::Instance().StartRedBlink();
-        LOG_BAT("Indicator: red blink (status=%u)", static_cast<uint8_t>(snapshot.status));
-        break;
-    case ChargeIndicatorEffect::Off:
-    default:
-        IndicatorEffectEngine::Instance().Stop();
-        LOG_BAT("Indicator: off (status=%u)", static_cast<uint8_t>(snapshot.status));
-        break;
-    }
-}
 
 void power_Init(void);
 void power_Wire(void);
@@ -131,8 +99,9 @@ void power_Wire(void)
     PowerServer::Instance().RegisterBatteryVoltHandler(
         [](BatteryVoltLevel level) { LightDecisionCenter::Instance().ProcessBatteryVoltLevel(level); });
 
-    // 充电状态变化回调
-    PowerServer::Instance().RegisterChargeStatusHandler(EntryOnChargeStatus);
+    // 充电状态变化 → IndicatorServer 仲裁指示灯
+    PowerServer::Instance().RegisterChargeStatusHandler(
+        [](const BatteryChargeSnapshot& snapshot) { IndicatorServer::Instance().OnChargeSnapshot(snapshot); });
 
     // 通知 entry 供电通路就绪
     PowerServer::Instance().RegisterLightPowerPathReadyHandler([]() {
@@ -147,8 +116,9 @@ void power_Wire(void)
         LightDecisionCenter::Instance().RefreshOutputIfAllowed();
     });
 
-    // 电池低电量警告
-    LightDecisionCenter::Instance().RegisterBatteryWarnIndicatorCallback(EntryBatteryWarnBlink);
+    // 电池低电量警告 → IndicatorServer
+    LightDecisionCenter::Instance().RegisterBatteryWarnIndicatorCallback(
+        []() { IndicatorServer::Instance().OnBatteryLowWarn(); });
 
     // 读取主灯物理输出
     PowerServer::Instance().OnLightOutputChanged(LightEffectEngine::Instance().IsAnyChannelActive());
@@ -168,14 +138,12 @@ void led_Init(void)
 }
 
 /**
- * @brief 指示灯 BSP 初始化
+ * @brief 指示灯服务初始化
  * @return 无
  */
 void Indicator_Init(void)
 {
-    BspLedIndicatorRed::Instance().Init();
-    BspLedIndicatorWhite::Instance().Init();
-    IndicatorEffectEngine::Instance().Init();
+    IndicatorServer::Instance().Init();
 }
 
 /**

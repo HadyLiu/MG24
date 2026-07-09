@@ -18,41 +18,41 @@
 /* SPI WRGB 驱动 HAL 门面 */
 class BspLedWrgb
 {
-public:
-  /* 获取全局唯一实例的静态接口 */
-  static BspLedWrgb& Instance()
-  {
-    static BspLedWrgb bspLedWrgb;
-    return bspLedWrgb;
-  }
+  public:
+    /* 获取全局唯一实例的静态接口 */
+    static BspLedWrgb& Instance()
+    {
+        static BspLedWrgb bspLedWrgb;
+        return bspLedWrgb;
+    }
 
-  /* 初始化WRGB */
-  void Init();
+    /* 初始化WRGB */
+    void Init();
 
-  /* 设置 RGBW 四通道 PWM（0~1023）*/
-  void LedWrgbSetDuty(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
+    /* 设置 RGBW 四通道 PWM（0~1023）*/
+    void LedWrgbSetDuty(uint16_t w, uint16_t r, uint16_t g, uint16_t b);
 
-  static uint8_t GetLedMaxNum()
-  {
-    return kLedMaxNum;
-  }
-  static uint8_t GetMaxPwmBits()
-  {
-    return kMaxPwmBits;
-  }
+    static uint8_t GetLedMaxNum()
+    {
+        return kLedMaxNum;
+    }
+    static uint8_t GetMaxPwmBits()
+    {
+        return kMaxPwmBits;
+    }
 
-  static uint16_t GetMaxPwmValue()
-  {
-    return kMaxPwmValue;
-  }
+    static uint16_t GetMaxPwmValue()
+    {
+        return kMaxPwmValue;
+    }
 
-private:
-  static constexpr uint8_t kLedMaxNum    = 4U;
-  static constexpr uint8_t kMaxPwmBits   = 10U;
-  static constexpr uint16_t kMaxPwmValue = ((1U << kMaxPwmBits) - 1);
-  HalPwm whitePwm_;
-  HalSpiSm15135e rgb_;
+  private:
+    static constexpr uint8_t  kLedMaxNum   = 4U;
+    static constexpr uint8_t  kMaxPwmBits  = 10U;
+    static constexpr uint16_t kMaxPwmValue = ((1U << kMaxPwmBits) - 1);
+    HalPwm                    whitePwm_;
+    HalSpiSm15135e            rgb_;
 
-  /* 私有构造函数，禁止外部实例化 */
-  BspLedWrgb();
+    /* 私有构造函数，禁止外部实例化 */
+    BspLedWrgb();
 };

@@ -36,7 +36,7 @@
 #define APP_LOG_CAT_BTN 1 ///< 按键输入 / 按键策略
 #endif
 #ifndef APP_LOG_CAT_BAT
-#define APP_LOG_CAT_BAT 1 ///< 电池 / 电源监控策略
+#define APP_LOG_CAT_BAT 0 ///< 电池 / 电源监控策略
 #endif
 #ifndef APP_LOG_CAT_COMMISSION
 #define APP_LOG_CAT_COMMISSION 1 ///< Matter 配网
@@ -65,7 +65,7 @@
 #endif
 
 #ifndef APP_LOG_CAT_POWER
-#define APP_LOG_CAT_POWER 1 ///< 电源
+#define APP_LOG_CAT_POWER 0 ///< 电源
 #endif
 /** @} */
 ///< 底层日志实现接口，基于 UART 输出
@@ -78,8 +78,9 @@
  * @param ... 可变参数，与 fmt 对应
  */
 #if APP_LOG_ENABLED
-#define APP_LOG_IMPL(en, fmt, ...)                                                                                                                   \
-    BspUartLog::DebugLog(en, "[%s:%d] " fmt, __builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__, __LINE__,           \
+#define APP_LOG_IMPL(en, fmt, ...)                                                                                     \
+    BspUartLog::DebugLog(en, "[%s:%d] " fmt,                                                                           \
+                         __builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__, __LINE__, \
                          ##__VA_ARGS__)
 
 #else

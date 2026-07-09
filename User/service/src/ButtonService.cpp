@@ -6,10 +6,15 @@
  * @layer Service
  * @note 管理所有按键事件的语义翻译与分发；不直接 #include ButtonInput，
  *       解耦 BSP与业务。 ButtonMailMsg → KeyEventType 翻译表：
- *       短按→亮度循环，双击→颜色循环，长按开始→清配网，长按松开→停配网。
+ *       短按→亮度循环，双击→颜色循环，长按→清配网（仅 btn_rst0）。
  */
 #include "ButtonService.h"
 #include "DebugLog.h"
+
+namespace {
+static constexpr uint8_t kLightSwitchIdx = ButtonBoard::kLightSwitchIdx;
+static constexpr uint8_t kSystemResetIdx = ButtonBoard::kSystemResetIdx;
+} // namespace
 
 /**
  * @brief 复位服务状态
@@ -80,28 +85,36 @@ void ButtonService::PostKeyEventRaw(KeyEventType event)
 void ButtonService::OnShortPress(uint8_t buttonIdx)
 {
     LOG_BTN("ShortPress btn=%u", buttonIdx);
+    if (buttonIdx != kLightSwitchIdx)
+    {
+        return;
+    }
     PostKeyEventRaw(KeyEventType::ShortPressCycleBrightness);
 }
 
 /**
- * @brief 双击：WRGB 调色板循环
- * @param buttonIdx 按键索引
- * @return 无
+ * @brief 双击：仅开/关键切换颜色
  */
 void ButtonService::OnDoublePress(uint8_t buttonIdx)
 {
     LOG_BTN("DoublePress btn=%u", buttonIdx);
+    if (buttonIdx != kLightSwitchIdx)
+    {
+        return;
+    }
     PostKeyEventRaw(KeyEventType::DoublePressCycleColor);
 }
 
 /**
- * @brief 长按开始：清除配网
- * @param buttonIdx 按键索引
- * @return 无
+ * @brief 长按开始：仅系统键
  */
 void ButtonService::OnLongPressStart(uint8_t buttonIdx)
 {
     LOG_BTN("LongPressStart btn=%u", buttonIdx);
+    if (buttonIdx != kSystemResetIdx)
+    {
+        return;
+    }
 }
 
 /**
@@ -113,12 +126,16 @@ void ButtonService::OnLongPressStart(uint8_t buttonIdx)
 void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
 {
     LOG_BTN("LongPressing btn=%u count=%u", buttonIdx, count);
+    if (buttonIdx != kSystemResetIdx)
+    {
+        return;
+    }
 
-    if (count == 25U)
+    if (count == 40U) // 改为8s
     {
         PostKeyEventRaw(KeyEventType::LongPressClearNetLighting);
     }
-    else if (count == 50U)
+    else if (count == 65U) // 13s
     {
         // 开始清除配网
         PostKeyEventRaw(KeyEventType::LongPressClearNet);
@@ -134,7 +151,11 @@ void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
 void ButtonService::OnLongPressRelease(uint8_t buttonIdx, uint16_t durationMs)
 {
     LOG_BTN("LongPressRelease btn=%u duration=%ums", buttonIdx, durationMs);
-    if (durationMs >= 5000U && durationMs < 10000U)
+    if (buttonIdx != kSystemResetIdx)
+    {
+        return;
+    }
+    if (durationMs >= 8000U && durationMs < 13000U) // 8~13 松开停止重置
     {
         PostKeyEventRaw(KeyEventType::LongPressStopNet);
     }

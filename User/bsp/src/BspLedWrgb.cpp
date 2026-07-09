@@ -13,7 +13,7 @@
 /* 构造函数 */
 BspLedWrgb::BspLedWrgb() : whitePwm_(), rgb_()
 {
-  // 构造函数体内部可以留空，或者做其他事情
+    // 构造函数体内部可以留空，或者做其他事情
 }
 
 /**
@@ -23,9 +23,9 @@ BspLedWrgb::BspLedWrgb() : whitePwm_(), rgb_()
  */
 void BspLedWrgb::Init()
 {
-  whitePwm_.Init(&sl_pwm_w_led0);
-  rgb_.Init();
-  rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_101_1MA);
+    whitePwm_.Init(&sl_pwm_w_led0);
+    rgb_.Init();
+    rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_101_1MA);
 }
 
 /**
@@ -40,29 +40,29 @@ void BspLedWrgb::Init()
  */
 void BspLedWrgb::LedWrgbSetDuty(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
 {
-  uint8_t rgbMaxPwmBits;
-  rgbMaxPwmBits = rgb_.GetMaxPwmBits();
+    uint8_t rgbMaxPwmBits;
+    rgbMaxPwmBits = rgb_.GetMaxPwmBits();
 
-  uint16_t sm_r = (r << (rgbMaxPwmBits - kMaxPwmBits));
-  uint16_t sm_g = (g << (rgbMaxPwmBits - kMaxPwmBits));
-  uint16_t sm_b = (b << (rgbMaxPwmBits - kMaxPwmBits));
+    uint16_t sm_r = (r << (rgbMaxPwmBits - kMaxPwmBits));
+    uint16_t sm_g = (g << (rgbMaxPwmBits - kMaxPwmBits));
+    uint16_t sm_b = (b << (rgbMaxPwmBits - kMaxPwmBits));
 
-  if (r >= kMaxPwmValue)
-  {
-    sm_r = rgb_.GetMaxPwmValue();
-  }
-  if (g >= kMaxPwmValue)
-  {
-    sm_g = rgb_.GetMaxPwmValue();
-  }
-  if (b >= kMaxPwmValue)
-  {
-    sm_b = rgb_.GetMaxPwmValue();
-  }
-  whitePwm_.PwmSetDuty(w);
+    if (r >= kMaxPwmValue)
+    {
+        sm_r = rgb_.GetMaxPwmValue();
+    }
+    if (g >= kMaxPwmValue)
+    {
+        sm_g = rgb_.GetMaxPwmValue();
+    }
+    if (b >= kMaxPwmValue)
+    {
+        sm_b = rgb_.GetMaxPwmValue();
+    }
+    whitePwm_.PwmSetDuty(w);
 
-  /* 硬件设计 b 和 r 交换 */
-  rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_101_1MA);
-  rgb_.SetRgbwyDuty(sm_b, sm_g, sm_r, 0, 0);
-  rgb_.SendFrame();
+    /* 硬件设计 b 和 r 交换 */
+    rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_101_1MA);
+    rgb_.SetRgbwyDuty(sm_b, sm_g, sm_r, 0, 0);
+    rgb_.SendFrame();
 }

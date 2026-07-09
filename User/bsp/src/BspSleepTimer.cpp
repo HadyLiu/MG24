@@ -9,10 +9,10 @@
 
 uint32_t BspSleepTimer::BspGetLowFrequencyTick(void)
 {
-  return sl_sleeptimer_get_tick_count();
+    return sl_sleeptimer_get_tick_count();
 }
 
 uint32_t BspSleepTimer::BspGetLowFrequencyMs(void)
 {
-  return sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count());
+    return sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count());
 }

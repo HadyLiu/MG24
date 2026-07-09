@@ -68,7 +68,7 @@ const sl_button_t sl_button_btn_rst0 = {
 // the table of buttons and button count are generated as a
 // convenience for the application
 const sl_button_t *sl_simple_button_array[] = {
-  &sl_button_btn0, 
+  &sl_button_btn0,
   &sl_button_btn_rst0
 };
 const uint8_t simple_button_count = 2;
