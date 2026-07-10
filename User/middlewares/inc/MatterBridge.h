@@ -104,6 +104,7 @@ class MatterBridge
     void MatterUploadSwitch(bool is_on);
     void MatterUploadBrightness(uint8_t driver_brightness_percent);
     void MatterUploadHsv(uint8_t hue, uint8_t saturation);
+    /** @param colorTemperature Matter mireds（非 Kelvin） */
     void MatterUploadCt(uint16_t colorTemperature);
     void MatterUploadXy(uint16_t x, uint16_t y);
 
@@ -112,6 +113,9 @@ class MatterBridge
 
     static void Safe_Upload_OnOff_Callback(intptr_t context);
     static void Safe_Upload_Brightness_Callback(intptr_t context);
+    static void Safe_Upload_Hsv_Callback(intptr_t context);
+    static void Safe_Upload_Ct_Callback(intptr_t context);
+    static void Safe_Upload_Xy_Callback(intptr_t context);
     static void OnMatterDeviceEvent(const chip::DeviceLayer::ChipDeviceEvent* event, intptr_t arg);
 
     /**

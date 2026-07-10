@@ -528,20 +528,137 @@ void MatterBridge::MatterUploadBrightness(uint8_t driver_brightness_percent)
 
 void MatterBridge::MatterUploadHsv(uint8_t hue, uint8_t saturation)
 {
-    // 这里可以直接调用 Matter 的属性写入接口，或者通过 ScheduleWork 投递到 Matter
-    // 线程 具体实现根据项目需求而定
+    // 打包：低 8 位 hue，次 8 位 saturation
+    const intptr_t packed = static_cast<intptr_t>(hue) | (static_cast<intptr_t>(saturation) << 8);
+    CHIP_ERROR     err    = chip::DeviceLayer::PlatformMgr().ScheduleWork(Safe_Upload_Hsv_Callback, packed);
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("Schedule HSV report failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
 }
 
-void MatterBridge::MatterUploadCt(uint16_t colorTemperature)
+/**
+ * @brief 上报色温（Matter mireds）
+ */
+void MatterBridge::MatterUploadCt(uint16_t colorTemperatureMireds)
 {
-    // 这里可以直接调用 Matter 的属性写入接口，或者通过 ScheduleWork 投递到 Matter
-    // 线程 具体实现根据项目需求而定
+    CHIP_ERROR err =
+        chip::DeviceLayer::PlatformMgr().ScheduleWork(Safe_Upload_Ct_Callback,
+                                                      static_cast<intptr_t>(colorTemperatureMireds));
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("Schedule CT report failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
 }
 
 void MatterBridge::MatterUploadXy(uint16_t x, uint16_t y)
 {
-    // 这里可以直接调用 Matter 的属性写入接口，或者通过 ScheduleWork 投递到 Matter
-    // 线程 具体实现根据项目需求而定
+    // 打包：低 16 位 X，高 16 位 Y
+    const intptr_t packed = static_cast<intptr_t>(x) | (static_cast<intptr_t>(y) << 16);
+    CHIP_ERROR     err    = chip::DeviceLayer::PlatformMgr().ScheduleWork(Safe_Upload_Xy_Callback, packed);
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("Schedule XY report failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+}
+
+/**
+ * @brief Matter 线程：写入 HSV + ColorMode
+ */
+void MatterBridge::Safe_Upload_Hsv_Callback(intptr_t context)
+{
+    const uint8_t    hue            = static_cast<uint8_t>(context & 0xFF);
+    const uint8_t    saturation     = static_cast<uint8_t>((context >> 8) & 0xFF);
+    chip::EndpointId targetEndpoint = 1;
+
+    g_bypass_zcl_callback = true;
+    (void)chip::app::Clusters::ColorControl::Attributes::ColorMode::Set(
+        targetEndpoint,
+        chip::app::Clusters::ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation);
+    (void)chip::app::Clusters::ColorControl::Attributes::EnhancedColorMode::Set(
+        targetEndpoint,
+        chip::app::Clusters::ColorControl::EnhancedColorModeEnum::kCurrentHueAndCurrentSaturation);
+    const auto hueStatus =
+        chip::app::Clusters::ColorControl::Attributes::CurrentHue::Set(targetEndpoint, hue);
+    const auto satStatus =
+        chip::app::Clusters::ColorControl::Attributes::CurrentSaturation::Set(targetEndpoint, saturation);
+    g_bypass_zcl_callback = false;
+
+    if ((hueStatus == chip::Protocols::InteractionModel::Status::Success) &&
+        (satStatus == chip::Protocols::InteractionModel::Status::Success))
+    {
+        LOG_MATTER("HSV report OK: H=%u S=%u", hue, saturation);
+    }
+    else
+    {
+        LOG_MATTER("HSV report failed: hue=0x%02X sat=0x%02X",
+                   static_cast<uint8_t>(hueStatus),
+                   static_cast<uint8_t>(satStatus));
+    }
+}
+
+/**
+ * @brief Matter 线程：写入色温 mireds + ColorMode
+ */
+void MatterBridge::Safe_Upload_Ct_Callback(intptr_t context)
+{
+    const uint16_t   mireds         = static_cast<uint16_t>(context);
+    chip::EndpointId targetEndpoint = 1;
+
+    g_bypass_zcl_callback = true;
+    (void)chip::app::Clusters::ColorControl::Attributes::ColorMode::Set(
+        targetEndpoint,
+        chip::app::Clusters::ColorControl::ColorModeEnum::kColorTemperatureMireds);
+    (void)chip::app::Clusters::ColorControl::Attributes::EnhancedColorMode::Set(
+        targetEndpoint,
+        chip::app::Clusters::ColorControl::EnhancedColorModeEnum::kColorTemperatureMireds);
+    const auto status =
+        chip::app::Clusters::ColorControl::Attributes::ColorTemperatureMireds::Set(targetEndpoint, mireds);
+    g_bypass_zcl_callback = false;
+
+    if (status == chip::Protocols::InteractionModel::Status::Success)
+    {
+        LOG_MATTER("CT report OK: %u mireds", mireds);
+    }
+    else
+    {
+        LOG_MATTER("CT report failed: 0x%02X", static_cast<uint8_t>(status));
+    }
+}
+
+/**
+ * @brief Matter 线程：写入 XY + ColorMode
+ */
+void MatterBridge::Safe_Upload_Xy_Callback(intptr_t context)
+{
+    const uint16_t   x              = static_cast<uint16_t>(context & 0xFFFF);
+    const uint16_t   y              = static_cast<uint16_t>((context >> 16) & 0xFFFF);
+    chip::EndpointId targetEndpoint = 1;
+
+    g_bypass_zcl_callback = true;
+    (void)chip::app::Clusters::ColorControl::Attributes::ColorMode::Set(
+        targetEndpoint,
+        chip::app::Clusters::ColorControl::ColorModeEnum::kCurrentXAndCurrentY);
+    (void)chip::app::Clusters::ColorControl::Attributes::EnhancedColorMode::Set(
+        targetEndpoint,
+        chip::app::Clusters::ColorControl::EnhancedColorModeEnum::kCurrentXAndCurrentY);
+    const auto xStatus =
+        chip::app::Clusters::ColorControl::Attributes::CurrentX::Set(targetEndpoint, x);
+    const auto yStatus =
+        chip::app::Clusters::ColorControl::Attributes::CurrentY::Set(targetEndpoint, y);
+    g_bypass_zcl_callback = false;
+
+    if ((xStatus == chip::Protocols::InteractionModel::Status::Success) &&
+        (yStatus == chip::Protocols::InteractionModel::Status::Success))
+    {
+        LOG_MATTER("XY report OK: X=%u Y=%u", x, y);
+    }
+    else
+    {
+        LOG_MATTER("XY report failed: x=0x%02X y=0x%02X",
+                   static_cast<uint8_t>(xStatus),
+                   static_cast<uint8_t>(yStatus));
+    }
 }
 
 /**

@@ -224,6 +224,43 @@ void Matter_Init(void)
             levelPayload.element    = MatterDataElement::kBrightness;
             levelPayload.brightness = percent;
             MatterBridge::Instance().MatterUploadLocalReport(levelPayload);
+
+            if (pWrgb == nullptr)
+            {
+                return;
+            }
+
+            // 颜色上报：白光/色温曲线 → CT(mireds)；彩色 → HSV
+            const LightTypes::WrgbColor wrgb = {pWrgb[0], pWrgb[1], pWrgb[2], pWrgb[3]};
+            const bool isPureWhite =
+                (pWrgb[0] > 0U) && (pWrgb[1] == 0U) && (pWrgb[2] == 0U) && (pWrgb[3] == 0U);
+            const bool isWarmCtBranch =
+                (pWrgb[0] > 0U) && (pWrgb[3] == 0U) && (pWrgb[1] > 0U); // W+R(+G)，无 B
+            const bool isCoolCtBranch =
+                (pWrgb[0] > 0U) && (pWrgb[1] == 0U) && (pWrgb[3] > 0U); // W+B(+G)，无 R
+
+            if (isPureWhite || isWarmCtBranch || isCoolCtBranch)
+            {
+                uint32_t kelvin = ColorConverter::ToColorTemperature(wrgb);
+                if (kelvin < 1U)
+                {
+                    kelvin = 2700U;
+                }
+                const uint16_t mireds = static_cast<uint16_t>(1000000U / kelvin);
+                MatterDownlinkUploadPayload ctPayload{};
+                ctPayload.element                   = MatterDataElement::kCt;
+                ctPayload.color.ct.colorTemperature = mireds;
+                MatterBridge::Instance().MatterUploadLocalReport(ctPayload);
+            }
+            else
+            {
+                const LightTypes::HsvColor hsv = ColorConverter::ToHsv(wrgb);
+                MatterDownlinkUploadPayload hsvPayload{};
+                hsvPayload.element                = MatterDataElement::kHsv;
+                hsvPayload.color.hsv.hue          = hsv.h;
+                hsvPayload.color.hsv.saturation   = hsv.s;
+                MatterBridge::Instance().MatterUploadLocalReport(hsvPayload);
+            }
         });
 
     // 唯一下行回调：Matter 数据(开关/亮度/WRGB/识别/配网) → LDC

@@ -92,6 +92,13 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath& a
     // WIP Apply attribute change to Light
     if (clusterId == ColorControl::Id)
     {
+        // 抑制本地上报属性 -> 回调再次触发控制的回环
+        if (MatterBridge::Instance().IsMatterReportBypassEnabled())
+        {
+            ChipLogProgress(Zcl, "Skip ColorControl callback due to local report bypass");
+            return;
+        }
+
         ChipLogProgress(Zcl, "Color Control attribute ID: " ChipLogFormatMEI " Type: %u Value: %u, length %u",
                         ChipLogValueMEI(attributeId), type, *value, size);
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
