@@ -9,6 +9,7 @@
  *   ButtonInput ──MailPoster──► ButtonService ──KeyEvent──► LightDecisionCenter
  *   MatterBridgeServer ──Downlink/Event──► (entry) ──► LightDecisionCenter
  *   LightDecisionCenter ──MatterReport/NetControl──► (entry) ──► MatterBridge
+ *   MatterBridge kCommissioningComplete ──► MatterBridgeServer ──► LDC 配对成功灯效
  *   PowerServer ──BatteryVolt/ChargeState──► (entry) ──► LightDecisionCenter / IndicatorServer
  *   LightEffectEngine ──OutputActivity──► (entry) ──► PowerServer
  *   LightDecisionCenter ──► LightSequenceScheduler ──► LightEffectEngine ──►
@@ -202,6 +203,28 @@ void Matter_Init(void)
     MatterBridge::Instance().Init();
     MatterBridge::Instance().MatterDownlinkLocalRegister(
         [](const MatterDownlinkUploadPayload& mdc) { MatterBridgeServer::Instance().OnMatterDataReceived(mdc); });
+
+    // 唯一上报：LDC 本地状态 → 同步下行缓存 + 写回 Matter 属性（防手机 Toggle 反了）
+    LightDecisionCenter::Instance().RegisterMatterReporter(
+        [](bool on, uint8_t brightness, const uint16_t* pWrgb) {
+            MatterBridgeServer::Instance().SyncLocalLightState(on, brightness, pWrgb);
+
+            MatterDownlinkUploadPayload onPayload{};
+            onPayload.element = MatterDataElement::kOn;
+            onPayload.on      = on;
+            MatterBridge::Instance().MatterUploadLocalReport(onPayload);
+
+            // MatterUploadBrightness 入参为 0~100%
+            uint8_t percent = static_cast<uint8_t>((static_cast<uint16_t>(brightness) * 100U) / 255U);
+            if ((brightness > 0U) && (percent == 0U))
+            {
+                percent = 1U;
+            }
+            MatterDownlinkUploadPayload levelPayload{};
+            levelPayload.element    = MatterDataElement::kBrightness;
+            levelPayload.brightness = percent;
+            MatterBridge::Instance().MatterUploadLocalReport(levelPayload);
+        });
 
     // 唯一下行回调：Matter 数据(开关/亮度/WRGB/识别/配网) → LDC
     MatterBridgeServer::Instance().RegisterDownlinkHandler([](const MatterBridgeServer::DownlinkData& d) {

@@ -46,6 +46,10 @@ class LightSequenceScheduler
     /* 强行终止整条时序链并让硬件输出归零 */
     void StopSequence();
 
+    /** @brief 一次性时序链自然结束时的回调（仅非循环链触发一次后自动清除） */
+    using SequenceFinishedCallback = void (*)(void);
+    void RegisterSequenceFinishedCallback(SequenceFinishedCallback callback);
+
     /* 查询当前时序链是否正在动态运行 */
     bool IsSequenceActive() const
     {
@@ -74,4 +78,5 @@ class LightSequenceScheduler
     uint8_t      m_currentRepeatLeft;           ///< 当前单步剩余的重复次数
     bool         m_isSequenceActive;            ///< 调度器全局运行状态机
     bool         m_isLoopForever;               ///< 是否整链无限循环标志位
+    SequenceFinishedCallback m_finishedCallback{nullptr}; ///< 非循环链完结通知
 };

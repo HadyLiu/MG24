@@ -110,9 +110,24 @@ class MatterBridge
     void RegisterDeviceEventListener(void);
     void TriggerNetworkResetWithoutReboot(void);
 
-    static void EntryClearNetWork(AppEvent* aEvent);
     static void Safe_Upload_OnOff_Callback(intptr_t context);
     static void Safe_Upload_Brightness_Callback(intptr_t context);
     static void OnMatterDeviceEvent(const chip::DeviceLayer::ChipDeviceEvent* event, intptr_t arg);
+
+    /**
+     * @brief FreeRTOS 定时器服务任务上下文回调：把清网请求安全投递到 Matter 主线程
+     * @note  签名匹配 FreeRTOS PendedFunction_t，供 xTimerPendFunctionCall(FromISR) 使用，
+     *        规避在 sleeptimer 中断里直接操作 CHIP 事件队列导致的投递失败。
+     */
+    static void DeferredNetworkResetDispatch(void* param1, uint32_t param2);
+
     static void DoSoftNetworkResetHandler(intptr_t arg);
+    static void FinishSoftNetworkResetHandler(intptr_t arg);
+    static void FinishSoftNetworkResetTimerCallback(chip::System::Layer* layer, void* appState);
+    static void OpenCommissioningWindowHandler(intptr_t arg);
+    static void OpenCommissioningWindowTimerCallback(chip::System::Layer* layer, void* appState);
+
+    /* 工厂重置（擦除持久化数据后受控重启）路径 */
+    static void DoFactoryResetHandler(intptr_t arg);
+    static void FactoryResetRebootTimerCallback(chip::System::Layer* layer, void* appState);
 };

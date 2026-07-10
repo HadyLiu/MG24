@@ -57,6 +57,12 @@ public:
     void SetAutoTurnOffDuration(uint32_t aDurationInSecs);
     bool IsActionInProgress();
     bool InitiateAction(int32_t aActor, Action_t aAction, uint8_t * aValue);
+
+    /**
+     * @brief 本地按键/记忆灯光上报后，强制对齐完成态，避免与属性脱节
+     * @param on true=OnCompleted，false=OffCompleted
+     */
+    void SyncCompletedState(bool on);
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
     bool InitiateLightCtrlAction(int32_t aActor, Action_t aAction, uint32_t aAttributeId, uint8_t * value);
 #endif // (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED)

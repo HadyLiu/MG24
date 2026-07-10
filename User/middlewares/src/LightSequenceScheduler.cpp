@@ -100,10 +100,20 @@ void LightSequenceScheduler::StartSingleEffect(LightEffectEngine::EffectRenderAc
  */
 void LightSequenceScheduler::StopSequence()
 {
-    m_isSequenceActive = false;
-    m_isLoopForever    = false;
+    m_isSequenceActive  = false;
+    m_isLoopForever     = false;
+    m_finishedCallback  = nullptr;
     // 直接通知底层算子彻底挂起
     LightEffectEngine::Instance().StopCurrentEffect(true);
+}
+
+/**
+ * @brief 注册非循环时序链完结回调
+ * @param callback 完结时调用一次；nullptr 表示清除
+ */
+void LightSequenceScheduler::RegisterSequenceFinishedCallback(SequenceFinishedCallback callback)
+{
+    m_finishedCallback = callback;
 }
 
 /**
@@ -167,6 +177,12 @@ void LightSequenceScheduler::EngineSequenceBridgeRaw()
             {
                 // 链路自然完结
                 self.m_isSequenceActive = false;
+                if (self.m_finishedCallback != nullptr)
+                {
+                    SequenceFinishedCallback callback = self.m_finishedCallback;
+                    self.m_finishedCallback           = nullptr;
+                    callback();
+                }
             }
         }
     }

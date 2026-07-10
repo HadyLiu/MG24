@@ -133,6 +133,18 @@ bool LightingManager::IsLightOn()
     return (mState == kState_OnCompleted);
 }
 
+void LightingManager::SyncCompletedState(bool on)
+{
+    if ((mState == kState_OnInitiated) || (mState == kState_OffInitiated) || mOffEffectArmed ||
+        mAutoTurnOffTimerArmed)
+    {
+        CancelTimer();
+        mOffEffectArmed        = false;
+        mAutoTurnOffTimerArmed = false;
+    }
+    mState = on ? kState_OnCompleted : kState_OffCompleted;
+}
+
 void LightingManager::EnableAutoTurnOff(bool aOn)
 {
     mAutoTurnOff = aOn;
@@ -147,31 +159,62 @@ bool LightingManager::InitiateAction(int32_t aActor, Action_t aAction, uint8_t *
 {
     bool action_initiated = false;
     State_t new_state;
+    bool start_actuator_timer = false;
 
     // Initiate Turn On/Off Action only when the previous one is complete.
-    if (((mState == kState_OffCompleted) || mOffEffectArmed) && aAction == ON_ACTION)
+    // 已处于目标态 / 中间态时仍投递回调：按键/记忆灯光会与 LightingManager 状态脱节，
+    // 若直接丢弃会导致 Matter OnOff 开关“不起作用”。
+    if (aAction == ON_ACTION)
     {
-        action_initiated = true;
-
-        new_state = kState_OnInitiated;
-        if (mOffEffectArmed)
+        if ((mState == kState_OffCompleted) || mOffEffectArmed)
         {
-            CancelTimer();
-            mOffEffectArmed = false;
+            action_initiated     = true;
+            start_actuator_timer = true;
+            new_state            = kState_OnInitiated;
+            if (mOffEffectArmed)
+            {
+                CancelTimer();
+                mOffEffectArmed = false;
+            }
+        }
+        else if ((mState == kState_OnCompleted) || (mState == kState_OnInitiated) ||
+                 (mState == kState_OffInitiated))
+        {
+            action_initiated = true;
+            new_state        = kState_OnCompleted;
+            if ((mState == kState_OnInitiated) || (mState == kState_OffInitiated))
+            {
+                CancelTimer();
+            }
         }
     }
-    else if (mState == kState_OnCompleted && aAction == OFF_ACTION && mOffEffectArmed == false)
+    else if ((aAction == OFF_ACTION) && (mOffEffectArmed == false))
     {
-        action_initiated = true;
-
-        new_state = kState_OffInitiated;
-        if (mAutoTurnOffTimerArmed)
+        if (mState == kState_OnCompleted)
         {
-            // If auto turn off timer has been armed and someone initiates turning off,
-            // cancel the timer and continue as normal.
-            mAutoTurnOffTimerArmed = false;
-
-            CancelTimer();
+            action_initiated     = true;
+            start_actuator_timer = true;
+            new_state            = kState_OffInitiated;
+            if (mAutoTurnOffTimerArmed)
+            {
+                mAutoTurnOffTimerArmed = false;
+                CancelTimer();
+            }
+        }
+        else if ((mState == kState_OffCompleted) || (mState == kState_OffInitiated) ||
+                 (mState == kState_OnInitiated))
+        {
+            action_initiated = true;
+            new_state        = kState_OffCompleted;
+            if ((mState == kState_OnInitiated) || (mState == kState_OffInitiated))
+            {
+                CancelTimer();
+            }
+            if (mAutoTurnOffTimerArmed)
+            {
+                mAutoTurnOffTimerArmed = false;
+                CancelTimer();
+            }
         }
     }
     else if (aAction == LEVEL_ACTION)
@@ -179,9 +222,14 @@ bool LightingManager::InitiateAction(int32_t aActor, Action_t aAction, uint8_t *
         action_initiated = true;
     }
 
-    if (action_initiated && (aAction == ON_ACTION || aAction == OFF_ACTION))
+    if (action_initiated && start_actuator_timer &&
+        ((aAction == ON_ACTION) || (aAction == OFF_ACTION)))
     {
         StartTimer(ACTUATOR_MOVEMENT_PERIOD_MS);
+        mState = new_state;
+    }
+    else if (action_initiated && ((aAction == ON_ACTION) || (aAction == OFF_ACTION)))
+    {
         mState = new_state;
     }
 
