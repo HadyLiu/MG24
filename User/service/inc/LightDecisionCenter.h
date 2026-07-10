@@ -205,6 +205,12 @@ class LightDecisionCenter
      */
     LightEffectOpId BrightnessIndexToOpId(uint8_t brightnessIndex);
 
+    /**
+     * @brief Matter 控灯后武装短按循环
+     * @note 灯亮：下次短按关灯；已关：下次短按 100%。再按恢复 100%→35%→关 循环。
+     */
+    void ArmBrightnessCycleAfterMatterRaw(uint8_t brightness);
+
     /** @brief 若已注册则上报当前 on/亮度/WRGB（ISR 安全） */
     void ReportToMatterIfRegistered();
 

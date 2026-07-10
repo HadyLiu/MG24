@@ -216,6 +216,9 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     m_userTargetParam.brightness = brightness;
     m_userTargetParam.op_id      = opId;
 
+    // Matter 开灯/调光/改色/色温后：下一次短按直接关灯；Matter 关灯后下次短按 100%
+    ArmBrightnessCycleAfterMatterRaw(brightness);
+
     if (brightness > 0U)
     {
         m_lastValidBrightness = brightness;
@@ -665,6 +668,24 @@ void LightDecisionCenter::OnPairSuccessSequenceFinishedRaw()
 void LightDecisionCenter::OnPairSuccessSequenceFinishedBridge()
 {
     LightDecisionCenter::Instance().OnPairSuccessSequenceFinishedRaw();
+}
+
+/**
+ * @brief Matter 控灯后武装短按亮度循环
+ * @param brightness Matter 下发的目标亮度
+ * @note kBrightnessLevels={255,91,0}，短按先 ++ 再取档：
+ *       灯亮时 index=1 → 下次短按到 0%；已关时 index=2 → 下次短按到 100%。
+ */
+void LightDecisionCenter::ArmBrightnessCycleAfterMatterRaw(uint8_t brightness)
+{
+    if (brightness > 0U)
+    {
+        m_brightnessCycleIndex = 1U;
+    }
+    else
+    {
+        m_brightnessCycleIndex = 2U;
+    }
 }
 
 /**
