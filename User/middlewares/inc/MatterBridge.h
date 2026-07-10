@@ -78,6 +78,8 @@ class MatterBridge
     void MatterOnBrightnessBridge(int aAction, uint8_t* aValue);
     /* 读取颜色相关 */
     void MatterColorBridge(uint8_t action, void* valueData);
+    /* Matter Identify 开始/停止 → 下行 kIdentify */
+    void MatterIdentifyBridge(bool active);
 
     /* 抑制matter下发后回传 */
     bool IsMatterReportBypassEnabled();
@@ -111,6 +113,12 @@ class MatterBridge
     void RegisterDeviceEventListener(void);
     void TriggerNetworkResetWithoutReboot(void);
 
+    /** @brief 启动 IdentifyTime 边沿轮询（不抢官方 emberAfIdentify 回调） */
+    void StartIdentifyMonitorRaw();
+
+    /** @brief 轮询 IdentifyTime：0↔非0 边沿驱动主灯识别 */
+    void PollIdentifyTimeRaw();
+
     static void Safe_Upload_OnOff_Callback(intptr_t context);
     static void Safe_Upload_Brightness_Callback(intptr_t context);
     static void Safe_Upload_Hsv_Callback(intptr_t context);
@@ -130,6 +138,12 @@ class MatterBridge
     static void FinishSoftNetworkResetTimerCallback(chip::System::Layer* layer, void* appState);
     static void OpenCommissioningWindowHandler(intptr_t arg);
     static void OpenCommissioningWindowTimerCallback(chip::System::Layer* layer, void* appState);
+
+    /** @brief Identify 轮询定时器回调 */
+    static void IdentifyMonitorTimerCallback(chip::System::Layer* layer, void* appState);
+
+    /** @brief Matter 线程入口：启动 Identify 轮询 */
+    static void StartIdentifyMonitorHandler(intptr_t arg);
 
     /* 工厂重置（擦除持久化数据后受控重启）路径 */
     static void DoFactoryResetHandler(intptr_t arg);

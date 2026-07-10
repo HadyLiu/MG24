@@ -130,10 +130,27 @@ static void EnsureCommissioningWindowOnBootHandler(intptr_t arg)
     EnsureCommissioningWindowOpenRaw();
 }
 
+/**
+ * @brief 在 Matter 线程启动 Identify 轮询定时器
+ */
+void MatterBridge::StartIdentifyMonitorHandler(intptr_t arg)
+{
+    (void)arg;
+    MatterBridge::Instance().StartIdentifyMonitorRaw();
+}
+
 /** @brief 初始化 Matter 桥并注册配网完成等设备事件监听 */
 void MatterBridge::Init()
 {
     RegisterDeviceEventListener();
+
+    // Identify 轮询必须在 Matter 线程启动 SystemLayer 定时器（需持 Chip 锁）
+    CHIP_ERROR identifyErr =
+        chip::DeviceLayer::PlatformMgr().ScheduleWork(StartIdentifyMonitorHandler, 0);
+    if (identifyErr != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("Schedule Identify monitor failed: %" CHIP_ERROR_FORMAT, identifyErr.Format());
+    }
 
     // Server 已初始化完毕，主动兜底开窗，不依赖可能已错过的 kServerReady
     CHIP_ERROR err =
@@ -200,6 +217,17 @@ void MatterBridge::MatterExecuteCmd(MatterExecuteElement executeElement)
     default:
         // 未知
         break;
+    }
+}
+
+void MatterBridge::MatterIdentifyBridge(bool active)
+{
+    m_matterDownlinkUploadPayload.on      = active;
+    m_matterDownlinkUploadPayload.element = MatterDataElement::kIdentify;
+    LOG_MATTER("Matter Identify bridge: %s", active ? "start" : "stop");
+    if (m_matterDownlinkCallback != nullptr)
+    {
+        m_matterDownlinkCallback(m_matterDownlinkUploadPayload);
     }
 }
 
@@ -1017,4 +1045,64 @@ void MatterBridge::TriggerNetworkResetWithoutReboot(void)
 
     // 已在任务上下文：直接投递到 Matter 主线程
     DeferredNetworkResetDispatch(nullptr, 0U);
+}
+
+namespace {
+
+/** @brief IdentifyTime 边沿：上一拍是否处于识别中 */
+bool sIdentifyWasActive = false;
+
+/** @brief Identify 轮询周期 (ms) */
+constexpr uint32_t kIdentifyPollIntervalMs = 100U;
+
+} // namespace
+
+/**
+ * @brief 启动 IdentifyTime 边沿轮询
+ * @note 官方 BaseApplication 已占用 emberAfIdentifyClusterInitCallback；
+ *       此处只读官方 Identify 集群状态，不抢符号、不改 SDK。
+ */
+void MatterBridge::StartIdentifyMonitorRaw()
+{
+    CHIP_ERROR err = DeviceLayer::SystemLayer().StartTimer(
+        System::Clock::Milliseconds32(kIdentifyPollIntervalMs), IdentifyMonitorTimerCallback, nullptr);
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("Identify monitor timer start failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+}
+
+/**
+ * @brief Identify 轮询定时器：边沿检测后再次武装
+ */
+void MatterBridge::IdentifyMonitorTimerCallback(chip::System::Layer* layer, void* appState)
+{
+    (void)layer;
+    (void)appState;
+
+    MatterBridge::Instance().PollIdentifyTimeRaw();
+
+    (void)DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(kIdentifyPollIntervalMs),
+                                                IdentifyMonitorTimerCallback, nullptr);
+}
+
+/**
+ * @brief 轮询 IdentifyTime：上升沿启动识别灯效，下降沿停止
+ */
+void MatterBridge::PollIdentifyTimeRaw()
+{
+    chip::app::Clusters::IdentifyCluster* pCluster = FindIdentifyClusterOnEndpoint(LIGHT_ENDPOINT);
+    if (pCluster == nullptr)
+    {
+        return;
+    }
+
+    const bool isActive = (pCluster->GetIdentifyTime() > 0U);
+    if (isActive == sIdentifyWasActive)
+    {
+        return;
+    }
+
+    sIdentifyWasActive = isActive;
+    MatterIdentifyBridge(isActive);
 }

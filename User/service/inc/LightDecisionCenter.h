@@ -181,7 +181,7 @@ class LightDecisionCenter
     /** @brief 配网中止：淡出熄灭 → 淡入恢复 m_userTargetParam */
     void StopNetConfigAndRestoreRaw();
 
-    /** @brief Matter 识别时序（红闪 + 恢复色淡入，循环） */
+    /** @brief Matter 识别时序：调色板色 100% 闪×2 → 淡入用户色（一次性） */
     void StartIdentifySequence();
 
     /** @brief 配对成功时序：当前色 60% 快闪×2 → 淡入全亮 */
@@ -192,6 +192,12 @@ class LightDecisionCenter
 
     /** @brief 配对成功完结回调桥接（供调度器静态注册） */
     static void OnPairSuccessSequenceFinishedBridge();
+
+    /** @brief 识别时序自然完结：场景回到 Normal */
+    void OnIdentifySequenceFinishedRaw();
+
+    /** @brief 识别完结回调桥接（供调度器静态注册） */
+    static void OnIdentifySequenceFinishedBridge();
 
     /**
      * @brief 亮度循环索引 → 渐变算子与过渡时长

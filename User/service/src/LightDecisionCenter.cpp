@@ -573,17 +573,49 @@ void LightDecisionCenter::StopNetConfigAndRestoreRaw()
 }
 
 /**
- * @brief Matter 识别时序（循环）
- * @note Step0: 暖白红闪 800ms×3；Step1: 恢复用户色 Bezier 淡入 400ms。
+ * @brief Matter 识别时序（一次性）
+ * @note
+ * Step0: kColorPalette[2]、亮度 100%、周期 800ms 闪 2 次（repeatCount=1）；
+ * Step1: Bezier 淡入恢复 m_userTargetParam 亮度与颜色。
  */
 void LightDecisionCenter::StartIdentifySequence()
 {
+    if (m_pSequence == nullptr)
+    {
+        return;
+    }
+
     LightSequenceScheduler::SequenceStep kIdentifySteps[] = {
-        {LightEffectProcessor::GetBlink, {1023U, 0U, 0U, 0U}, 255U, 800U, 2U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {0U, 0U, 1023U, 0U}, 255U, 400U, 0U}};
+        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, 800U, 1U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+         {0U, 0U, 0U, 0U},
+         m_userTargetParam.brightness,
+         kTransitionMs,
+         0U}};
+    memcpy(kIdentifySteps[0].targetChannels, kColorPalette[2], sizeof(kColorPalette[2]));
     memcpy(kIdentifySteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
-    m_pSequence->StartSequence(kIdentifySteps, 2U, true);
+    m_pSequence->RegisterSequenceFinishedCallback(OnIdentifySequenceFinishedBridge);
+    m_pSequence->StartSequence(kIdentifySteps, 2U, false);
+}
+
+/**
+ * @brief 识别时序自然完结：退出 MatterIdentifying
+ */
+void LightDecisionCenter::OnIdentifySequenceFinishedRaw()
+{
+    if (m_sceneState == LightSceneState::MatterIdentifying)
+    {
+        m_sceneState = LightSceneState::Normal;
+    }
+}
+
+/**
+ * @brief 识别完结静态桥接
+ */
+void LightDecisionCenter::OnIdentifySequenceFinishedBridge()
+{
+    LightDecisionCenter::Instance().OnIdentifySequenceFinishedRaw();
 }
 
 /**
