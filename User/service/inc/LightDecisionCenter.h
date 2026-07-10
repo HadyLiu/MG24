@@ -23,9 +23,9 @@
 class LightStorageProvider
 {
   public:
-    virtual ~LightStorageProvider()                          = default;
-    virtual bool Read(uint8_t* pDest, uint16_t size)         = 0;
-    virtual bool Write(const uint8_t* pSrc, uint16_t size)   = 0;
+    virtual ~LightStorageProvider()                        = default;
+    virtual bool Read(uint8_t* pDest, uint16_t size)       = 0;
+    virtual bool Write(const uint8_t* pSrc, uint16_t size) = 0;
 };
 
 /**
@@ -225,21 +225,21 @@ class LightDecisionCenter
 
     LightSceneState m_sceneState{LightSceneState::Normal}; /**< 场景状态机 */
     bool            m_isBatteryLow{false};                 /**< 极低电量强控锁 */
-    bool            m_isBatteryLowWarning{false};            /**< 低电量警告（可开灯） */
-    uint8_t         m_lastValidBrightness{255U};             /**< 上次非零亮度，低电恢复用 */
-    uint8_t         m_brightnessCycleIndex{0U};              /**< 短按亮度循环索引 */
-    uint8_t         m_colorCycleIndex{0U};                   /**< 双击颜色循环索引 */
-    uint16_t        m_TransitionMs{400};                     /**< 当前单步渐变时长 (ms) */
-    uint32_t        m_lastPairSuccessEffectMs{0U};           /**< 上次配对成功灯效触发时刻 (ms) */
-    bool            m_isPairSuccessSequenceActive{false};    /**< 配对成功时序进行中，防重复启动 */
+    bool            m_isBatteryLowWarning{false};          /**< 低电量警告（可开灯） */
+    uint8_t         m_lastValidBrightness{255U};           /**< 上次非零亮度，低电恢复用 */
+    uint8_t         m_brightnessCycleIndex{0U};            /**< 短按亮度循环索引 */
+    uint8_t         m_colorCycleIndex{0U};                 /**< 双击颜色循环索引 */
+    uint16_t        m_TransitionMs{400};                   /**< 当前单步渐变时长 (ms) */
+    uint32_t        m_lastPairSuccessEffectMs{0U};         /**< 上次配对成功灯效触发时刻 (ms) */
+    bool            m_isPairSuccessSequenceActive{false};  /**< 配对成功时序进行中，防重复启动 */
 
     PersistParam_T m_userTargetParam{}; /**< 用户目标亮度/WRGB/算子（NVM 镜像） */
 
     static constexpr uint8_t  kPersistMagic                = 0x5AU;
-    static constexpr uint16_t kTransitionMs                  = 400U;
+    static constexpr uint16_t kTransitionMs                = 400U;
     static constexpr uint8_t  kDefaultBrightness           = 255U;
-    static constexpr uint32_t kPairSuccessEffectDebounceMs = 3500U; /**< 配对成功灯效去重窗口 */
-    static constexpr uint8_t  kBrightnessLevels[] = {255U, 89U, 0U}; /**< 短按：100%→35%→0% */
+    static constexpr uint32_t kPairSuccessEffectDebounceMs = 3500U;           /**< 配对成功灯效去重窗口 */
+    static constexpr uint8_t  kBrightnessLevels[]          = {255U, 91U, 0U}; /**< 短按：100%→35%→0% */
 
     static const EffectRenderAction kActionTable[static_cast<uint8_t>(LightEffectOpId::MaxOperators)];
 };

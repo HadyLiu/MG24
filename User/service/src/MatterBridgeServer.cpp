@@ -128,17 +128,30 @@ void MatterBridgeServer::OnMatterDataReceived(MatterDownlinkUploadPayload mdc)
         break;
 
     case MatterDataElement::kCt:
-        // 读取到了色温
+        // Matter ColorTemperatureMireds → Kelvin 再转 WRGB
+        // （误把 mireds 当 Kelvin 会全部被限幅到 2200K，颜色不变）
+        {
+            const uint16_t mireds = mdc.color.ct.colorTemperature;
+            uint32_t       kelvin = 2700U;
+            if (mireds > 0U)
+            {
+                kelvin = 1000000U / static_cast<uint32_t>(mireds);
+            }
+            wrgb = ColorConverter::FromColorTemperature(kelvin);
 
-        wrgb = ColorConverter::FromColorTemperature(mdc.color.ct.colorTemperature);
-
-        LOG_MATTER("Matter downlink CT: %d,W = %d, R = %d, G = %d, B = %d\n", mdc.color.ct.colorTemperature, wrgb.w,
-                   wrgb.r, wrgb.g, wrgb.b);
-        m_cacheWrgb[0] = wrgb.w;
-        m_cacheWrgb[1] = wrgb.r;
-        m_cacheWrgb[2] = wrgb.g;
-        m_cacheWrgb[3] = wrgb.b;
-        EmitLightControlRaw();
+            LOG_MATTER("Matter downlink CT: %u mireds (~%uK), W=%u R=%u G=%u B=%u\n",
+                       mireds,
+                       static_cast<unsigned>(kelvin),
+                       wrgb.w,
+                       wrgb.r,
+                       wrgb.g,
+                       wrgb.b);
+            m_cacheWrgb[0] = wrgb.w;
+            m_cacheWrgb[1] = wrgb.r;
+            m_cacheWrgb[2] = wrgb.g;
+            m_cacheWrgb[3] = wrgb.b;
+            EmitLightControlRaw();
+        }
         break;
     case MatterDataElement::kXy:
         // 读取到了 XY 颜色

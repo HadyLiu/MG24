@@ -48,7 +48,7 @@ struct MatterDownlinkUploadPayload
 
         struct
         {
-            uint16_t colorTemperature;
+            uint16_t colorTemperature; /**< Matter 下行：mireds；本地换算 Kelvin 后再转 WRGB */
         } ct;
 
         struct
