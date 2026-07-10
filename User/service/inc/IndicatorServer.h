@@ -4,8 +4,7 @@
  * @author hady
  * @date 2026-07-09
  * @layer Service
- * @note 充电状态、低电量警告等输入在此统一仲裁，再驱动 IndicatorEffectEngine。
- *       高优先级一次性红闪时序播完后，经引擎结束回调恢复低优先级背景灯效。
+ * @note 白灯与红灯独立仲裁：充电白呼吸可与配网/低电量红闪时序叠加。
  */
 #pragma once
 
@@ -16,7 +15,7 @@
 /**
  * @class IndicatorServer
  * @brief 指示灯输出仲裁与下发
- * @note 白呼吸与故障红闪可叠加；各输入源独立维护，ApplyOutputRaw 统一落地。
+ * @note 白通道仅受充电状态驱动；红通道背景为故障红闪，配网/低电量为红灯覆盖时序。
  */
 class IndicatorServer
 {
@@ -36,17 +35,23 @@ class IndicatorServer
      */
     void OnChargeSnapshot(const BatteryChargeSnapshot& snapshot);
 
-    /** @brief 低电量警告：高优先级一次性红闪，播完后恢复背景灯效 */
+    /** @brief 低电量警告：红灯一次性时序，白灯不受影响 */
     void OnBatteryLowWarn();
+
+    /** @brief 配网重置：红灯 800ms×3 + 慢闪×1，白灯不受影响 */
+    void OnNetConfigIndicatorStart();
+
+    /** @brief 配网结束：仅停止红灯覆盖并恢复故障红闪背景 */
+    void OnNetConfigIndicatorStop();
 
     /** @brief 熄灭全部指示灯并复位仲裁状态 */
     void StopAll();
 
-    /** @brief 查询当前已下发的灯效位标志 */
+    /** @brief 查询当前充电侧背景灯效位标志 */
     ChargeIndicatorEffect GetAppliedEffects() const;
 
-    /** @brief 引擎红闪时序自然播完入口（Init 内注册至 IndicatorEffectEngine） */
-    void OnHighPriorityEffectFinishedRaw();
+    /** @brief 红灯覆盖时序自然播完入口（Init 内注册至 IndicatorEffectEngine） */
+    void OnRedOverrideSequenceFinishedRaw();
 
   private:
     IndicatorServer()                                  = default;
@@ -57,23 +62,30 @@ class IndicatorServer
     /** @brief 由充电快照推导灯效请求（位标志，可叠加） */
     ChargeIndicatorEffect ArbitrateChargeEffectsRaw(const BatteryChargeSnapshot& snapshot) const;
 
-    /** @brief 聚合各输入源，得到最终灯效位标志 */
-    ChargeIndicatorEffect ArbitrateOutputRaw() const;
+    /** @brief 聚合各输入源背景灯效（当前仅充电侧） */
+    ChargeIndicatorEffect ArbitrateBackgroundEffectsRaw() const;
 
-    /** @brief 将仲裁结果同步至 IndicatorEffectEngine */
-    void ApplyOutputRaw(ChargeIndicatorEffect effects, bool forceApply = false);
+    /** @brief 下发白通道：充电呼吸开/关 */
+    void ApplyWhiteChannelRaw(bool enableBreath);
 
-    /** @brief 充电输入变化时重新仲裁并下发 */
+    /** @brief 下发红通道背景：故障红闪（红灯未被覆盖时） */
+    void ApplyRedBackgroundRaw(bool enableBlink);
+
+    /** @brief 充电输入变化后刷新白/红背景 */
     void RefreshFromChargeInputRaw();
 
-    /** @brief 启动高优先级一次性红闪时序（播完前背景灯效挂起） */
-    void StartHighPriorityRedSequenceRaw(const IndicatorEffectEngine::BlinkSequenceStep* steps, uint8_t count);
+    /** @brief 启动红灯覆盖时序（仅占用红通道） */
+    void StartRedOverrideSequenceRaw(const IndicatorEffectEngine::BlinkSequenceStep* steps, uint8_t count,
+                                     bool loopForever);
+
+    /** @brief 红灯覆盖结束：恢复充电侧红闪背景 */
+    void ResumeRedBackgroundRaw();
 
     static constexpr uint8_t kDefaultWhiteBreathBrightness = 153U;
 
     BatteryChargeSnapshot m_chargeInput{};
     bool                  m_chargeInputValid{false};
     ChargeIndicatorEffect m_chargeEffects{ChargeIndicatorEffect::Off};
-    ChargeIndicatorEffect m_lastApplied{ChargeIndicatorEffect::Off};
-    bool                  m_highPriorityActive{false};
+    bool                  m_redOverrideActive{false};
+    bool                  m_redOverrideLoopForever{false};
 };

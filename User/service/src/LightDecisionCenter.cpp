@@ -160,17 +160,12 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         StartNetConfigSequence();
         break;
     }
-        // 长按松开，停止配网灯效并恢复默认状态
+        // 长按松开，停止配网灯效并恢复配网前亮度/颜色
     case KeyEventType::LongPressStopNet: {
         if (m_sceneState == LightSceneState::NetConfiguring)
         {
             m_sceneState = LightSceneState::Normal;
-            // InvokeNetControlRaw(NetControlAction::Close);
-            // m_pSequence->StopSequence();
-            // LoadDefaults();
-            // SafeSaveToStorage();
-            // ApplyArbitratedResult();
-            // ReportToMatterIfRegistered();
+            StopNetConfigAndRestoreRaw();
         }
         break;
     }
@@ -430,6 +425,25 @@ void LightDecisionCenter::StartNetConfigSequence()
     memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
     m_pSequence->StartSequence(kNetConfigSteps, 5U, false);
+}
+
+/**
+ * @brief 配网中止：主灯先淡出熄灭，再淡入恢复配网前亮度与颜色
+ */
+void LightDecisionCenter::StopNetConfigAndRestoreRaw()
+{
+    if (m_pSequence == nullptr)
+    {
+        return;
+    }
+
+    LightSequenceScheduler::SequenceStep restoreSteps[] = {
+        {LightEffectProcessor::GetBezier40BytesFactorFadeOut, {0U, 0U, 0U, 0U}, 0U, kTransitionMs, 0U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {0U, 0U, 0U, 0U}, m_userTargetParam.brightness,
+         kTransitionMs, 0U}};
+    memcpy(restoreSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+
+    m_pSequence->StartSequence(restoreSteps, 2U, false);
 }
 
 void LightDecisionCenter::StartIdentifySequence()

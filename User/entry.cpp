@@ -168,7 +168,7 @@ void button_Init(void)
     ButtonInput::Instance().RegisterMailPosterCallback(
         [](const ButtonMailMsg& msg) { ButtonService::Instance().DispatchMail(msg); });
 
-    // 注册按键语义事件回调至 LDC
+    // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
         if (event == KeyEventType::LongPressClearNet)
         {
@@ -177,7 +177,15 @@ void button_Init(void)
             // 调用执行函数 重置网络
             MatterBridge::Instance().MatterExecuteCmd(MatterExecuteElement::kClearNetwork);
         }
-        // 按键时间事件投递至 LDC
+        else if (event == KeyEventType::LongPressClearNetLighting)
+        {
+            IndicatorServer::Instance().OnNetConfigIndicatorStart();
+        }
+        else if (event == KeyEventType::LongPressStopNet)
+        {
+            IndicatorServer::Instance().OnNetConfigIndicatorStop();
+        }
+
         LightDecisionCenter::Instance().ProcessKeyEvent(event);
     });
 }

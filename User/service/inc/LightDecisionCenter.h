@@ -130,6 +130,7 @@ class LightDecisionCenter
     void            LoadDefaults();
     bool            IsPersistValid(const PersistParam_T& param) const;
     void            StartNetConfigSequence();
+    void            StopNetConfigAndRestoreRaw();
     void            StartIdentifySequence();
     void            StartCommissioningSuccessSequence();
     LightEffectOpId BrightnessIndexToOpId(uint8_t brightnessIndex);
