@@ -273,9 +273,11 @@ void Matter_Init(void)
         case MatterBridgeServer::DownlinkKind::kLightControl:
             LOG_LIGHT_DC("DownlinkKind: brightness=%u, W=%u, R=%u, G=%u, B=%u", d.brightness, d.wrgb[0], d.wrgb[1],
                          d.wrgb[2], d.wrgb[3]);
-            LightDecisionCenter::Instance().ProcessMatterCommand(d.wrgb, d.brightness,
-                                                                 d.brightness > 0U ? LightEffectOpId::LinearLerp
-                                                                                   : LightEffectOpId::Bezier40FadeOut);
+            LightDecisionCenter::Instance().ProcessMatterCommand(
+                d.wrgb,
+                d.brightness,
+                d.brightness > 0U ? LightEffectOpId::LinearLerp
+                                  : LightEffectOpId::Bezier40FadeOut);
             break;
         case MatterBridgeServer::DownlinkKind::kIdentify:
             LOG_LIGHT_DC("Identify: on=%u", d.on);

@@ -11,6 +11,7 @@
  */
 #include "LightDecisionCenter.h"
 #include "DebugLog.h"
+#include "LightDimmingSpec.h"
 #include "sl_sleeptimer.h"
 #include <cstring>
 
@@ -22,17 +23,17 @@ namespace {
 
 /** @brief 双击颜色循环调色板（逻辑 WRGB，0~1023） */
 static constexpr uint16_t kColorPalette[][4] = {
-    {1023U, 0U, 0U, 0U},     /* 暖白 */
-    {409U, 1023U, 0U, 0U},   /*  */
-    {409U, 0U, 235U, 563U},  /*  */
-    {327U, 0U, 235U, 1023U}, /*  */
-    {0U, 1023U, 179U, 0U},   /*  */
-    {0U, 1023U, 102U, 0U},   /*  */
-    {0U, 1023U, 0U, 0U},     /* 纯绿 */
-    {0U, 1023U, 102U, 59U},  /*  */
-    {0U, 1023U, 240U, 404U}, /*  */
-    {0U, 240U, 240U, 1023U}, /*  */
-    {0U, 522U, 844U, 522U},  /*  */
+    {1023U, 0U, 0U, 0U},     /* #5 */
+    {409U, 1023U, 0U, 0U},   /* #6  */
+    {409U, 0U, 235U, 563U},  /* #7 */
+    {327U, 0U, 235U, 1023U}, /* #8 */
+    {0U, 1023U, 179U, 0U},   /* #9  */
+    {0U, 1023U, 102U, 0U},   /* #10 */
+    {0U, 1023U, 0U, 0U},     /* #13 */
+    {0U, 1023U, 102U, 59U},  /* #20 */
+    {0U, 1023U, 240U, 404U}, /* #25 */
+    {0U, 240U, 240U, 1023U}, /* #30 */
+    {0U, 522U, 844U, 522U},  /* # */
     {0U, 522U, 1023U, 159U}, /*  */
     {0U, 1023U, 322U, 0U}    /*  */
 };
@@ -80,6 +81,8 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
     {
         m_lastValidBrightness = m_userTargetParam.brightness;
     }
+
+    SyncBrightnessCycleIndexFromStoredRaw();
 
     // 工厂复位前写入的开机灯效标记：播完后清标记；灯光参数已是出厂默认
     if (m_userTargetParam.reserved == kBootEffectFactoryResetDone)
@@ -225,6 +228,9 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     memcpy(m_userTargetParam.wrgb, pWrgbBuffer, sizeof(m_userTargetParam.wrgb));
     m_userTargetParam.brightness = brightness;
     m_userTargetParam.op_id      = opId;
+
+    // §1.2：网关/Matter 调光 200ms 淡入，关灯 400ms 淡出
+    m_TransitionMs = (brightness > 0U) ? LightDimmingSpec::kFadeInMs : LightDimmingSpec::kFadeOutMs;
 
     // Matter 开灯/调光/改色/色温后：下一次短按直接关灯；Matter 关灯后下次短按 100%
     ArmBrightnessCycleAfterMatterRaw(brightness);
@@ -490,7 +496,7 @@ void LightDecisionCenter::SafeSaveToStorage()
 {
     if (xPortIsInsideInterrupt() != pdFALSE)
     {
-        BaseType_t higherPriorityTaskWoken = pdFALSE;
+        BaseType_t       higherPriorityTaskWoken = pdFALSE;
         const BaseType_t posted =
             xTimerPendFunctionCallFromISR(DeferredSaveDispatch, nullptr, 0U, &higherPriorityTaskWoken);
         if (posted == pdPASS)
@@ -552,16 +558,8 @@ void LightDecisionCenter::StartNetConfigSequence()
 
     LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
         {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, 400U, 0U},
-        {LightEffectProcessor::GetBlink,
-         {0U, 0U, 0U, 0U},
-         kFactoryResetWarnBrightness,
-         800U,
-         2U},
-        {LightEffectProcessor::GetBlink,
-         {0U, 0U, 0U, 0U},
-         kFactoryResetWarnBrightness,
-         2400U,
-         0U},
+        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kFactoryResetWarnBrightness, 800U, 2U},
+        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kFactoryResetWarnBrightness, 2400U, 0U},
         {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, 2000U, 0U}};
     memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(kNetConfigSteps[2].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
@@ -630,12 +628,9 @@ void LightDecisionCenter::OnFactoryResetWarnSequenceFinishedBridge()
 {
     if (xPortIsInsideInterrupt() != pdFALSE)
     {
-        BaseType_t higherPriorityTaskWoken = pdFALSE;
+        BaseType_t       higherPriorityTaskWoken = pdFALSE;
         const BaseType_t posted =
-            xTimerPendFunctionCallFromISR(DeferredFactoryResetWarnDispatch,
-                                          nullptr,
-                                          0U,
-                                          &higherPriorityTaskWoken);
+            xTimerPendFunctionCallFromISR(DeferredFactoryResetWarnDispatch, nullptr, 0U, &higherPriorityTaskWoken);
         if (posted == pdPASS)
         {
             portYIELD_FROM_ISR(higherPriorityTaskWoken);
@@ -659,16 +654,8 @@ void LightDecisionCenter::StartFactoryResetDoneSequence()
     }
 
     LightSequenceScheduler::SequenceStep doneSteps[] = {
-        {LightEffectProcessor::GetBlink,
-         {0U, 0U, 0U, 0U},
-         kFactoryResetWarnBrightness,
-         400U,
-         1U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
-         {0U, 0U, 0U, 0U},
-         kDefaultBrightness,
-         kTransitionMs,
-         0U}};
+        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kFactoryResetWarnBrightness, 400U, 1U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {0U, 0U, 0U, 0U}, kDefaultBrightness, kTransitionMs, 0U}};
     memcpy(doneSteps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(doneSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
@@ -801,11 +788,32 @@ void LightDecisionCenter::ArmBrightnessCycleAfterMatterRaw(uint8_t brightness)
 {
     if (brightness > 0U)
     {
+        // 网关已开灯：下一次短按 index=1 → 再 ++ → OFF
         m_brightnessCycleIndex = 1U;
     }
     else
     {
+        // 网关已关灯：下一次短按 index=2 → 再 ++ → 100%
         m_brightnessCycleIndex = 2U;
+    }
+}
+
+/**
+ * @brief 按持久化亮度恢复短按循环索引
+ */
+void LightDecisionCenter::SyncBrightnessCycleIndexFromStoredRaw()
+{
+    if (m_userTargetParam.brightness == 0U)
+    {
+        m_brightnessCycleIndex = 2U;
+    }
+    else if (m_userTargetParam.brightness <= kBrightnessLevels[1U])
+    {
+        m_brightnessCycleIndex = 1U;
+    }
+    else
+    {
+        m_brightnessCycleIndex = 0U;
     }
 }
 
@@ -813,6 +821,7 @@ void LightDecisionCenter::ArmBrightnessCycleAfterMatterRaw(uint8_t brightness)
  * @brief 亮度循环索引 → 渐变算子与 m_TransitionMs
  * @param brightnessIndex 0=100%，1=35%，2=0%
  * @return 对应 LightEffectOpId
+ * @note §1.2：开/调光 200ms LinearLerp；关灯 400ms Bezier 淡出。
  */
 LightEffectOpId LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessIndex)
 {
@@ -820,16 +829,16 @@ LightEffectOpId LightDecisionCenter::BrightnessIndexToOpId(uint8_t brightnessInd
     switch (brightnessIndex)
     {
     case 0U:
-        m_TransitionMs = 400;
-        opId           = LightEffectOpId::Bezier40FadeIn;
+        m_TransitionMs = LightDimmingSpec::kFadeInMs;
+        opId           = LightEffectOpId::LinearLerp;
         break;
     case 1U:
-        m_TransitionMs = 200;
+        m_TransitionMs = LightDimmingSpec::kFadeInMs;
         opId           = LightEffectOpId::LinearLerp;
         break;
     case 2U:
     default:
-        m_TransitionMs = 400;
+        m_TransitionMs = LightDimmingSpec::kFadeOutMs;
         opId           = LightEffectOpId::Bezier40FadeOut;
         break;
     }
@@ -875,7 +884,7 @@ void LightDecisionCenter::ReportToMatterIfRegistered()
 
     if (xPortIsInsideInterrupt() != pdFALSE)
     {
-        BaseType_t higherPriorityTaskWoken = pdFALSE;
+        BaseType_t       higherPriorityTaskWoken = pdFALSE;
         const BaseType_t posted =
             xTimerPendFunctionCallFromISR(DeferredReportDispatch, nullptr, 0U, &higherPriorityTaskWoken);
         if (posted == pdPASS)

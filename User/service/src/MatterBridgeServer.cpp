@@ -1,6 +1,7 @@
 #include "MatterBridgeServer.h"
 #include "ColorConverter.h"
 #include "DebugLog.h"
+#include "LightDimmingSpec.h"
 #include <cstring>
 
 void MatterBridgeServer::Init()
@@ -83,35 +84,39 @@ void MatterBridgeServer::OnMatterDataReceived(MatterDownlinkUploadPayload mdc)
         break;
 
     case MatterDataElement::kBrightness:
-        // 读取到了亮度状态
+        // Matter CurrentLevel(0~254) → 驱动逻辑亮度(0~255)；下限由 LightEffectEngine 物理输出钳位
         LOG_MATTER("Matter downlink brightness: %d\n", mdc.brightness);
-        if (mdc.brightness == 0U)
         {
-            // Level=0 视为关灯，保留 m_lastOnBrightness 供下次 OnOff 开灯
-            m_cacheOn         = false;
-            m_cacheBrightness = 0U;
-            EmitLightControlRaw();
-            break;
-        }
+            const uint8_t driverBrightness =
+                LightDimmingSpec::MatterLevelToDriverBrightness(mdc.brightness);
 
-        if (m_cacheOn)
-        {
-            // 已开灯：正常调光
-            m_cacheBrightness  = mdc.brightness;
-            m_lastOnBrightness = mdc.brightness;
-            EmitLightControlRaw();
-        }
-        else
-        {
-            // 关灯态：只更新记忆亮度，绝不点亮。
-            // Toggle/Off 后协议栈常跟一条 CurrentLevel=1(MinLevel)，
-            // 若此处把 m_cacheOn 置 true，主灯会被重新打开。
-            if (mdc.brightness > 1U)
+            if (driverBrightness == 0U)
             {
-                m_lastOnBrightness = mdc.brightness;
-                m_cacheBrightness  = mdc.brightness;
+                // Level=0 视为关灯，保留 m_lastOnBrightness 供下次 OnOff 开灯
+                m_cacheOn         = false;
+                m_cacheBrightness = 0U;
+                EmitLightControlRaw();
+                break;
             }
-            LOG_MATTER("Ignore Level=%u while OnOff is Off\n", mdc.brightness);
+
+            if (m_cacheOn)
+            {
+                m_cacheBrightness  = driverBrightness;
+                m_lastOnBrightness = driverBrightness;
+                EmitLightControlRaw();
+            }
+            else
+            {
+                // 关灯态：只更新记忆亮度，绝不点亮。
+                // Toggle/Off 后协议栈常跟一条 CurrentLevel=MinLevel(1)，
+                // 若此处把 m_cacheOn 置 true，主灯会被重新打开。
+                if (driverBrightness > 1U)
+                {
+                    m_lastOnBrightness = driverBrightness;
+                    m_cacheBrightness  = driverBrightness;
+                }
+                LOG_MATTER("Ignore Level=%u while OnOff is Off\n", mdc.brightness);
+            }
         }
         break;
 

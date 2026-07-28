@@ -12,6 +12,7 @@
 #include "BspLedWrgb.h"
 #include "BspTimer.h"
 #include "DebugLog.h"
+#include "LightDimmingSpec.h"
 #include "LightEffectProcessor.h"
 #include <cstring>
 
@@ -298,7 +299,7 @@ void LightEffectEngine::StartEffect(EffectRenderAction pAction, const uint16_t* 
     m_state               = EngineState::Idle;
     m_pCurrentAction      = pAction;
     m_totalDurationMs     = durationMs;
-    m_globalBrightness    = brightness;
+    m_globalBrightness    = LightDimmingSpec::ClampPhysicalBrightness(brightness);
     m_singleEffectRunTime = 0U;
     m_state               = EngineState::Running;
 

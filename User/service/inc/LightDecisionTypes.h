@@ -30,7 +30,7 @@ enum class LightSceneState : uint8_t
  */
 enum class KeyEventType : uint8_t
 {
-    ShortPressCycleBrightness = 0, /**< 短按：亮度 255→128→0 循环 */
+    ShortPressCycleBrightness = 0, /**< 短按：亮度 255→91(35%)→0 循环 */
     DoublePressCycleColor,         /**< 双击：WRGB 调色板循环 */
     LongPressClearNetLighting,     /**< 长按约 8s：主灯/指示灯进入重置预警时序 */
     LongPressClearNet,             /**< 长按约 13s：保留事件（复位由预警时序完结触发） */

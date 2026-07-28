@@ -12,6 +12,7 @@
 #pragma once
 
 #include "LightDecisionTypes.h"
+#include "LightDimmingSpec.h"
 #include "LightEffectProcessor.h"
 #include "LightSequenceScheduler.h"
 #include <stdint.h>
@@ -229,6 +230,9 @@ class LightDecisionCenter
      */
     void ArmBrightnessCycleAfterMatterRaw(uint8_t brightness);
 
+    /** @brief 按 NVM 亮度恢复短按循环索引 */
+    void SyncBrightnessCycleIndexFromStoredRaw();
+
     /** @brief 若已注册则上报当前 on/亮度/WRGB（ISR 安全） */
     void ReportToMatterIfRegistered();
 
@@ -268,7 +272,7 @@ class LightDecisionCenter
     static constexpr uint8_t  kPersistMagic                   = 0x5AU;
     static constexpr uint8_t  kBootEffectNone                 = 0U;
     static constexpr uint8_t  kBootEffectFactoryResetDone     = 1U; /**< reserved：复位后开机播快闪+淡入 */
-    static constexpr uint16_t kTransitionMs                   = 400U;
+    static constexpr uint16_t kTransitionMs                   = LightDimmingSpec::kFadeOutMs;
     static constexpr uint8_t  kDefaultBrightness              = 255U;
     static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65% */
     static constexpr uint32_t kPairSuccessEffectDebounceMs    = 3500U;
