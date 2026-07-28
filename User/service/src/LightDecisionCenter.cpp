@@ -21,24 +21,61 @@
 
 namespace {
 
-/** @brief 双击颜色循环调色板（逻辑 WRGB，0~1023） */
+/**
+ * @brief Color Library 循环调色板（逻辑 WRGB 0~1023）
+ * @note 顺序对应 PRD §2：#5,#6,#7,#8,#9,#10,#13,#20,#25,#30,#34,#40,#42
+ *       百分比 → 通道值：round(pct × 1023 / 100)
+ */
 static constexpr uint16_t kColorPalette[][4] = {
-    {1023U, 0U, 0U, 0U},     /* #5 */
-    {409U, 1023U, 0U, 0U},   /* #6  */
-    {409U, 0U, 235U, 563U},  /* #7 */
-    {327U, 0U, 235U, 1023U}, /* #8 */
-    {0U, 1023U, 179U, 0U},   /* #9  */
-    {0U, 1023U, 102U, 0U},   /* #10 */
-    {0U, 1023U, 0U, 0U},     /* #13 */
-    {0U, 1023U, 102U, 59U},  /* #20 */
-    {0U, 1023U, 240U, 404U}, /* #25 */
-    {0U, 240U, 240U, 1023U}, /* #30 */
-    {0U, 522U, 844U, 522U},  /* # */
-    {0U, 522U, 1023U, 159U}, /*  */
-    {0U, 1023U, 322U, 0U}    /*  */
+    {1023U, 0U, 0U, 0U},     /* #5  100/0/0/0   出厂默认 2700K */
+    {409U, 1023U, 0U, 0U},   /* #6  40/100/0/0 */
+    {409U, 0U, 235U, 563U},  /* #7  40/0/23/55 */
+    {327U, 0U, 235U, 1023U}, /* #8  32/0/23/100 */
+    {0U, 1023U, 179U, 0U},   /* #9  0/100/17.5/0 */
+    {0U, 1023U, 102U, 0U},   /* #10 0/100/10/0 */
+    {0U, 1023U, 0U, 0U},     /* #13 0/100/0/0 */
+    {0U, 1023U, 102U, 59U},  /* #20 0/100/10/5.8 */
+    {0U, 1023U, 240U, 404U}, /* #25 0/100/23.5/39.5 */
+    {0U, 240U, 240U, 1023U}, /* #30 0/23.5/23.5/100 */
+    {0U, 522U, 844U, 522U},  /* #34 0/51/82.5/51 */
+    {0U, 522U, 1023U, 159U}, /* #40 0/51/100/15.5 */
+    {0U, 1023U, 322U, 0U}    /* #42 0/100/31.5/0 */
 };
 
-static constexpr uint8_t kColorPaletteCount = static_cast<uint8_t>(sizeof(kColorPalette) / sizeof(kColorPalette[0]));
+static constexpr uint8_t kColorPaletteCount =
+    static_cast<uint8_t>(sizeof(kColorPalette) / sizeof(kColorPalette[0]));
+
+/** @brief 出厂默认色：#5（调色板索引 0） */
+static constexpr uint8_t kDefaultColorIndex = 0U;
+
+/** @brief 颜色切换渐变时长 (ms)，PRD §2.1 */
+static constexpr uint16_t kColorTransitionMs = 400U;
+
+/**
+ * @brief 在调色板中查找与目标 WRGB 完全匹配的索引
+ * @param pWrgb 逻辑 WRGB（4 通道）
+ * @param outIndex 匹配成功时写回索引
+ * @return true=命中色库；false=非色库色（如 Matter 自定义）
+ */
+bool FindColorPaletteIndexRaw(const uint16_t* pWrgb, uint8_t* outIndex)
+{
+    if ((pWrgb == nullptr) || (outIndex == nullptr))
+    {
+        return false;
+    }
+
+    for (uint8_t i = 0U; i < kColorPaletteCount; ++i)
+    {
+        if ((pWrgb[0] == kColorPalette[i][0]) && (pWrgb[1] == kColorPalette[i][1]) &&
+            (pWrgb[2] == kColorPalette[i][2]) && (pWrgb[3] == kColorPalette[i][3]))
+        {
+            *outIndex = i;
+            return true;
+        }
+    }
+
+    return false;
+}
 
 } // namespace
 
@@ -83,6 +120,7 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
     }
 
     SyncBrightnessCycleIndexFromStoredRaw();
+    SyncColorCycleIndexFromStoredRaw();
 
     // 工厂复位前写入的开机灯效标记：播完后清标记；灯光参数已是出厂默认
     if (m_userTargetParam.reserved == kBootEffectFactoryResetDone)
@@ -172,6 +210,13 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         break;
     }
     case KeyEventType::DoublePressCycleColor: {
+        // §2.1：仅开灯态允许双击切色
+        if (m_userTargetParam.brightness == 0U)
+        {
+            LOG_LIGHT_DC("DoublePress ignored: light OFF");
+            break;
+        }
+
         m_colorCycleIndex++;
         if (m_colorCycleIndex >= kColorPaletteCount)
         {
@@ -181,7 +226,7 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         memcpy(m_userTargetParam.wrgb, kColorPalette[m_colorCycleIndex], sizeof(m_userTargetParam.wrgb));
         m_userTargetParam.op_id = LightEffectOpId::LinearLerp;
         m_sceneState            = LightSceneState::Normal;
-        m_TransitionMs          = 400;
+        m_TransitionMs          = kColorTransitionMs;
         ApplyArbitratedResult();
         SafeSaveToStorage();
         ReportToMatterIfRegistered();
@@ -228,6 +273,9 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     memcpy(m_userTargetParam.wrgb, pWrgbBuffer, sizeof(m_userTargetParam.wrgb));
     m_userTargetParam.brightness = brightness;
     m_userTargetParam.op_id      = opId;
+
+    // Matter 改色后尽量对齐色库索引，便于后续双击从下一色继续
+    SyncColorCycleIndexFromStoredRaw();
 
     // §1.2：网关/Matter 调光 200ms 淡入，关灯 400ms 淡出
     m_TransitionMs = (brightness > 0U) ? LightDimmingSpec::kFadeInMs : LightDimmingSpec::kFadeOutMs;
@@ -511,21 +559,18 @@ void LightDecisionCenter::SafeSaveToStorage()
 
 /**
  * @brief 加载出厂默认参数
- * @note 亮度 100%、暖白 WRGB、LinearLerp 算子。
+ * @note 亮度 100%、色库 #5（2700K 暖白）、LinearLerp 算子。
  */
 void LightDecisionCenter::LoadDefaults()
 {
     m_userTargetParam.magic      = kPersistMagic;
     m_userTargetParam.brightness = kDefaultBrightness;
     m_userTargetParam.op_id      = LightEffectOpId::LinearLerp;
-    m_userTargetParam.wrgb[0]    = 1023U;
-    m_userTargetParam.wrgb[1]    = 0U;
-    m_userTargetParam.wrgb[2]    = 0U;
-    m_userTargetParam.wrgb[3]    = 0U;
+    memcpy(m_userTargetParam.wrgb, kColorPalette[kDefaultColorIndex], sizeof(m_userTargetParam.wrgb));
     m_userTargetParam.reserved   = kBootEffectNone;
     m_lastValidBrightness        = kDefaultBrightness;
     m_brightnessCycleIndex       = 0U;
-    m_colorCycleIndex            = 0U;
+    m_colorCycleIndex            = kDefaultColorIndex;
 }
 
 /**
@@ -814,6 +859,23 @@ void LightDecisionCenter::SyncBrightnessCycleIndexFromStoredRaw()
     else
     {
         m_brightnessCycleIndex = 0U;
+    }
+}
+
+/**
+ * @brief 按持久化 WRGB 恢复双击色库索引
+ * @note §2.2 颜色记忆落盘的是 wrgb；开机/Matter 改色后由此对齐循环位置。
+ *       非色库颜色（APP 自定义）时保持当前索引，下次双击切到 index+1。
+ */
+void LightDecisionCenter::SyncColorCycleIndexFromStoredRaw()
+{
+    uint16_t wrgbCopy[4];
+    memcpy(wrgbCopy, m_userTargetParam.wrgb, sizeof(wrgbCopy));
+
+    uint8_t matchedIndex = 0U;
+    if (FindColorPaletteIndexRaw(wrgbCopy, &matchedIndex))
+    {
+        m_colorCycleIndex = matchedIndex;
     }
 }
 

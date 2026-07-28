@@ -233,6 +233,9 @@ class LightDecisionCenter
     /** @brief 按 NVM 亮度恢复短按循环索引 */
     void SyncBrightnessCycleIndexFromStoredRaw();
 
+    /** @brief 按 NVM WRGB 对齐色库循环索引（颜色记忆） */
+    void SyncColorCycleIndexFromStoredRaw();
+
     /** @brief 若已注册则上报当前 on/亮度/WRGB（ISR 安全） */
     void ReportToMatterIfRegistered();
 
