@@ -182,13 +182,16 @@ class LightDecisionCenter
     /** @brief 校验 NVM 读回参数合法性 */
     bool IsPersistValid(const PersistParam_T& param) const;
 
-    /** @brief 主灯重置预警时序：熄灭400ms→正常闪×3→慢闪×1→熄灭2s，完结后工厂复位 */
+    /** @brief 主灯重置预警时序：熄灭400ms→正常闪×3→慢闪×1→熄灭2s（完结后再判是否复位） */
     void StartNetConfigSequence();
 
     /** @brief 重置预警中止：淡出熄灭 → 淡入恢复 m_userTargetParam */
     void StopNetConfigAndRestoreRaw();
 
-    /** @brief 重置预警时序完结：写入开机灯效标记 + 触发工厂复位 */
+    /**
+     * @brief 重置预警时序完结
+     * @note 仅当 m_factoryResetArmed（已按住过 13s）时落盘并工厂复位；否则只恢复常态。
+     */
     void OnFactoryResetWarnSequenceFinishedRaw();
 
     /** @brief 重置预警完结：ISR 安全中转（时序回调在 sleeptimer 中断） */
@@ -267,6 +270,7 @@ class LightDecisionCenter
     BatteryWarnIndicatorCallback m_batteryWarnIndicator{nullptr};
 
     LightSceneState m_sceneState{LightSceneState::Normal}; /**< 场景状态机 */
+    bool            m_factoryResetArmed{false};            /**< 已按住≥13s：时序完结后执行工厂复位 */
     bool            m_isBatteryLow{false};                 /**< 极低电量强控锁 */
     bool            m_isBatteryLowWarning{false};          /**< 低电量警告（可开灯） */
     uint8_t         m_lastValidBrightness{255U};           /**< 上次非零亮度，低电恢复用 */
@@ -285,7 +289,7 @@ class LightDecisionCenter
     static constexpr uint8_t  kFirstCommissionDoneFlag        = 0x10U; /**< reserved bit4：已非首次配网 */
     static constexpr uint16_t kTransitionMs                   = LightDimmingSpec::kFadeOutMs;
     static constexpr uint8_t  kDefaultBrightness              = 255U;
-    static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65% */
+    static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65%，仅复位后开机快闪用 */
     static constexpr uint32_t kPairSuccessEffectDebounceMs    = 3500U;
     static constexpr uint8_t  kBrightnessLevels[]             = {255U, 91U, 0U};
 

@@ -242,14 +242,27 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         break;
     }
     case KeyEventType::LongPressClearNetLighting: {
-        m_sceneState = LightSceneState::NetConfiguring;
+        // 约 8s：仅播预警灯效；是否复位看后续是否按住满 13s
+        m_factoryResetArmed = false;
+        m_sceneState        = LightSceneState::NetConfiguring;
         StartNetConfigSequence();
         break;
     }
-    case KeyEventType::LongPressStopNet: {
+    case KeyEventType::LongPressClearNet: {
+        // 约 13s：武装复位；实际擦除仍等预警时序播完
         if (m_sceneState == LightSceneState::NetConfiguring)
         {
-            m_sceneState = LightSceneState::Normal;
+            m_factoryResetArmed = true;
+            LOG_LIGHT_DC("FactoryReset armed (>=13s hold)");
+        }
+        break;
+    }
+    case KeyEventType::LongPressStopNet: {
+        // 未满 13s 松开：取消预警（≥13s 松开由按键层不发本事件）
+        if (m_sceneState == LightSceneState::NetConfiguring)
+        {
+            m_factoryResetArmed = false;
+            m_sceneState        = LightSceneState::Normal;
             StopNetConfigAndRestoreRaw();
         }
         break;
@@ -626,13 +639,26 @@ bool LightDecisionCenter::IsPersistValid(const PersistParam_T& param) const
 
 /**
  * @brief 主灯工厂重置预警时序（一次性，4 步）
- * @note PRD「注」：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭 2s；完结后工厂复位。
+ * @note 注解：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭 2s；
+ *       闪烁亮度=当前亮度，关灯则用关灯前亮度（m_lastValidBrightness）；
+ *       完结后仅当已按住≥13s（m_factoryResetArmed）才触发工厂复位。
  */
 void LightDecisionCenter::StartNetConfigSequence()
 {
     if (m_pSequence == nullptr)
     {
         return;
+    }
+
+    // 当前亮度；关灯态回退到关灯前非零亮度
+    uint8_t warnBrightness = m_userTargetParam.brightness;
+    if (warnBrightness == 0U)
+    {
+        warnBrightness = m_lastValidBrightness;
+    }
+    if (warnBrightness == 0U)
+    {
+        warnBrightness = kDefaultBrightness;
     }
 
     LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
@@ -643,12 +669,12 @@ void LightDecisionCenter::StartNetConfigSequence()
          0U},
         {LightEffectProcessor::GetBlink,
          {0U, 0U, 0U, 0U},
-         kFactoryResetWarnBrightness,
+         warnBrightness,
          BlinkTimingSpec::kNormalBlinkCycleMs,
          BlinkTimingSpec::kResetNormalBlinkExtraRepeats},
         {LightEffectProcessor::GetBlink,
          {0U, 0U, 0U, 0U},
-         kFactoryResetWarnBrightness,
+         warnBrightness,
          BlinkTimingSpec::kSlowBlinkCycleMs,
          0U},
         {LightEffectProcessor::GetKeep,
@@ -688,12 +714,22 @@ void LightDecisionCenter::StopNetConfigAndRestoreRaw()
 }
 
 /**
- * @brief 重置预警完结：落盘出厂默认 + 开机灯效标记，再触发工厂复位
+ * @brief 重置预警完结：已武装则落盘并工厂复位；未武装则回到常态
  * @note 仅任务上下文调用（NVM / Matter 不可在 sleeptimer 中断执行）。
  */
 void LightDecisionCenter::OnFactoryResetWarnSequenceFinishedRaw()
 {
-    m_sceneState = LightSceneState::Normal;
+    const bool doReset = m_factoryResetArmed;
+    m_factoryResetArmed = false;
+    m_sceneState        = LightSceneState::Normal;
+
+    if (!doReset)
+    {
+        // 时序播完但未按住满 13s（或中途已取消）：不擦除，恢复用户目标
+        LOG_LIGHT_DC("FactoryReset warn done, not armed -> skip reset");
+        ApplyArbitratedResult();
+        return;
+    }
 
     LoadDefaults();
     m_userTargetParam.reserved = kBootEffectFactoryResetDone;

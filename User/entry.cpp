@@ -173,11 +173,12 @@ void button_Init(void)
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
         if (event == KeyEventType::LongPressClearNetLighting)
         {
-            // 约 8s：指示灯红闪 + 主灯预警时序；时序完结后由 LDC 触发工厂复位
+            // 约 8s：红灯与主灯预警时序；≥13s 武装后，时序完结才工厂复位
             IndicatorServer::Instance().OnNetConfigIndicatorStart();
         }
         else if (event == KeyEventType::LongPressStopNet)
         {
+            // 未满 13s 松开：停红灯；主灯由 LDC 恢复
             IndicatorServer::Instance().OnNetConfigIndicatorStop();
         }
 

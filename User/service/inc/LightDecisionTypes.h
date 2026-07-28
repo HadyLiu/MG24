@@ -34,8 +34,8 @@ enum class KeyEventType : uint8_t
     DoublePressCycleColor,         /**< 双击：开灯态色库循环（关灯忽略） */
     ShortPressOpenCommissioning,   /**< 短按系统键：未入网时打开/刷新配网窗 */
     LongPressClearNetLighting,     /**< 长按约 8s：主灯/指示灯进入重置预警时序 */
-    LongPressClearNet,             /**< 长按约 13s：保留事件（复位由预警时序完结触发） */
-    LongPressStopNet               /**< 长按≥8s 后松开：取消重置预警（时序未完结时） */
+    LongPressClearNet,             /**< 长按约 13s：武装复位（时序完结且已武装才擦除） */
+    LongPressStopNet               /**< 松开未满 13s：取消预警（≥13s 松开不取消，等时序完结复位） */
 };
 
 /**

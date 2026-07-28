@@ -141,14 +141,14 @@ void ButtonService::OnLongPressing(uint8_t buttonIdx, uint16_t count)
     {
         PostKeyEventRaw(KeyEventType::LongPressClearNetLighting);
     }
-    else if (count == 65U) // 约 13s：保留事件（实际复位由预警时序完结触发）
+    else if (count == 65U) // 约 13s：武装复位（时序完结后才擦除）
     {
         PostKeyEventRaw(KeyEventType::LongPressClearNet);
     }
 }
 
 /**
- * @brief 长按松开：≥8s 后可取消重置预警
+ * @brief 长按松开：未满 13s 取消重置预警；≥13s 不取消（等时序完结后复位）
  * @param buttonIdx   按键索引
  * @param durationMs  按下总时长
  * @return 无
@@ -160,8 +160,8 @@ void ButtonService::OnLongPressRelease(uint8_t buttonIdx, uint16_t durationMs)
     {
         return;
     }
-    // 8s 后松开均可取消（LDC 仅在 NetConfiguring 时生效；时序完结已复位则无效）
-    if (durationMs >= 8000U)
+    // 注解：松开 <13s 重置无效；≥13s 已武装则继续播完时序再复位
+    if ((durationMs >= 8000U) && (durationMs < 13000U))
     {
         PostKeyEventRaw(KeyEventType::LongPressStopNet);
     }
