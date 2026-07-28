@@ -15,7 +15,7 @@
 /**
  * @class IndicatorServer
  * @brief 指示灯输出仲裁与下发
- * @note 白通道仅受充电状态驱动；红通道背景为故障红闪，配网/低电量为红灯覆盖时序。
+ * @note 白通道：充电呼吸 或 首次配网呼吸；红通道背景为故障红闪，配网/低电量为红灯覆盖时序。
  */
 class IndicatorServer
 {
@@ -38,11 +38,17 @@ class IndicatorServer
     /** @brief 低电量警告：红灯一次性时序，白灯不受影响 */
     void OnBatteryLowWarn();
 
-    /** @brief 配网重置：红灯 800ms×3 + 慢闪×1，白灯不受影响 */
+    /** @brief 配网重置：红灯与主灯同步（熄灭400ms→正常闪×3→慢闪×1→熄灭2s） */
     void OnNetConfigIndicatorStart();
 
     /** @brief 配网结束：仅停止红灯覆盖并恢复故障红闪背景 */
     void OnNetConfigIndicatorStop();
+
+    /** @brief 首次出厂配网：系统 LED 白呼吸开始 */
+    void OnFirstCommissionBreathStart();
+
+    /** @brief 首次配网结束 / 配网成功：停止白呼吸覆盖，恢复充电白通道 */
+    void OnFirstCommissionBreathStop();
 
     /** @brief 熄灭全部指示灯并复位仲裁状态 */
     void StopAll();
@@ -65,8 +71,8 @@ class IndicatorServer
     /** @brief 聚合各输入源背景灯效（当前仅充电侧） */
     ChargeIndicatorEffect ArbitrateBackgroundEffectsRaw() const;
 
-    /** @brief 下发白通道：充电呼吸开/关 */
-    void ApplyWhiteChannelRaw(bool enableBreath);
+    /** @brief 下发白通道：充电呼吸或首次配网呼吸 */
+    void ApplyWhiteChannelRaw();
 
     /** @brief 下发红通道背景：故障红闪（红灯未被覆盖时） */
     void ApplyRedBackgroundRaw(bool enableBlink);
@@ -88,4 +94,5 @@ class IndicatorServer
     ChargeIndicatorEffect m_chargeEffects{ChargeIndicatorEffect::Off};
     bool                  m_redOverrideActive{false};
     bool                  m_redOverrideLoopForever{false};
+    bool                  m_firstCommissionBreathActive{false};
 };

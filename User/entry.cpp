@@ -180,16 +180,20 @@ void button_Init(void)
         {
             IndicatorServer::Instance().OnNetConfigIndicatorStop();
         }
-        // LongPressClearNet(~13s)：不再在此直接工厂复位，避免与预警时序竞态
 
         LightDecisionCenter::Instance().ProcessKeyEvent(event);
     });
 
-    // 预警时序完结 → 工厂重置
+    // LDC 配网控制：工厂复位 / 打开配网窗
     LightDecisionCenter::Instance().RegisterNetControlCallback([](NetControlAction action) {
         if (action == NetControlAction::FactoryReset)
         {
             MatterBridge::Instance().MatterExecuteCmd(MatterExecuteElement::kClearNetwork);
+        }
+        else if (action == NetControlAction::OpenCommissioning)
+        {
+            // 手动/短按/灯开自动：强制刷新 15 分钟倒计时
+            MatterBridge::Instance().RequestOpenCommissioningWindow(true);
         }
     });
 }
@@ -203,6 +207,28 @@ void button_Init(void)
  */
 void Matter_Init(void)
 {
+    // 须在 MatterBridge::Init 开窗任务之前注册查询/回调
+    MatterBridge::Instance().RegisterLightOnQuery(
+        []() { return LightDecisionCenter::Instance().GetCurrentBrightness() > 0U; });
+
+    MatterBridge::Instance().SetFirstCommissionPending(
+        !LightDecisionCenter::Instance().HasCompletedFirstCommission());
+
+    MatterBridge::Instance().RegisterCommissioningUiCallback(
+        [](bool windowOpenedForFirstPair, bool commissioningDone) {
+            if (commissioningDone)
+            {
+                IndicatorServer::Instance().OnFirstCommissionBreathStop();
+                MatterBridge::Instance().SetFirstCommissionPending(false);
+                return;
+            }
+
+            if (windowOpenedForFirstPair)
+            {
+                IndicatorServer::Instance().OnFirstCommissionBreathStart();
+            }
+        });
+
     MatterBridge::Instance().Init();
     MatterBridge::Instance().MatterDownlinkLocalRegister(
         [](const MatterDownlinkUploadPayload& mdc) { MatterBridgeServer::Instance().OnMatterDataReceived(mdc); });

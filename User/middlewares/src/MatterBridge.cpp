@@ -41,11 +41,13 @@ static bool s_commissioningDoneEffectLatched = false;
 static constexpr uint32_t kFactoryResetRebootDelayMs = 500U;
 
 /**
- * @brief 无 Fabric 时确保基础配网窗与 PASE 监听已打开
- * @note  必须在 Matter 线程且已持有 ChipStack 锁时调用（事件回调 / ScheduleWork）。
- *        工厂重置重启后若仅 BLE 可连但未 ListenForPASE，手机会卡在 Char Write 之前。
+ * @brief 无 Fabric 时打开基础配网窗与 PASE 监听
+ * @param forceRestartTimer true=已开窗也先关再开，重置发现超时倒计时
+ * @param requireLightOn    true=主灯未开则跳过（自动配网门禁）
+ * @return true=本次成功调用了 OpenBasicCommissioningWindow
+ * @note  必须在 Matter 线程且已持有 ChipStack 锁时调用。
  */
-static void EnsureCommissioningWindowOpenRaw()
+bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requireLightOn)
 {
     chip::Server& server = chip::Server::GetInstance();
     const uint8_t fabricCount = server.GetFabricTable().FabricCount();
@@ -53,7 +55,16 @@ static void EnsureCommissioningWindowOpenRaw()
     if (fabricCount != 0U)
     {
         LOG_MATTER("[Commission] Skip open window, fabricCount=%u", fabricCount);
-        return;
+        return false;
+    }
+
+    if (requireLightOn)
+    {
+        if ((m_lightOnQuery != nullptr) && !m_lightOnQuery())
+        {
+            LOG_MATTER("[Commission] Skip auto-open: light is OFF");
+            return false;
+        }
     }
 
     chip::CommissioningWindowManager& windowMgr = server.GetCommissioningWindowManager();
@@ -61,26 +72,28 @@ static void EnsureCommissioningWindowOpenRaw()
     const chip::Dnssd::CommissioningMode mode = windowMgr.GetCommissioningMode();
     const bool listeningForPase = (mode != chip::Dnssd::CommissioningMode::kDisabled);
 
-    LOG_MATTER("[Commission] fabric=0 windowOpen=%u listening=%u",
-               windowOpen ? 1U : 0U, listeningForPase ? 1U : 0U);
+    LOG_MATTER("[Commission] fabric=0 windowOpen=%u listening=%u force=%u",
+               windowOpen ? 1U : 0U,
+               listeningForPase ? 1U : 0U,
+               forceRestartTimer ? 1U : 0U);
 
-    // 窗已开且正在听 PASE：无需动作
-    if (windowOpen && listeningForPase)
+    // 窗已开且正在听 PASE：非强制刷新则无需动作
+    if (windowOpen && listeningForPase && !forceRestartTimer)
     {
-        return;
+        return false;
     }
 
     chip::app::FailSafeContext& failSafeContext = server.GetFailSafeContext();
     if (!failSafeContext.IsFailSafeFullyDisarmed())
     {
         LOG_MATTER("[Commission] Fail-Safe armed, skip opening commissioning window");
-        return;
+        return false;
     }
 
-    // 窗开着但不听 PASE：先关再开，重建 AdvertiseAndListenForPASE
+    // 强制刷新或窗开着但不听 PASE：先关再开
     if (windowOpen)
     {
-        LOG_MATTER("[Commission] Window open but not listening, reopen");
+        LOG_MATTER("[Commission] Closing window before reopen");
         windowMgr.CloseCommissioningWindow();
     }
 
@@ -91,21 +104,37 @@ static void EnsureCommissioningWindowOpenRaw()
     {
         LOG_MATTER("[Commission] OpenBasicCommissioningWindow failed: %" CHIP_ERROR_FORMAT,
                    openErr.Format());
+        return false;
     }
-    else
+
+    LOG_MATTER("[Commission] Basic commissioning window opened (timeout=%u s)",
+               static_cast<unsigned>(CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS));
+
+    if ((m_commissioningUiCallback != nullptr) && m_firstCommissionPending)
     {
-        LOG_MATTER("[Commission] Basic commissioning window opened, PASE listener ready");
+        m_commissioningUiCallback(true, false);
     }
+
+    return true;
 }
 
 /**
- * @brief 启动后兜底打开配网窗（ScheduleWork 回调，ChipStack 已锁定）
- * @note  entry_Init / MatterBridge::Init 晚于 Server::Init，会错过 kServerReady。
+ * @brief 启动后兜底打开配网窗（需灯开；ScheduleWork 回调，ChipStack 已锁定）
  */
-static void EnsureCommissioningWindowOnBootHandler(intptr_t arg)
+void MatterBridge::EnsureCommissioningWindowOnBootHandler(intptr_t arg)
 {
     (void)arg;
-    EnsureCommissioningWindowOpenRaw();
+    (void)MatterBridge::Instance().OpenCommissioningWindowRaw(false, true);
+}
+
+/**
+ * @brief Matter 线程：打开/刷新配网窗（手动触发，不检查灯态）
+ * @param arg 非 0=强制重启倒计时
+ */
+void MatterBridge::OpenCommissioningWindowHandler(intptr_t arg)
+{
+    const bool forceRestart = (arg != 0);
+    (void)MatterBridge::Instance().OpenCommissioningWindowRaw(forceRestart, false);
 }
 
 /**
@@ -130,13 +159,44 @@ void MatterBridge::Init()
         LOG_MATTER("Schedule Identify monitor failed: %" CHIP_ERROR_FORMAT, identifyErr.Format());
     }
 
-    // Server 已初始化完毕，主动兜底开窗，不依赖可能已错过的 kServerReady
+    // Server 已初始化完毕：未入网且灯开时自动开窗
     CHIP_ERROR err =
         chip::DeviceLayer::PlatformMgr().ScheduleWork(EnsureCommissioningWindowOnBootHandler, 0);
     if (err != CHIP_NO_ERROR)
     {
         LOG_MATTER("[Commission] Schedule boot window ensure failed: %" CHIP_ERROR_FORMAT,
                    err.Format());
+    }
+}
+
+void MatterBridge::RegisterLightOnQuery(bool (*query)(void))
+{
+    m_lightOnQuery = query;
+}
+
+void MatterBridge::RegisterCommissioningUiCallback(CommissioningUiCallback callback)
+{
+    m_commissioningUiCallback = callback;
+}
+
+void MatterBridge::SetFirstCommissionPending(bool pending)
+{
+    m_firstCommissionPending = pending;
+}
+
+bool MatterBridge::IsFirstCommissionPending() const
+{
+    return m_firstCommissionPending;
+}
+
+void MatterBridge::RequestOpenCommissioningWindow(bool forceRestartTimer)
+{
+    const intptr_t arg = forceRestartTimer ? 1 : 0;
+    CHIP_ERROR err =
+        chip::DeviceLayer::PlatformMgr().ScheduleWork(OpenCommissioningWindowHandler, arg);
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("[Commission] Schedule open window failed: %" CHIP_ERROR_FORMAT, err.Format());
     }
 }
 
@@ -643,6 +703,13 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
 
         LOG_MATTER("Commissioning complete!");
 
+        // 首次配网 UI 结束（停白呼吸等）
+        if (self.m_commissioningUiCallback != nullptr)
+        {
+            self.m_commissioningUiCallback(false, true);
+        }
+        self.m_firstCommissionPending = false;
+
         // 运行配对成功特效
         self.m_matterDownlinkUploadPayload.element = MatterDataElement::kCommissioningDone;
         if (self.m_matterDownlinkCallback != nullptr)
@@ -656,23 +723,23 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
     case DeviceEventType::kCHIPoBLEConnectionEstablished:
     {
         LOG_MATTER("BLE connection established");
-        // 事件回调已持有 ChipStack 锁，勿再 Lock/Unlock
-        EnsureCommissioningWindowOpenRaw();
+        // 配网中途：不检查灯态，确保窗仍在听 PASE
+        (void)self.OpenCommissioningWindowRaw(false, false);
         break;
     }
 
-    // 服务器就绪 / DNS-SD 就绪：无 Fabric 时兜底打开配网窗（工厂重置重启后常见）
+    // 服务器就绪 / DNS-SD 就绪：未入网且灯开时自动开窗
     case DeviceEventType::kServerReady:
     case DeviceEventType::kDnssdInitialized:
     {
-        EnsureCommissioningWindowOpenRaw();
+        (void)self.OpenCommissioningWindowRaw(false, true);
         break;
     }
 
-    // 配网 Fail-Safe 超时：重新打开配网窗，便于再次扫码
+    // 配网 Fail-Safe 超时：重新打开配网窗，便于再次扫码（不检查灯态）
     case DeviceEventType::kFailSafeTimerExpired:
     {
-        EnsureCommissioningWindowOpenRaw();
+        (void)self.OpenCommissioningWindowRaw(true, false);
         break;
     }
 

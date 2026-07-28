@@ -85,11 +85,17 @@ void ButtonService::PostKeyEventRaw(KeyEventType event)
 void ButtonService::OnShortPress(uint8_t buttonIdx)
 {
     LOG_BTN("ShortPress btn=%u", buttonIdx);
-    if (buttonIdx != kLightSwitchIdx)
+    if (buttonIdx == kLightSwitchIdx)
     {
+        PostKeyEventRaw(KeyEventType::ShortPressCycleBrightness);
         return;
     }
-    PostKeyEventRaw(KeyEventType::ShortPressCycleBrightness);
+
+    if (buttonIdx == kSystemResetIdx)
+    {
+        // §3.1：短按系统键 → 未入网时打开/刷新配网
+        PostKeyEventRaw(KeyEventType::ShortPressOpenCommissioning);
+    }
 }
 
 /**

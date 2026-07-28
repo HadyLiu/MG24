@@ -243,9 +243,23 @@ void IndicatorEffectEngine::BeginRedBlinkSequenceStepRaw(uint8_t stepIndex)
     m_redSeqStepIndex             = stepIndex;
     m_redSeqRepeatLeft            = step.repeatCount;
     m_redDynamic.pAction          = (step.pAction != nullptr) ? step.pAction : LightEffectProcessor::GetBlink;
-    m_redDynamic.peakPwm          = (step.peakPwm > 0U) ? step.peakPwm : kIndicatorPwmMax;
-    m_redDynamic.cycleMs          = NormalizeBlinkCycleMsRaw(step.cycleMs);
-    m_redDynamic.elapsedMs        = 0U;
+
+    // peakPwm=0：默认闪烁用满幅；GetKeep 则表示保持熄灭
+    if (step.peakPwm > 0U)
+    {
+        m_redDynamic.peakPwm = step.peakPwm;
+    }
+    else if (step.pAction == LightEffectProcessor::GetKeep)
+    {
+        m_redDynamic.peakPwm = 0U;
+    }
+    else
+    {
+        m_redDynamic.peakPwm = kIndicatorPwmMax;
+    }
+
+    m_redDynamic.cycleMs   = NormalizeBlinkCycleMsRaw(step.cycleMs);
+    m_redDynamic.elapsedMs = 0U;
 }
 
 /**

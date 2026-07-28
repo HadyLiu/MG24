@@ -10,6 +10,7 @@
  * 冷启动 Init 回读并 Apply；极低电量强控关灯不落盘，避免覆盖用户记忆。
  */
 #include "LightDecisionCenter.h"
+#include "BlinkTimingSpec.h"
 #include "DebugLog.h"
 #include "LightDimmingSpec.h"
 #include "sl_sleeptimer.h"
@@ -123,9 +124,10 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
     SyncColorCycleIndexFromStoredRaw();
 
     // 工厂复位前写入的开机灯效标记：播完后清标记；灯光参数已是出厂默认
-    if (m_userTargetParam.reserved == kBootEffectFactoryResetDone)
+    if ((m_userTargetParam.reserved & kBootEffectMask) == kBootEffectFactoryResetDone)
     {
-        m_userTargetParam.reserved = kBootEffectNone;
+        m_userTargetParam.reserved =
+            static_cast<uint8_t>(m_userTargetParam.reserved & static_cast<uint8_t>(~kBootEffectMask));
         SafeSaveToStorage();
         m_sceneState = LightSceneState::NetConfiguring;
         StartFactoryResetDoneSequence();
@@ -207,6 +209,13 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         ApplyArbitratedResult();
         SafeSaveToStorage();
         ReportToMatterIfRegistered();
+        // §3.1：未入网时短按灯键打开/刷新配网倒计时
+        InvokeNetControlRaw(NetControlAction::OpenCommissioning);
+        break;
+    }
+    case KeyEventType::ShortPressOpenCommissioning: {
+        // §3.1：短按系统键手动打开/刷新配网
+        InvokeNetControlRaw(NetControlAction::OpenCommissioning);
         break;
     }
     case KeyEventType::DoublePressCycleColor: {
@@ -296,6 +305,12 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
 
     // 记忆灯光：用户目标（含关灯 brightness=0）落盘，供下次上电恢复
     SafeSaveToStorage();
+
+    // §3.1：未入网且灯被开启时自动进入配网（刷新倒计时）
+    if (brightness > 0U)
+    {
+        InvokeNetControlRaw(NetControlAction::OpenCommissioning);
+    }
 }
 
 /**
@@ -394,6 +409,8 @@ void LightDecisionCenter::ProcessMatterCommissioningComplete()
     m_isPairSuccessSequenceActive = true;
     m_sceneState                  = LightSceneState::Normal;
 
+    MarkFirstCommissionDone();
+
     if (m_pSequence != nullptr)
     {
         m_pSequence->StopSequence();
@@ -441,6 +458,24 @@ void LightDecisionCenter::ReportStateToMatter()
 uint8_t LightDecisionCenter::GetCurrentBrightness() const
 {
     return m_userTargetParam.brightness;
+}
+
+bool LightDecisionCenter::HasCompletedFirstCommission() const
+{
+    return (m_userTargetParam.reserved & kFirstCommissionDoneFlag) != 0U;
+}
+
+void LightDecisionCenter::MarkFirstCommissionDone()
+{
+    if (HasCompletedFirstCommission())
+    {
+        return;
+    }
+
+    m_userTargetParam.reserved =
+        static_cast<uint8_t>(m_userTargetParam.reserved | kFirstCommissionDoneFlag);
+    SafeSaveToStorage();
+    LOG_LIGHT_DC("First commission marked done");
 }
 
 /**
@@ -591,8 +626,7 @@ bool LightDecisionCenter::IsPersistValid(const PersistParam_T& param) const
 
 /**
  * @brief 主灯工厂重置预警时序（一次性，4 步）
- * @note Step0 熄灭 400ms → Step1 当前色快闪×3(800ms) → Step2 慢闪×1(2400ms)
- *       → Step3 熄灭 2s；完结后写 NVM 标记并触发工厂复位。
+ * @note PRD「注」：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭 2s；完结后工厂复位。
  */
 void LightDecisionCenter::StartNetConfigSequence()
 {
@@ -602,10 +636,26 @@ void LightDecisionCenter::StartNetConfigSequence()
     }
 
     LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
-        {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, 400U, 0U},
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kFactoryResetWarnBrightness, 800U, 2U},
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kFactoryResetWarnBrightness, 2400U, 0U},
-        {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, 2000U, 0U}};
+        {LightEffectProcessor::GetKeep,
+         {0U, 0U, 0U, 0U},
+         0U,
+         BlinkTimingSpec::kResetOffLeadMs,
+         0U},
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kFactoryResetWarnBrightness,
+         BlinkTimingSpec::kNormalBlinkCycleMs,
+         BlinkTimingSpec::kResetNormalBlinkExtraRepeats},
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kFactoryResetWarnBrightness,
+         BlinkTimingSpec::kSlowBlinkCycleMs,
+         0U},
+        {LightEffectProcessor::GetKeep,
+         {0U, 0U, 0U, 0U},
+         0U,
+         BlinkTimingSpec::kResetOffTailMs,
+         0U}};
     memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(kNetConfigSteps[2].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
@@ -699,8 +749,16 @@ void LightDecisionCenter::StartFactoryResetDoneSequence()
     }
 
     LightSequenceScheduler::SequenceStep doneSteps[] = {
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kFactoryResetWarnBrightness, 400U, 1U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {0U, 0U, 0U, 0U}, kDefaultBrightness, kTransitionMs, 0U}};
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kFactoryResetWarnBrightness,
+         BlinkTimingSpec::kFastBlinkCycleMs,
+         1U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+         {0U, 0U, 0U, 0U},
+         kDefaultBrightness,
+         kTransitionMs,
+         0U}};
     memcpy(doneSteps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(doneSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
@@ -742,7 +800,7 @@ void LightDecisionCenter::StartIdentifySequence()
     }
 
     LightSequenceScheduler::SequenceStep kIdentifySteps[] = {
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, 800U, 1U},
+        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, BlinkTimingSpec::kNormalBlinkCycleMs, 1U},
         {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
          {0U, 0U, 0U, 0U},
          m_userTargetParam.brightness,
@@ -792,7 +850,11 @@ void LightDecisionCenter::StartCommissioningSuccessSequence()
     static constexpr uint8_t kPairConfirmBrightness = 153U; /**< 255×60% */
 
     LightSequenceScheduler::SequenceStep successSteps[] = {
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, kPairConfirmBrightness, 400U, 1U},
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kPairConfirmBrightness,
+         BlinkTimingSpec::kFastBlinkCycleMs,
+         1U},
         {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {0U, 0U, 0U, 0U}, 255U, kTransitionMs, 0U}};
     memcpy(successSteps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(successSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));

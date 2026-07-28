@@ -84,6 +84,33 @@ class MatterBridge
     /* 抑制matter下发后回传 */
     bool IsMatterReportBypassEnabled();
 
+    /**
+     * @brief 请求打开基础配网窗（可从任意任务上下文调用）
+     * @param forceRestartTimer true=已开窗也先关再开，以重置 15 分钟倒计时
+     * @note 仅在 FabricCount==0 时生效；实际开窗在 Matter 线程执行。
+     */
+    void RequestOpenCommissioningWindow(bool forceRestartTimer);
+
+    /**
+     * @brief 注册「主灯是否开启」查询（供自动配网门禁）
+     * @param query 返回 true=亮度>0；nullptr=不检查灯态
+     */
+    void RegisterLightOnQuery(bool (*query)(void));
+
+    /**
+     * @brief 注册首次配网 UI 回调（窗打开 / 配网完成）
+     * @note entry 据此驱动系统 LED 白呼吸起停。
+     */
+    using CommissioningUiCallback = void (*)(bool windowOpenedForFirstPair, bool commissioningDone);
+    void RegisterCommissioningUiCallback(CommissioningUiCallback callback);
+
+    /**
+     * @brief 是否尚未成功配网过（首次出厂 / 工厂复位后）
+     * @note 由 entry 结合 LDC NVM 标志维护后回写；MatterBridge 只缓存供开窗回调使用。
+     */
+    void SetFirstCommissionPending(bool pending);
+    bool IsFirstCommissionPending() const;
+
   private:
     MatterBridge()  = default;
     ~MatterBridge() = default;
@@ -94,6 +121,10 @@ class MatterBridge
     MatterDownlinkCallback m_matterDownlinkCallback{nullptr};
     /* Matter 下发载荷 */
     MatterDownlinkUploadPayload m_matterDownlinkUploadPayload{};
+
+    bool (*m_lightOnQuery)(void){nullptr};
+    CommissioningUiCallback m_commissioningUiCallback{nullptr};
+    bool m_firstCommissionPending{true};
 
     void SetOn(bool isOn);
     void SetBrightness(uint8_t brightness);
@@ -146,4 +177,16 @@ class MatterBridge
     /* 工厂重置（擦除持久化数据后受控重启）路径 */
     static void DoFactoryResetHandler(intptr_t arg);
     static void FactoryResetRebootTimerCallback(chip::System::Layer* layer, void* appState);
+
+    /** @brief Matter 线程：按 arg 打开/刷新配网窗（arg=1 强制重启倒计时） */
+    static void OpenCommissioningWindowHandler(intptr_t arg);
+
+    /** @brief Matter 线程：开机自动配网（需灯开） */
+    static void EnsureCommissioningWindowOnBootHandler(intptr_t arg);
+
+    /**
+     * @brief 实际打开配网窗（须在 Matter 线程持锁调用）
+     * @return true=本次成功 OpenBasicCommissioningWindow
+     */
+    bool OpenCommissioningWindowRaw(bool forceRestartTimer, bool requireLightOn);
 };

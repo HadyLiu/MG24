@@ -129,6 +129,12 @@ class LightDecisionCenter
     /** @brief 回读当前目标亮度 0~255 */
     uint8_t GetCurrentBrightness() const;
 
+    /** @brief 是否已成功完成过至少一次配网（非首次出厂） */
+    bool HasCompletedFirstCommission() const;
+
+    /** @brief 标记已完成首次配网并落盘 */
+    void MarkFirstCommissionDone();
+
     /**
      * @brief 回读当前逻辑 WRGB
      * @param outChannels 输出缓冲
@@ -155,7 +161,7 @@ class LightDecisionCenter
         uint16_t        wrgb[4];
         uint8_t         brightness;
         LightEffectOpId op_id;
-        uint8_t         reserved; /**< 开机待播灯效：见 kBootEffect* */
+        uint8_t         reserved; /**< bit0..3 开机灯效；bit4=已完成首次配网 */
     } __attribute__((packed));
 
     /** @brief Normal 场景：单步灯效下发至调度器 */
@@ -176,7 +182,7 @@ class LightDecisionCenter
     /** @brief 校验 NVM 读回参数合法性 */
     bool IsPersistValid(const PersistParam_T& param) const;
 
-    /** @brief 主灯重置预警时序：熄灭400ms→快闪×3→慢闪×1→熄灭2s，完结后工厂复位 */
+    /** @brief 主灯重置预警时序：熄灭400ms→正常闪×3→慢闪×1→熄灭2s，完结后工厂复位 */
     void StartNetConfigSequence();
 
     /** @brief 重置预警中止：淡出熄灭 → 淡入恢复 m_userTargetParam */
@@ -273,8 +279,10 @@ class LightDecisionCenter
     PersistParam_T m_userTargetParam{}; /**< 用户目标亮度/WRGB/算子（NVM 镜像） */
 
     static constexpr uint8_t  kPersistMagic                   = 0x5AU;
+    static constexpr uint8_t  kBootEffectMask                 = 0x0FU;
     static constexpr uint8_t  kBootEffectNone                 = 0U;
-    static constexpr uint8_t  kBootEffectFactoryResetDone     = 1U; /**< reserved：复位后开机播快闪+淡入 */
+    static constexpr uint8_t  kBootEffectFactoryResetDone     = 1U; /**< reserved 低 4 位：复位后开机播快闪+淡入 */
+    static constexpr uint8_t  kFirstCommissionDoneFlag        = 0x10U; /**< reserved bit4：已非首次配网 */
     static constexpr uint16_t kTransitionMs                   = LightDimmingSpec::kFadeOutMs;
     static constexpr uint8_t  kDefaultBrightness              = 255U;
     static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65% */

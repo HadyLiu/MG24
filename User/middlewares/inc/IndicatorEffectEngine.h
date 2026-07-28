@@ -10,6 +10,7 @@
  */
 #pragma once
 
+#include "BlinkTimingSpec.h"
 #include <cstdint>
 
 /**
@@ -223,7 +224,7 @@ class IndicatorEffectEngine
     uint8_t               m_operatorBits{12U}; /**< 算子 Q12 右移位宽，来自 LightEffectProcessor */
 
     static constexpr uint16_t kDefaultBreathCycleMs    = 3200U;
-    static constexpr uint16_t kDefaultBlinkCycleMs     = 800U;
+    static constexpr uint16_t kDefaultBlinkCycleMs     = BlinkTimingSpec::kFastBlinkCycleMs;
     static constexpr uint16_t kMinBlinkCycleMs         = 200U;
     static constexpr uint16_t kMaxBlinkCycleMs         = 10000U;
     static constexpr uint16_t kIndicatorPwmMax         = 1023U;
