@@ -81,6 +81,16 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
         m_lastValidBrightness = m_userTargetParam.brightness;
     }
 
+    // 工厂复位前写入的开机灯效标记：播完后清标记；灯光参数已是出厂默认
+    if (m_userTargetParam.reserved == kBootEffectFactoryResetDone)
+    {
+        m_userTargetParam.reserved = kBootEffectNone;
+        SafeSaveToStorage();
+        m_sceneState = LightSceneState::NetConfiguring;
+        StartFactoryResetDoneSequence();
+        return;
+    }
+
     ApplyArbitratedResult();
 }
 
@@ -506,7 +516,7 @@ void LightDecisionCenter::LoadDefaults()
     m_userTargetParam.wrgb[1]    = 0U;
     m_userTargetParam.wrgb[2]    = 0U;
     m_userTargetParam.wrgb[3]    = 0U;
-    m_userTargetParam.reserved   = 0U;
+    m_userTargetParam.reserved   = kBootEffectNone;
     m_lastValidBrightness        = kDefaultBrightness;
     m_brightnessCycleIndex       = 0U;
     m_colorCycleIndex            = 0U;
@@ -529,32 +539,39 @@ bool LightDecisionCenter::IsPersistValid(const PersistParam_T& param) const
 }
 
 /**
- * @brief 主灯配网混合时序（一次性，5 步）
- * @note
- * Step0: 当前色 800ms×3 快闪；
- * Step1: 当前色 2400ms 慢闪×1；
- * Step2: 保持 2000ms；
- * Step3: W 通道 800ms×2 闪；
- * Step4: 暖白 Bezier 淡入 400ms。
- * Step0/1 的 WRGB 取自 m_userTargetParam（配网前用户色）。
+ * @brief 主灯工厂重置预警时序（一次性，4 步）
+ * @note Step0 熄灭 400ms → Step1 当前色快闪×3(800ms) → Step2 慢闪×1(2400ms)
+ *       → Step3 熄灭 2s；完结后写 NVM 标记并触发工厂复位。
  */
 void LightDecisionCenter::StartNetConfigSequence()
 {
-    LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, 800U, 2U},
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, 2400U, 0U},
-        {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 255U, 2000U, 0U},
-        {LightEffectProcessor::GetBlink, {1023U, 0U, 0U, 0U}, 255U, 800U, 1U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {1023U, 0U, 0U, 0U}, 255U, 400U, 0U}};
-    memcpy(kNetConfigSteps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
-    memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    if (m_pSequence == nullptr)
+    {
+        return;
+    }
 
-    m_pSequence->StartSequence(kNetConfigSteps, 5U, false);
+    LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
+        {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, 400U, 0U},
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kFactoryResetWarnBrightness,
+         800U,
+         2U},
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kFactoryResetWarnBrightness,
+         2400U,
+         0U},
+        {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, 2000U, 0U}};
+    memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    memcpy(kNetConfigSteps[2].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+
+    m_pSequence->RegisterSequenceFinishedCallback(OnFactoryResetWarnSequenceFinishedBridge);
+    m_pSequence->StartSequence(kNetConfigSteps, 4U, false);
 }
 
 /**
- * @brief 配网中止：主灯先淡出熄灭，再淡入恢复配网前亮度与颜色
- * @note 依赖 m_userTargetParam 在配网期间未被改写。
+ * @brief 重置预警中止：主灯先淡出熄灭，再淡入恢复预警前亮度与颜色
  */
 void LightDecisionCenter::StopNetConfigAndRestoreRaw()
 {
@@ -562,6 +579,8 @@ void LightDecisionCenter::StopNetConfigAndRestoreRaw()
     {
         return;
     }
+
+    m_pSequence->RegisterSequenceFinishedCallback(nullptr);
 
     LightSequenceScheduler::SequenceStep restoreSteps[] = {
         {LightEffectProcessor::GetBezier40BytesFactorFadeOut, {0U, 0U, 0U, 0U}, 0U, kTransitionMs, 0U},
@@ -573,6 +592,108 @@ void LightDecisionCenter::StopNetConfigAndRestoreRaw()
     memcpy(restoreSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
     m_pSequence->StartSequence(restoreSteps, 2U, false);
+}
+
+/**
+ * @brief 重置预警完结：落盘出厂默认 + 开机灯效标记，再触发工厂复位
+ * @note 仅任务上下文调用（NVM / Matter 不可在 sleeptimer 中断执行）。
+ */
+void LightDecisionCenter::OnFactoryResetWarnSequenceFinishedRaw()
+{
+    m_sceneState = LightSceneState::Normal;
+
+    LoadDefaults();
+    m_userTargetParam.reserved = kBootEffectFactoryResetDone;
+    // 必须同步落盘：随后工厂复位会重启，异步写可能来不及
+    SaveToStorageRaw();
+
+    LOG_LIGHT_DC("FactoryReset warn done, persist boot effect + reset");
+    InvokeNetControlRaw(NetControlAction::FactoryReset);
+}
+
+/**
+ * @brief FreeRTOS 定时器服务任务：预警完结落盘与工厂复位
+ */
+void LightDecisionCenter::DeferredFactoryResetWarnDispatch(void* param1, uint32_t param2)
+{
+    (void)param1;
+    (void)param2;
+    LightDecisionCenter::Instance().OnFactoryResetWarnSequenceFinishedRaw();
+}
+
+/**
+ * @brief 重置预警完结静态桥接（ISR 安全）
+ * @note 灯效时序完结回调来自 LightEffectEngine::UpdateTicks（sleeptimer 中断），
+ *       严禁在此直接 nvm3_write；须先转到 FreeRTOS 定时器服务任务。
+ */
+void LightDecisionCenter::OnFactoryResetWarnSequenceFinishedBridge()
+{
+    if (xPortIsInsideInterrupt() != pdFALSE)
+    {
+        BaseType_t higherPriorityTaskWoken = pdFALSE;
+        const BaseType_t posted =
+            xTimerPendFunctionCallFromISR(DeferredFactoryResetWarnDispatch,
+                                          nullptr,
+                                          0U,
+                                          &higherPriorityTaskWoken);
+        if (posted == pdPASS)
+        {
+            portYIELD_FROM_ISR(higherPriorityTaskWoken);
+        }
+        return;
+    }
+
+    LightDecisionCenter::Instance().OnFactoryResetWarnSequenceFinishedRaw();
+}
+
+/**
+ * @brief 工厂复位重启后灯效：出厂色 65% 快闪×2 → 淡入 100%
+ */
+void LightDecisionCenter::StartFactoryResetDoneSequence()
+{
+    if (m_pSequence == nullptr)
+    {
+        m_sceneState = LightSceneState::Normal;
+        ApplyArbitratedResult();
+        return;
+    }
+
+    LightSequenceScheduler::SequenceStep doneSteps[] = {
+        {LightEffectProcessor::GetBlink,
+         {0U, 0U, 0U, 0U},
+         kFactoryResetWarnBrightness,
+         400U,
+         1U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+         {0U, 0U, 0U, 0U},
+         kDefaultBrightness,
+         kTransitionMs,
+         0U}};
+    memcpy(doneSteps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    memcpy(doneSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+
+    m_pSequence->RegisterSequenceFinishedCallback(OnFactoryResetDoneSequenceFinishedBridge);
+    m_pSequence->StartSequence(doneSteps, 2U, false);
+}
+
+/**
+ * @brief 复位后开机灯效完结：场景回 Normal，亮度已是出厂默认并上报
+ */
+void LightDecisionCenter::OnFactoryResetDoneSequenceFinishedRaw()
+{
+    m_sceneState                 = LightSceneState::Normal;
+    m_userTargetParam.brightness = kDefaultBrightness;
+    m_lastValidBrightness        = kDefaultBrightness;
+    m_brightnessCycleIndex       = 0U;
+    ReportToMatterIfRegistered();
+}
+
+/**
+ * @brief 复位后开机灯效完结桥接
+ */
+void LightDecisionCenter::OnFactoryResetDoneSequenceFinishedBridge()
+{
+    LightDecisionCenter::Instance().OnFactoryResetDoneSequenceFinishedRaw();
 }
 
 /**

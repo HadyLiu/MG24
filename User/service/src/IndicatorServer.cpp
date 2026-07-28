@@ -23,7 +23,7 @@ static constexpr IndicatorEffectEngine::BlinkSequenceStep kBatteryLowWarnSteps[]
     {nullptr, 0U, 2400U, 0U},
 };
 
-/** @brief 配网重置红灯：800ms 周期闪 3 次 + 1200ms 慢闪 1 次 */
+/** @brief 配网重置红灯：与主灯同步，800ms 快闪×3 + 2400ms 慢闪×1 */
 static constexpr IndicatorEffectEngine::BlinkSequenceStep kNetConfigIndicatorSteps[] = {
     {nullptr, 0U, 800U, 2U},
     {nullptr, 0U, 2400U, 0U},

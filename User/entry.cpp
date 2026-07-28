@@ -171,23 +171,26 @@ void button_Init(void)
 
     // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
-        if (event == KeyEventType::LongPressClearNet)
+        if (event == KeyEventType::LongPressClearNetLighting)
         {
-            // 清理配网信息：转任务上下文执行，避免在中断里调用 Matter 栈失败
-            LOG_LIGHT_DC("KeyEvent: LongPressClearNet");
-            // 调用执行函数 重置网络
-            MatterBridge::Instance().MatterExecuteCmd(MatterExecuteElement::kClearNetwork);
-        }
-        else if (event == KeyEventType::LongPressClearNetLighting)
-        {
+            // 约 8s：指示灯红闪 + 主灯预警时序；时序完结后由 LDC 触发工厂复位
             IndicatorServer::Instance().OnNetConfigIndicatorStart();
         }
         else if (event == KeyEventType::LongPressStopNet)
         {
             IndicatorServer::Instance().OnNetConfigIndicatorStop();
         }
+        // LongPressClearNet(~13s)：不再在此直接工厂复位，避免与预警时序竞态
 
         LightDecisionCenter::Instance().ProcessKeyEvent(event);
+    });
+
+    // 预警时序完结 → 工厂重置
+    LightDecisionCenter::Instance().RegisterNetControlCallback([](NetControlAction action) {
+        if (action == NetControlAction::FactoryReset)
+        {
+            MatterBridge::Instance().MatterExecuteCmd(MatterExecuteElement::kClearNetwork);
+        }
     });
 }
 

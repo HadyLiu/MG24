@@ -111,7 +111,12 @@ class MatterBridge
     void MatterUploadXy(uint16_t x, uint16_t y);
 
     void RegisterDeviceEventListener(void);
-    void TriggerNetworkResetWithoutReboot(void);
+
+    /**
+     * @brief 触发工厂重置：擦除 Matter/Thread/KVS 后受控重启，重启后进入可配网态
+     * @note 可从 sleeptimer 中断或任务上下文调用；中断路径经 FreeRTOS 定时器服务中转。
+     */
+    void TriggerFactoryReset(void);
 
     /** @brief 启动 IdentifyTime 边沿轮询（不抢官方 emberAfIdentify 回调） */
     void StartIdentifyMonitorRaw();
@@ -127,17 +132,10 @@ class MatterBridge
     static void OnMatterDeviceEvent(const chip::DeviceLayer::ChipDeviceEvent* event, intptr_t arg);
 
     /**
-     * @brief FreeRTOS 定时器服务任务上下文回调：把清网请求安全投递到 Matter 主线程
-     * @note  签名匹配 FreeRTOS PendedFunction_t，供 xTimerPendFunctionCall(FromISR) 使用，
-     *        规避在 sleeptimer 中断里直接操作 CHIP 事件队列导致的投递失败。
+     * @brief FreeRTOS 定时器服务任务上下文回调：把工厂重置请求安全投递到 Matter 主线程
+     * @note  签名匹配 FreeRTOS PendedFunction_t，供 xTimerPendFunctionCall(FromISR) 使用。
      */
     static void DeferredNetworkResetDispatch(void* param1, uint32_t param2);
-
-    static void DoSoftNetworkResetHandler(intptr_t arg);
-    static void FinishSoftNetworkResetHandler(intptr_t arg);
-    static void FinishSoftNetworkResetTimerCallback(chip::System::Layer* layer, void* appState);
-    static void OpenCommissioningWindowHandler(intptr_t arg);
-    static void OpenCommissioningWindowTimerCallback(chip::System::Layer* layer, void* appState);
 
     /** @brief Identify 轮询定时器回调 */
     static void IdentifyMonitorTimerCallback(chip::System::Layer* layer, void* appState);

@@ -19,9 +19,6 @@
 #include <crypto/OperationalKeystore.h>
 #include <lib/core/DataModelTypes.h>
 
-#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
-#include <platform/silabs/ConfigurationManagerImpl.h>
-#endif
 #include <platform/silabs/KeyValueStoreManagerImpl.h>
 
 using namespace chip;
@@ -33,32 +30,13 @@ bool MatterBridge::g_bypass_zcl_callback = false;
  * @brief 配网完成灯效一次性锁存
  * @note Matter 栈同一次配网会在"会话建立"与"运维完成"两个阶段先后投递
  *       kCommissioningComplete，两者可相隔 10s 以上，时间窗去重无法覆盖。
- *       改用锁存：本次配网只放一次灯效，直到下一次清网(软重置)才复位。
+ *       改用锁存：本次配网只放一次灯效；工厂重置重启后静态变量自然清零。
  */
 static bool s_commissioningDoneEffectLatched = false;
 
-/** @brief 软重置进行中标志，防止并发重置导致配网状态机错乱 */
-static bool s_networkResetInFlight = false;
-
-/** @brief 阶段 2 是否已完成清网（避免打开配网窗重试时重复擦除） */
-static bool s_networkDataCleared = false;
-
-/** @brief 等待 Fail-Safe 释放后清网并打开配网窗的重试计数 */
-static uint8_t s_openCommissioningWindowRetryCount = 0U;
-static constexpr uint8_t  kMaxOpenCommissioningWindowRetries = 50U;
-static constexpr uint32_t kOpenCommissioningWindowRetryMs    = 100U;
-static constexpr uint32_t kSoftResetPhase2DelayMs            = 300U;
-
-/**
- * @brief 清网与"打开配网窗"之间的间隔
- * @note 把两件重活拆到不同的事件循环调度周期，避免单次 dispatch 过长
- *       （日志曾出现 "Long dispatch time: 194 ms"）扰乱 BLE / Thread 时序。
- */
-static constexpr uint32_t kSoftResetOpenWindowDelayMs = 120U;
-
 /**
  * @brief 工厂重置前的缓冲延时：给指示灯展示与日志刷出留时间，随后擦除并重启
- * @note 重启后设备为未配网态，SDK 自动开启 BLE + 可配网广播，可直接扫码重配。
+ * @note 重启后设备为未配网态，开机兜底打开 BLE + 可配网广播，可直接扫码重配。
  */
 static constexpr uint32_t kFactoryResetRebootDelayMs = 500U;
 
@@ -212,6 +190,7 @@ void MatterBridge::MatterExecuteCmd(MatterExecuteElement executeElement)
     switch (executeElement)
     {
     case MatterExecuteElement::kClearNetwork:
+        // 长按清网 → 工厂重置（擦除持久化数据后重启，再进入可配网态）
         MatterClearNetwork();
         break;
     default:
@@ -267,60 +246,11 @@ void MatterBridge::SetXy(uint16_t x, uint16_t y)
 // ####################################################
 
 /**
- * @brief 清除会话 / Fabric / 残留运维密钥 / Thread 数据（不重启）
- * @note 必须在 Fail-Safe 完全释放后调用，避免与异步清理竞态。
- */
-static void ClearNetworkPersistentDataRaw()
-{
-    chip::Server& server = chip::Server::GetInstance();
-
-    // 先清会话，避免旧 CASE/PASE 占用资源
-    server.GetSecureSessionManager().ExpireAllSecureSessions();
-    server.GetSecureSessionManager().ExpireAllPASESessions();
-
-    for (const auto& fabricInfo : server.GetFabricTable())
-    {
-        if (fabricInfo.GetFabricIndex() != chip::kUndefinedFabricIndex)
-        {
-            LOG_MATTER("[SoftReset] Clearing Fabric Index: 0x%X", fabricInfo.GetFabricIndex());
-        }
-    }
-
-    // 始终调用：同时 RevertPendingFabricData，清理未提交的配网半成品
-    server.GetFabricTable().DeleteAllFabrics();
-    LOG_MATTER("[SoftReset] Matter Fabrics / pending data cleared");
-
-    // 兜底清理残留 PSA 运维密钥（避免 CSR 时出现 PSA key recycled）
-    chip::Crypto::OperationalKeystore* pKeystore =
-        const_cast<chip::Crypto::OperationalKeystore*>(server.GetFabricTable().GetOperationalKeystore());
-    if (pKeystore != nullptr)
-    {
-        for (chip::FabricIndex fabricIndex = chip::kMinValidFabricIndex; fabricIndex <= CHIP_CONFIG_MAX_FABRICS; ++fabricIndex)
-        {
-            (void)pKeystore->RemoveOpKeypairForFabric(fabricIndex);
-        }
-        pKeystore->RevertPendingKeypair();
-        LOG_MATTER("[SoftReset] Operational keystore slots cleaned");
-    }
-
-#if CHIP_DEVICE_CONFIG_ENABLE_THREAD
-    chip::DeviceLayer::ConfigurationManagerImpl::GetDefaultInstance().ClearThreadStack();
-    LOG_MATTER("[SoftReset] Thread persistent data cleared");
-#endif
-
-    chip::DeviceLayer::PersistedStorage::KeyValueStoreMgrImpl().ForceKeyMapSave();
-
-    // 注意：DNS-SD/BLE 的重新广播统一交给随后的 OpenBasicCommissioningWindow 处理，
-    // 这里不再重复调用 DnssdServer::StartServer()，避免 "Updating services" 重复churn
-    // 以及与配网窗打开时的广播产生竞态。
-}
-
-/**
- * @brief 投递在线软重置到 Matter 主线程
+ * @brief 投递工厂重置到 Matter 主线程（擦除后重启，再进入可配网态）
  */
 void MatterBridge::MatterClearNetwork()
 {
-    TriggerNetworkResetWithoutReboot();
+    TriggerFactoryReset();
 }
 
 /**
@@ -768,174 +698,6 @@ void MatterBridge::RegisterDeviceEventListener(void)
 }
 
 /**
- * @brief 重置网络的外部接口函数，供按键长按回调等调用
- * @note 此函数是线程安全的，可以在任意上下文（如 FreeRTOS 其他任务）中调用
- * ，判断Fabric是否存在，避免空转崩溃重启
- * @note 该函数会将重置请求投递到 Matter
- * 的主事件循环线程中异步执行，确保线程安全
- * @note 配网失败的防御机制：在核心重置函数中增加了对 Fail-Safe
- * 状态的强制解除和配网状态机的重置，确保即使处于配网失败的中间态也能安全退出，避免死锁和重启
- */
-/**
- * @brief 阶段 2：Fail-Safe 完全释放后仅清网，随后把"打开配网窗"拆到下一调度周期
- * @note OpenBasicCommissioningWindow 要求 IsFailSafeFullyDisarmed()==true。
- *       清网与打开配网窗分两次 dispatch，避免单次事件循环占用过久（曾出现
- *       "Long dispatch time: 194 ms"）导致 BLE/Thread 时序被扰乱、手机连上却无法 PASE。
- */
-void MatterBridge::FinishSoftNetworkResetHandler(intptr_t arg)
-{
-    (void)arg;
-
-    PlatformMgr().LockChipStack();
-
-    chip::app::FailSafeContext& failSafeContext = chip::Server::GetInstance().GetFailSafeContext();
-    if (!failSafeContext.IsFailSafeFullyDisarmed())
-    {
-        PlatformMgr().UnlockChipStack();
-
-        s_openCommissioningWindowRetryCount++;
-        if (s_openCommissioningWindowRetryCount < kMaxOpenCommissioningWindowRetries)
-        {
-            DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(kOpenCommissioningWindowRetryMs),
-                                                  FinishSoftNetworkResetTimerCallback, nullptr);
-            return;
-        }
-
-        LOG_MATTER("[SoftReset] Fail-Safe disarm timeout, continue network clear");
-        PlatformMgr().LockChipStack();
-    }
-
-    // Fail-Safe 已释放（或超时兜底）：只清网一次
-    if (!s_networkDataCleared)
-    {
-        ClearNetworkPersistentDataRaw();
-        s_networkDataCleared = true;
-    }
-
-    PlatformMgr().UnlockChipStack();
-
-    // 清网完成后释放事件循环，隔一小段时间再单独打开配网窗（重置重试计数）
-    s_openCommissioningWindowRetryCount = 0U;
-    DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(kSoftResetOpenWindowDelayMs),
-                                          OpenCommissioningWindowTimerCallback, nullptr);
-}
-
-/**
- * @brief 阶段 2 延迟重试定时器回调
- */
-void MatterBridge::FinishSoftNetworkResetTimerCallback(chip::System::Layer* layer, void* appState)
-{
-    (void)layer;
-    (void)appState;
-    PlatformMgr().ScheduleWork(FinishSoftNetworkResetHandler, 0);
-}
-
-/**
- * @brief 阶段 3：清网后单独打开基础配网窗口，并显式恢复 BLE 快速广播
- * @note 与清网分开 dispatch，缩短单次事件循环占用；打开失败按节奏重试。
- *       BLE/DNS-SD 的广播由 OpenBasicCommissioningWindow 统一恢复。
- */
-void MatterBridge::OpenCommissioningWindowHandler(intptr_t arg)
-{
-    (void)arg;
-
-    PlatformMgr().LockChipStack();
-
-    const CHIP_ERROR openErr =
-        chip::Server::GetInstance().GetCommissioningWindowManager().OpenBasicCommissioningWindow(
-            System::Clock::Seconds32(CHIP_DEVICE_CONFIG_DISCOVERY_TIMEOUT_SECS),
-            chip::CommissioningWindowAdvertisement::kAllSupported);
-    if (openErr != CHIP_NO_ERROR)
-    {
-        PlatformMgr().UnlockChipStack();
-
-        s_openCommissioningWindowRetryCount++;
-        if (s_openCommissioningWindowRetryCount < kMaxOpenCommissioningWindowRetries)
-        {
-            LOG_MATTER("[SoftReset] OpenBasicCommissioningWindow failed: %" CHIP_ERROR_FORMAT ", retrying",
-                       openErr.Format());
-            DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(kOpenCommissioningWindowRetryMs),
-                                                  OpenCommissioningWindowTimerCallback, nullptr);
-            return;
-        }
-
-        LOG_MATTER("[SoftReset] OpenBasicCommissioningWindow failed permanently: %" CHIP_ERROR_FORMAT, openErr.Format());
-        s_networkResetInFlight = false;
-        return;
-    }
-
-    PlatformMgr().UnlockChipStack();
-
-    s_networkResetInFlight              = false;
-    s_openCommissioningWindowRetryCount = 0U;
-
-    LOG_MATTER("[SoftReset] Basic commissioning window opened, ready to pair");
-    LOG_MATTER("=============================================");
-    LOG_MATTER("[SoftReset] Online network reset done (no reboot)");
-    LOG_MATTER("=============================================");
-}
-
-/**
- * @brief 阶段 3 延迟 / 重试定时器回调
- */
-void MatterBridge::OpenCommissioningWindowTimerCallback(chip::System::Layer* layer, void* appState)
-{
-    (void)layer;
-    (void)appState;
-    PlatformMgr().ScheduleWork(OpenCommissioningWindowHandler, 0);
-}
-
-/**
- * @brief 阶段 1：关闭配网窗 / 断 BLE / 解 Fail-Safe，再延迟进入清网阶段
- */
-void MatterBridge::DoSoftNetworkResetHandler(intptr_t arg)
-{
-    (void)arg;
-
-    if (s_networkResetInFlight)
-    {
-        LOG_MATTER("[SoftReset] Reset in progress, ignore duplicate request");
-        return;
-    }
-    s_networkResetInFlight              = true;
-    s_networkDataCleared                = false;
-    s_openCommissioningWindowRetryCount = 0U;
-    s_commissioningDoneEffectLatched    = false;
-
-    LOG_MATTER("=============================================");
-    LOG_MATTER("[SoftReset] Starting online network clear (no reboot)...");
-    LOG_MATTER("=============================================");
-
-    PlatformMgr().LockChipStack();
-
-    chip::Server& server = chip::Server::GetInstance();
-
-    // 1. 关闭配网窗并切断残留会话 / BLE，避免旧连接拖慢下次配网
-    server.GetCommissioningWindowManager().CloseCommissioningWindow();
-    server.GetSecureSessionManager().ExpireAllSecureSessions();
-    server.GetSecureSessionManager().ExpireAllPASESessions();
-    if (server.GetBleLayerObject() != nullptr)
-    {
-        server.GetBleLayerObject()->CloseAllBleConnections();
-    }
-    ConnectivityMgr().SetBLEAdvertisingEnabled(false);
-
-    // 2. 若 Fail-Safe 已武装，触发异步清理；清 Fabric 放到阶段 2
-    chip::app::FailSafeContext& failSafeContext = server.GetFailSafeContext();
-    if (failSafeContext.IsFailSafeArmed())
-    {
-        LOG_MATTER("[SoftReset] Force Fail-Safe timer expiry");
-        failSafeContext.ForceFailSafeTimerExpiry();
-    }
-
-    PlatformMgr().UnlockChipStack();
-
-    // 3. 稍等 BLE 断开与 Fail-Safe 异步清理，再进入阶段 2
-    DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(kSoftResetPhase2DelayMs),
-                                          FinishSoftNetworkResetTimerCallback, nullptr);
-}
-
-/**
  * @brief 工厂重置阶段 1：刷 KVS 映射并延时缓冲，随后擦除并重启
  * @note  延时用于让"清网中"指示灯展示；ForceKeyMapSave 避免 Silabs 平台
  *        复位前 nvm3 shadow key 泄漏导致重启后 KVS 异常。
@@ -958,10 +720,11 @@ void MatterBridge::DoFactoryResetHandler(intptr_t arg)
 }
 
 /**
- * @brief 工厂重置阶段 2：Silabs 系统工厂复位（整段擦除 NVM3/KVS/Thread 后重启）
+ * @brief 工厂重置阶段 2：Silabs 系统工厂复位（擦除 Matter Config/KVS/Thread 后重启）
  * @note 等价于 BaseApplication::ScheduleFactoryReset()（该类方法为 protected，无法直接调用）。
  *       复位前先清 PSA 运维密钥：该密钥在 Opaque PSA 区，不在 NVM3 KVS 内，
  *       仅 ErasePartition 清不掉，会导致下次配网出现 "PSA key recycled" 并拖慢 CSR。
+ *       用户域 NVM（如灯光 0xA001）不在 Matter Config 擦除范围，开机灯效标记可跨重启。
  */
 void MatterBridge::FactoryResetRebootTimerCallback(chip::System::Layer* layer, void* appState)
 {
@@ -1006,27 +769,26 @@ void MatterBridge::DeferredNetworkResetDispatch(void* param1, uint32_t param2)
     (void)param1;
     (void)param2;
 
-    // 系统工厂复位：BaseApplication::ScheduleFactoryReset → DoFactoryReset → 重启
+    // 系统工厂复位：擦除 NVM/Thread/PSA 运维密钥后重启，开机再开配网窗
     CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(DoFactoryResetHandler, 0);
     if (err != CHIP_NO_ERROR)
     {
-        LOG_MATTER("Schedule reset task failed: %" CHIP_ERROR_FORMAT, err.Format());
+        LOG_MATTER("[FactoryReset] ScheduleWork failed: %" CHIP_ERROR_FORMAT, err.Format());
     }
     else
     {
-        LOG_MATTER("Reset request posted to Matter thread");
+        LOG_MATTER("[FactoryReset] Request posted to Matter thread");
     }
 }
 
 /**
- * @brief 供外部（如按键长按回调）调用的接口函数
+ * @brief 投递工厂重置请求到 Matter 主线程（可从任意上下文调用，含 sleeptimer 中断）
  * @note 按键状态机跑在 sl_sleeptimer 中断上下文，严禁在中断里直接操作 CHIP
  *       事件队列（会出现 "Failed to post event to CHIP Platform event queue"，
- *       导致清网请求被静默丢弃、无法重新配网）。
- *       因此：中断上下文先经 FreeRTOS 定时器服务任务中转到任务上下文，再
- *       ScheduleWork 到 Matter 主线程；任务上下文则直接投递。
+ *       导致清网请求被静默丢弃）。因此：中断上下文先经 FreeRTOS 定时器服务
+ *       任务中转，再 ScheduleWork 到 Matter 主线程；任务上下文则直接投递。
  */
-void MatterBridge::TriggerNetworkResetWithoutReboot(void)
+void MatterBridge::TriggerFactoryReset(void)
 {
     if (xPortIsInsideInterrupt() != pdFALSE)
     {

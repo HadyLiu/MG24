@@ -154,7 +154,7 @@ class LightDecisionCenter
         uint16_t        wrgb[4];
         uint8_t         brightness;
         LightEffectOpId op_id;
-        uint8_t         reserved;
+        uint8_t         reserved; /**< 开机待播灯效：见 kBootEffect* */
     } __attribute__((packed));
 
     /** @brief Normal 场景：单步灯效下发至调度器 */
@@ -175,11 +175,29 @@ class LightDecisionCenter
     /** @brief 校验 NVM 读回参数合法性 */
     bool IsPersistValid(const PersistParam_T& param) const;
 
-    /** @brief 主灯配网混合时序（快闪→慢闪→保持→W 闪→淡入） */
+    /** @brief 主灯重置预警时序：熄灭400ms→快闪×3→慢闪×1→熄灭2s，完结后工厂复位 */
     void StartNetConfigSequence();
 
-    /** @brief 配网中止：淡出熄灭 → 淡入恢复 m_userTargetParam */
+    /** @brief 重置预警中止：淡出熄灭 → 淡入恢复 m_userTargetParam */
     void StopNetConfigAndRestoreRaw();
+
+    /** @brief 重置预警时序完结：写入开机灯效标记 + 触发工厂复位 */
+    void OnFactoryResetWarnSequenceFinishedRaw();
+
+    /** @brief 重置预警完结：ISR 安全中转（时序回调在 sleeptimer 中断） */
+    static void OnFactoryResetWarnSequenceFinishedBridge();
+
+    /** @brief FreeRTOS 定时器服务任务：执行预警完结落盘与工厂复位 */
+    static void DeferredFactoryResetWarnDispatch(void* param1, uint32_t param2);
+
+    /** @brief 工厂复位重启后灯效：快闪×2 → 淡入出厂默认 */
+    void StartFactoryResetDoneSequence();
+
+    /** @brief 复位后开机灯效完结：场景回到 Normal */
+    void OnFactoryResetDoneSequenceFinishedRaw();
+
+    /** @brief 复位后开机灯效完结桥接 */
+    static void OnFactoryResetDoneSequenceFinishedBridge();
 
     /** @brief Matter 识别时序：调色板色 100% 闪×2 → 淡入用户色（一次性） */
     void StartIdentifySequence();
@@ -247,11 +265,14 @@ class LightDecisionCenter
 
     PersistParam_T m_userTargetParam{}; /**< 用户目标亮度/WRGB/算子（NVM 镜像） */
 
-    static constexpr uint8_t  kPersistMagic                = 0x5AU;
-    static constexpr uint16_t kTransitionMs                = 400U;
-    static constexpr uint8_t  kDefaultBrightness           = 255U;
-    static constexpr uint32_t kPairSuccessEffectDebounceMs = 3500U;           /**< 配对成功灯效去重窗口 */
-    static constexpr uint8_t  kBrightnessLevels[]          = {255U, 91U, 0U}; /**< 短按：100%→35%→0% */
+    static constexpr uint8_t  kPersistMagic                   = 0x5AU;
+    static constexpr uint8_t  kBootEffectNone                 = 0U;
+    static constexpr uint8_t  kBootEffectFactoryResetDone     = 1U; /**< reserved：复位后开机播快闪+淡入 */
+    static constexpr uint16_t kTransitionMs                   = 400U;
+    static constexpr uint8_t  kDefaultBrightness              = 255U;
+    static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65% */
+    static constexpr uint32_t kPairSuccessEffectDebounceMs    = 3500U;
+    static constexpr uint8_t  kBrightnessLevels[]             = {255U, 91U, 0U};
 
     static const EffectRenderAction kActionTable[static_cast<uint8_t>(LightEffectOpId::MaxOperators)];
 };

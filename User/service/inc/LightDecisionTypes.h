@@ -32,9 +32,9 @@ enum class KeyEventType : uint8_t
 {
     ShortPressCycleBrightness = 0, /**< 短按：亮度 255→128→0 循环 */
     DoublePressCycleColor,         /**< 双击：WRGB 调色板循环 */
-    LongPressClearNetLighting,     /**< 长按开始：配网灯效开启 */
-    LongPressClearNet,             /**< 长按开始：清除配网 + 配网灯效 */
-    LongPressStopNet               /**< 长按松开：停止配网 + 恢复默认 */
+    LongPressClearNetLighting,     /**< 长按约 8s：主灯/指示灯进入重置预警时序 */
+    LongPressClearNet,             /**< 长按约 13s：保留事件（复位由预警时序完结触发） */
+    LongPressStopNet               /**< 长按≥8s 后松开：取消重置预警（时序未完结时） */
 };
 
 /**
@@ -43,8 +43,8 @@ enum class KeyEventType : uint8_t
  */
 enum class NetControlAction : uint8_t
 {
-    ClearAndOpen = 0, /**< 软复位网络并打开配网窗 */
-    Close             /**< 关闭配网窗 */
+    FactoryReset = 0, /**< 工厂重置：擦除后重启，再进入可配网态 */
+    Close             /**< 关闭配网窗（预留） */
 };
 
 /**
