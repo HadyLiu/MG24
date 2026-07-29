@@ -43,8 +43,8 @@ class LightSequenceScheduler
     /* 启动单步灯效（不涉及链式时序） */
     void StartSingleEffect(LightEffectEngine::EffectRenderAction pAction, const uint16_t* targetChannels,
                            uint8_t brightness, uint16_t durationMs);
-    /* 强行终止整条时序链并让硬件输出归零 */
-    void StopSequence();
+    /* 终止时序链；clearHardwareOutput=false 时保留当前 PWM（便于后续渐变接续） */
+    void StopSequence(bool clearHardwareOutput = true);
 
     /** @brief 一次性时序链自然结束时的回调（仅非循环链触发一次后自动清除） */
     using SequenceFinishedCallback = void (*)(void);

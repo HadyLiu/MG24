@@ -97,14 +97,14 @@ void LightSequenceScheduler::StartSingleEffect(LightEffectEngine::EffectRenderAc
 
 /**
  * @brief 停止灯效时序链
+ * @param clearHardwareOutput true=硬件输出清零；false=保留当前 PWM
  */
-void LightSequenceScheduler::StopSequence()
+void LightSequenceScheduler::StopSequence(bool clearHardwareOutput)
 {
     m_isSequenceActive  = false;
     m_isLoopForever     = false;
     m_finishedCallback  = nullptr;
-    // 直接通知底层算子彻底挂起
-    LightEffectEngine::Instance().StopCurrentEffect(true);
+    LightEffectEngine::Instance().StopCurrentEffect(clearHardwareOutput);
 }
 
 /**

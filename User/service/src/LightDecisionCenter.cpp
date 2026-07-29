@@ -433,7 +433,7 @@ void LightDecisionCenter::ProcessMatterCommissioningComplete()
 
 /**
  * @brief Matter 识别控制
- * @param active true=进入识别时序；false=停止时序并恢复用户目标
+ * @param active true=进入 #5 持续闪；false=停止并渐变恢复用户目标
  */
 void LightDecisionCenter::ProcessMatterIdentify(bool active)
 {
@@ -449,10 +449,7 @@ void LightDecisionCenter::ProcessMatterIdentify(bool active)
     }
     else if (m_sceneState == LightSceneState::MatterIdentifying)
     {
-        m_sceneState                  = LightSceneState::Normal;
-        m_isPairSuccessSequenceActive = false;
-        m_pSequence->StopSequence();
-        ApplyArbitratedResult();
+        RestoreAfterIdentifyRaw();
     }
 }
 
@@ -823,10 +820,7 @@ void LightDecisionCenter::OnFactoryResetDoneSequenceFinishedBridge()
 }
 
 /**
- * @brief Matter 识别时序（一次性）
- * @note
- * Step0: kColorPalette[2]、亮度 100%、周期 800ms 闪 2 次（repeatCount=1）；
- * Step1: Bezier 淡入恢复 m_userTargetParam 亮度与颜色。
+ * @brief Matter 识别时序：默认色 #5、100% 亮度、正常闪，循环至 Identify 结束
  */
 void LightDecisionCenter::StartIdentifySequence()
 {
@@ -836,36 +830,49 @@ void LightDecisionCenter::StartIdentifySequence()
     }
 
     LightSequenceScheduler::SequenceStep kIdentifySteps[] = {
-        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, 255U, BlinkTimingSpec::kNormalBlinkCycleMs, 1U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+        {LightEffectProcessor::GetBlink,
          {0U, 0U, 0U, 0U},
-         m_userTargetParam.brightness,
-         kTransitionMs,
+         kDefaultBrightness,
+         BlinkTimingSpec::kNormalBlinkCycleMs,
          0U}};
-    memcpy(kIdentifySteps[0].targetChannels, kColorPalette[2], sizeof(kColorPalette[2]));
-    memcpy(kIdentifySteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    memcpy(kIdentifySteps[0].targetChannels, kColorPalette[kDefaultColorIndex],
+           sizeof(kColorPalette[kDefaultColorIndex]));
 
-    m_pSequence->RegisterSequenceFinishedCallback(OnIdentifySequenceFinishedBridge);
-    m_pSequence->StartSequence(kIdentifySteps, 2U, false);
+    // 循环闪烁直至 ProcessMatterIdentify(false) 停止
+    m_pSequence->RegisterSequenceFinishedCallback(nullptr);
+    m_pSequence->StartSequence(kIdentifySteps, 1U, true);
 }
 
 /**
- * @brief 识别时序自然完结：退出 MatterIdentifying
+ * @brief 识别结束：保留当前 PWM，渐变回 m_userTargetParam（亮度/颜色）
  */
-void LightDecisionCenter::OnIdentifySequenceFinishedRaw()
+void LightDecisionCenter::RestoreAfterIdentifyRaw()
 {
-    if (m_sceneState == LightSceneState::MatterIdentifying)
+    m_sceneState                  = LightSceneState::Normal;
+    m_isPairSuccessSequenceActive = false;
+
+    if (m_pSequence == nullptr)
     {
-        m_sceneState = LightSceneState::Normal;
+        return;
     }
-}
 
-/**
- * @brief 识别完结静态桥接
- */
-void LightDecisionCenter::OnIdentifySequenceFinishedBridge()
-{
-    LightDecisionCenter::Instance().OnIdentifySequenceFinishedRaw();
+    // 不清零硬件，避免识别结束瞬间灭灯再淡入
+    m_pSequence->StopSequence(false);
+
+    const LightEffectOpId savedOpId = m_userTargetParam.op_id;
+    if (m_userTargetParam.brightness > 0U)
+    {
+        m_userTargetParam.op_id = LightEffectOpId::Bezier40FadeIn;
+        m_TransitionMs          = LightDimmingSpec::kFadeInMs;
+    }
+    else
+    {
+        m_userTargetParam.op_id = LightEffectOpId::Bezier40FadeOut;
+        m_TransitionMs          = LightDimmingSpec::kFadeOutMs;
+    }
+
+    ApplyArbitratedResult();
+    m_userTargetParam.op_id = savedOpId;
 }
 
 /**
