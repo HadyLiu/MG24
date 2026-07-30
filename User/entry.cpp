@@ -39,6 +39,7 @@
 #include "AppEvent.h"
 #include "AppTask.h"
 
+#include "LowPowerCoordinator.h"
 #include "PowerServer.h"
 
 static LightNvmStorage s_lightNvmStorage;
@@ -74,6 +75,13 @@ void entry_Init(void)
     button_Init();
 
     Matter_Init();
+
+    /* 低功耗协调：架构兼容，默认不进入真休眠（见 LowPowerConfig） */
+    LowPowerCoordinator::Instance().Init();
+    LowPowerCoordinator::Instance().OnMainLightActivity(
+        LightEffectEngine::Instance().IsAnyChannelActive());
+    LowPowerCoordinator::Instance().OnUsbPowerActivity(
+        BspPowerMonitor::Instance().GetUsbStatus() == UsbConnectionStatusEnum::UsbConnected);
 }
 
 /**
@@ -93,16 +101,25 @@ void power_Init(void)
 void power_Wire(void)
 {
     // 主灯变化输出回调
-    LightEffectEngine::Instance().RegisterOutputActivityCallback(
-        [](bool isActive) { PowerServer::Instance().OnLightOutputChanged(isActive); });
+    LightEffectEngine::Instance().RegisterOutputActivityCallback([](bool isActive) {
+        PowerServer::Instance().OnLightOutputChanged(isActive);
+        LowPowerCoordinator::Instance().OnMainLightActivity(isActive);
+    });
 
     // 电池电压等级变化回调
     PowerServer::Instance().RegisterBatteryVoltHandler(
         [](BatteryVoltLevel level) { LightDecisionCenter::Instance().ProcessBatteryVoltLevel(level); });
 
-    // 充电状态变化 → IndicatorServer 仲裁指示灯
-    PowerServer::Instance().RegisterChargeStatusHandler(
-        [](const BatteryChargeSnapshot& snapshot) { IndicatorServer::Instance().OnChargeSnapshot(snapshot); });
+    // 充电状态变化 → IndicatorServer 仲裁指示灯 + 低功耗 USB 保持位
+    PowerServer::Instance().RegisterChargeStatusHandler([](const BatteryChargeSnapshot& snapshot) {
+        IndicatorServer::Instance().OnChargeSnapshot(snapshot);
+        const bool usbPresent =
+            (BspPowerMonitor::Instance().GetUsbStatus() == UsbConnectionStatusEnum::UsbConnected);
+        LowPowerCoordinator::Instance().OnUsbPowerActivity(usbPresent);
+        const bool indicActive =
+            (IndicatorServer::Instance().GetAppliedEffects() != ChargeIndicatorEffect::Off);
+        LowPowerCoordinator::Instance().OnIndicatorActivity(indicActive);
+    });
 
     // 通知 entry 供电通路就绪
     PowerServer::Instance().RegisterLightPowerPathReadyHandler([]() {
@@ -172,6 +189,7 @@ void button_Init(void)
     // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
         MatterBridge::Instance().NotifyUserInteraction();
+        LowPowerCoordinator::Instance().RequestUserWake();
 
         if (event == KeyEventType::LongPressClearNetLighting)
         {

@@ -26,6 +26,7 @@
  */
 #include "PowerServer.h"
 #include "DebugLog.h"
+#include "LowPowerCoordinator.h"
 #include <cassert>
 
 /////////////////////////////////////////////////////////////////
@@ -91,7 +92,7 @@ void PowerServer::SyncPollTimerFromRunStateRaw()
 
 /**
  * @brief 【唯一硬件读取入口】按供电模式按需收拢 BSP 数据
- * @note 电池模式：仅 USB 轮询 + 放电且 settle 结束后读电压。
+ * @note 电池模式：USB 由 EXTI 维护（Fetch 仅 GPIO 漏沿同步）+ 放电且 settle 结束后读电压。
  * @note USB 模式：温度/电压/充电使能/充电芯片状态全读。
  * @note assert(!m_fetchInProgress) 防重入。
  */
@@ -101,6 +102,7 @@ void PowerServer::FetchPowerMonitorSnapshotRaw()
     m_fetchInProgress = true;
 
     BspPowerMonitor& monitor = BspPowerMonitor::Instance();
+    /* USB：EXTI 主路径；此处 GPIO 同步防漏沿，不再做 ADC */
     monitor.PollUsbStatusRaw();
 
     PowerMonitorSnapshot snapshot{};
@@ -474,7 +476,8 @@ void PowerServer::EnableBatteryDischargeRaw()
     m_batteryOutEnabled = true;
     m_batterySettleMs   = kBatterySettleMs;
     LOG_BAT("Battery discharge enabled");
-    // NotifyPowerPathReadyRaw();
+    /* USB→电池或电池开灯：BAT_EN 打开后立刻重刷 WRGB */
+    NotifyPowerPathReadyRaw();
 }
 
 /** @brief 关闭电池放电通路 */
@@ -683,6 +686,11 @@ void PowerServer::ApplySupplyModeHardwareRaw()
     }
 
     ApplyBatteryDischargeRaw();
+    /* 灯已亮时补刷 WRGB（Enable 早退时仍覆盖 USB→电池切换） */
+    if (m_mainLightActive)
+    {
+        NotifyPowerPathReadyRaw();
+    }
 }
 
 // ----- §5.8 事件响应 -----
@@ -715,28 +723,28 @@ void PowerServer::OnMainLightChangedRaw(bool mainLightActive)
 
 /**
  * @brief USB 拔插 ISR 处理
- * @note ISR 不读硬件；置 m_powerSnapshotValid=false，完整策略在 Poll 落地
+ * @note ISR 不读硬件、不打日志、不碰 SPI；置 pending，完整策略在 Poll 落地。
  */
 void PowerServer::OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus)
 {
     if (usbStatus == UsbConnectionStatusEnum::UsbConnected)
     {
-        LOG_BAT("USB connected");
         m_supplyMode         = SupplyMode::UsbPowered;
         m_chargeFaultLatched = false;
         m_chargeSettleMs     = kChargeSettleMs;
         m_powerSnapshotValid = false;
         DisableBatteryDischargeRaw();
+        LowPowerCoordinator::Instance().OnUsbPowerActivity(true, false);
     }
     else
     {
-        LOG_BAT("USB disconnected");
         m_supplyMode         = SupplyMode::Battery;
         m_chargeFaultLatched = false;
         m_chargeSettleMs     = 0U;
         m_powerSnapshotValid = false;
         SetBatteryChargeEnableRaw(false, 0U);
         ClearChargeIndicatorRaw();
+        LowPowerCoordinator::Instance().OnUsbPowerActivity(false, false);
     }
 
     RefreshRunStateRaw();
@@ -752,6 +760,8 @@ void PowerServer::Init()
     s_pollTimer.Init(PollTimerBridgeImpl, kPollIntervalMs, nullptr);
 
     FetchPowerMonitorSnapshotRaw();
+    /* Init 阶段 Poll 早于回调注册；此处按当前 USB 状态补一次策略同步 */
+    OnUsbConnectionChangedRaw(BspPowerMonitor::Instance().GetUsbStatus());
     m_mainLightActive = LightEffectEngine::Instance().IsAnyChannelActive();
     RefreshRunStateRaw();
     ApplySupplyModeHardwareRaw();
@@ -813,6 +823,9 @@ void PowerServer::PowerPoll(uint16_t elapsedMs)
     }
 
     FetchPowerMonitorSnapshotRaw();
+
+    /* USB EXTI 后：在 Poll 上下文更新低功耗保持位（避免 ISR 内 Resume SPI） */
+    LowPowerCoordinator::Instance().OnUsbPowerActivity(m_supplyMode == SupplyMode::UsbPowered);
 
     // ISR 切换供电来源后，统一刷新硬件策略
     if (m_pendingSupplyApply)

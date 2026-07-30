@@ -35,7 +35,10 @@ static constexpr uint8_t kNtcVoltFilterAlpha = 5U;
  *  @{ */
 static constexpr uint16_t kBatDischargeLowWarnMv  = 7000U; ///< §6.1 低电量：低于 7.0V
 static constexpr uint16_t kBatDischargeCriticalMv = 6500U; ///< §6.2 临界：低于 6.5V
-static constexpr uint16_t kPowerInLimitMv         = 3000U; ///< 外部输入过压阈值(mV)
+/** @brief USB 分压还原后阈值(mV)：与历史 ADC 判定一致（引脚约 ≥1.5V） */
+static constexpr uint16_t kUsbDetectLimitMv = 3000U;
+/** @brief EXTI 后 ADC 确认防抖时间 */
+static constexpr uint32_t kUsbDebounceMs = 50U;
 /** @} */
 
 /**
@@ -93,21 +96,22 @@ BspPowerMonitor::BspPowerMonitor()
     : batIadc_(BAT_VOLTAGE_PORT, BAT_VOLTAGE_PIN), ntcIadc_(BAT_NTC_PORT, BAT_NTC_PIN),
       usbIadc_(USB_IN_PORT, USB_IN_PIN), batEnIo_(BAT_EN_PORT, BAT_EN_PIN), chargeEnIo_(CHARGE_EN_PORT, CHARGE_EN_PIN),
       chargeSpeedIo_(CHARGE_SPEED_PORT, CHARGE_SPEED_PIN),
-      chargeStatExti_(LAMP_STATUS_PORT, LAMP_STATUS_PIN, HalExti::EdgeTrigger::BOTH)
+      chargeStatExti_(LAMP_STATUS_PORT, LAMP_STATUS_PIN, HalExti::EdgeTrigger::BOTH),
+      usbDetectExti_(USB_IN_PORT, USB_IN_PIN, HalExti::EdgeTrigger::BOTH), usbDebounceTimer_{},
+      usbDebounceArmed_(false), usbConfirmBusy_(false)
 {
-    // 成员变量初始化
-    chargeState_       = false;
-    usbStatus_         = UsbConnectionStatusEnum::UsbNotConnected;
-    chargeStatus_      = ChargeChipStatusEnum::CHARGE_INIT;
-    batteryTempStatus_ = BatteryTempStatusEnum::TEMP_NORMAL;
-    lastInterruptMs_   = 0;
-    pulseCounter_      = 0;
-    isPulsing_         = false;
-    appCallback_       = nullptr;
-    filteredBatMv_     = 0U;
-    batFilterSeeded_   = false;
-    filteredNtcMv_     = 0U;
-    ntcFilterSeeded_   = false;
+    chargeState_         = false;
+    usbStatus_           = UsbConnectionStatusEnum::UsbNotConnected;
+    chargeStatus_        = ChargeChipStatusEnum::CHARGE_INIT;
+    batteryTempStatus_   = BatteryTempStatusEnum::TEMP_NORMAL;
+    lastInterruptMs_     = 0;
+    pulseCounter_        = 0;
+    isPulsing_           = false;
+    appCallback_         = nullptr;
+    filteredBatMv_       = 0U;
+    batFilterSeeded_     = false;
+    filteredNtcMv_       = 0U;
+    ntcFilterSeeded_     = false;
     ntcRemovedHighCount_ = 0U;
     ntcPresentLowCount_  = 0U;
 }
@@ -116,30 +120,38 @@ BspPowerMonitor::BspPowerMonitor()
  */
 void BspPowerMonitor::Init()
 {
-    // 1. 初始化 ADC 组件
     batIadc_.Init();
     ntcIadc_.Init();
 
-    // 2. 初始化普通 GPIO 输出管脚，默认状态为关闭
     batEnIo_.Init(SL_GPIO_MODE_PUSH_PULL, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
     chargeEnIo_.Init(SL_GPIO_MODE_PUSH_PULL, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
     chargeSpeedIo_.Init(SL_GPIO_MODE_WIRED_AND, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
 
-    // 3. 注册并拉起充电状态 EXTI（USB 插拔经 PA08 ADC 轮询，不用数字 EXTI）
     chargeStatExti_.RegisterCallback(BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl, this);
-    chargeStatExti_.Init();
+    chargeStatExti_.Init(HalExti::PullMode::Down);
+    chargeStatExti_.Enable(true);
 
-    // 4. 同步读取 USB 初始状态（ADC）
+    /* USB：EXTI 无上下拉（分压脚）；判定仍用 ADC 阈值 */
+    usbDetectExti_.RegisterCallback(BspPowerMonitor::UsbDetectIsrBridgeCallbackImpl, this);
+    ArmUsbExtiRaw();
+
     PollUsbStatusRaw();
 }
 
 /**
- * @brief 反初始化 ADC 通道（进入深睡眠前释放资源）
+ * @brief 反初始化 ADC 通道与 USB EXTI
  */
 void BspPowerMonitor::DeInit()
 {
+    if (usbDebounceArmed_)
+    {
+        (void)sl_sleeptimer_stop_timer(&usbDebounceTimer_);
+        usbDebounceArmed_ = false;
+    }
+
     batIadc_.DeInit(gpioModePushPull, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
     ntcIadc_.DeInit(gpioModePushPull, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
+    DisarmUsbExtiRaw();
 }
 
 /**
@@ -401,69 +413,147 @@ BatteryVoltStatusEnum BspPowerMonitor::GetBatteryVoltStatus()
 }
 
 /**
- * @brief 读取 USB 输入电压（PA08 / USB_AD，经分压还原）
- */
-HalStateEnum BspPowerMonitor::GetUsbInputVoltageRaw(uint16_t* usbMv)
-{
-    HalStateEnum state        = HalStateEnum::HAL_ERROR;
-    uint32_t     usbVoltageMv = 0U;
-
-    usbIadc_.Init();
-    usbVoltageMv = usbIadc_.ReadVoltageMilliVolts();
-    usbIadc_.DeInit(gpioModePushPull, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
-
-    if (usbVoltageMv != 0U)
-    {
-        usbVoltageMv = usbVoltageMv * 2U;
-        if (usbMv != nullptr)
-        {
-            *usbMv = static_cast<uint16_t>(usbVoltageMv);
-        }
-        state = HalStateEnum::HAL_OK;
-    }
-    LOG_POWER("USB voltage: %u mV", usbVoltageMv);
-
-    return state;
-}
-
-/**
  * @brief USB 插拔：重置 NTC/电池电压滤波累计与连续判定计数（注解）
  */
 void BspPowerMonitor::ResetAdcAccumulatorsRaw()
 {
-    filteredBatMv_         = 0U;
-    batFilterSeeded_       = false;
-    filteredNtcMv_         = 0U;
-    ntcFilterSeeded_       = false;
-    ntcRemovedHighCount_   = 0U;
-    ntcPresentLowCount_    = 0U;
-    LOG_POWER("ADC accumulators reset (USB plug event)");
+    filteredBatMv_       = 0U;
+    batFilterSeeded_     = false;
+    filteredNtcMv_       = 0U;
+    ntcFilterSeeded_     = false;
+    ntcRemovedHighCount_ = 0U;
+    ntcPresentLowCount_  = 0U;
 }
 
 /**
- * @brief 轮询 PA08(USB_AD) 检测 USB 插拔
+ * @brief 更新 USB 连接状态（唯一写入口）
  */
-void BspPowerMonitor::PollUsbStatusRaw()
+void BspPowerMonitor::ApplyUsbConnectedRaw(bool connected, bool invokeCallback)
 {
-    uint16_t usbMv = 0U;
-    if (GetUsbInputVoltageRaw(&usbMv) != HalStateEnum::HAL_OK)
+    const UsbConnectionStatusEnum newStatus =
+        connected ? UsbConnectionStatusEnum::UsbConnected : UsbConnectionStatusEnum::UsbNotConnected;
+
+    if (newStatus == usbStatus_)
     {
         return;
     }
 
-    const UsbConnectionStatusEnum newStatus =
-        (usbMv >= kPowerInLimitMv) ? UsbConnectionStatusEnum::UsbConnected : UsbConnectionStatusEnum::UsbNotConnected;
+    ResetAdcAccumulatorsRaw();
+    usbStatus_ = newStatus;
 
-    if (newStatus != usbStatus_)
+    if (invokeCallback && (appCallback_ != nullptr))
     {
-        // 注解：每次插拔 USB 重置 NTC/电池电压累计
-        ResetAdcAccumulatorsRaw();
-        usbStatus_ = newStatus;
-        if (appCallback_ != nullptr)
-        {
-            appCallback_(usbStatus_);
-        }
+        appCallback_(usbStatus_);
     }
+}
+
+/**
+ * @brief 配置 PA8 为数字 EXTI（无上下拉）
+ */
+void BspPowerMonitor::ArmUsbExtiRaw()
+{
+    (void)usbDetectExti_.Init(HalExti::PullMode::None);
+    usbDetectExti_.Enable(true);
+}
+
+/**
+ * @brief 关闭 USB EXTI，释放引脚给 ADC
+ */
+void BspPowerMonitor::DisarmUsbExtiRaw()
+{
+    usbDetectExti_.Enable(false);
+    usbDetectExti_.Deinit();
+}
+
+/**
+ * @brief EXTI 后启动 50ms 单次防抖，再 ADC 确认
+ */
+void BspPowerMonitor::ScheduleUsbAdcConfirmRaw()
+{
+    if (usbDebounceArmed_)
+    {
+        (void)sl_sleeptimer_stop_timer(&usbDebounceTimer_);
+        usbDebounceArmed_ = false;
+    }
+
+    const sl_status_t status = sl_sleeptimer_start_timer_ms(
+        &usbDebounceTimer_, kUsbDebounceMs, BspPowerMonitor::UsbDebounceTimerBridgeImpl, this, 0,
+        SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+    if (status == SL_STATUS_OK)
+    {
+        usbDebounceArmed_ = true;
+    }
+}
+
+/**
+ * @brief 防抖定时器桥接
+ */
+void BspPowerMonitor::UsbDebounceTimerBridgeImpl(sl_sleeptimer_timer_handle_t* handle, void* data)
+{
+    (void)handle;
+    if (data == nullptr)
+    {
+        return;
+    }
+
+    BspPowerMonitor* self   = static_cast<BspPowerMonitor*>(data);
+    self->usbDebounceArmed_ = false;
+    self->ConfirmUsbByAdcRaw();
+}
+
+/**
+ * @brief ADC 确认 USB（与历史阈值一致），完成后重新 Arm EXTI
+ */
+void BspPowerMonitor::ConfirmUsbByAdcRaw()
+{
+    if (usbConfirmBusy_)
+    {
+        return;
+    }
+    usbConfirmBusy_ = true;
+
+    DisarmUsbExtiRaw();
+
+    uint32_t usbVoltageMv = 0U;
+    usbIadc_.Init();
+    usbVoltageMv = usbIadc_.ReadVoltageMilliVolts();
+    /* 释放模拟脚为高阻，勿推挽，避免干扰下次 EXTI */
+    usbIadc_.DeInit(gpioModeDisabled, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
+
+    if (usbVoltageMv != 0U)
+    {
+        usbVoltageMv = usbVoltageMv * 2U;
+    }
+
+    const bool connected = (usbVoltageMv >= kUsbDetectLimitMv);
+    ApplyUsbConnectedRaw(connected, true);
+
+    ArmUsbExtiRaw();
+    usbConfirmBusy_ = false;
+}
+
+/**
+ * @brief USB_IN EXTI：只启动防抖 ADC，不在 ISR 内采模拟量
+ */
+void BspPowerMonitor::UsbDetectIsrBridgeCallbackImpl(uint8_t pin, bool pin_state, void* ctx)
+{
+    (void)pin;
+    (void)pin_state;
+    if (ctx == nullptr)
+    {
+        return;
+    }
+
+    BspPowerMonitor* self = static_cast<BspPowerMonitor*>(ctx);
+    self->ScheduleUsbAdcConfirmRaw();
+}
+
+/**
+ * @brief 同步确认 USB（Init/Fetch 漏沿补读）
+ */
+void BspPowerMonitor::PollUsbStatusRaw()
+{
+    ConfirmUsbByAdcRaw();
 }
 
 /**

@@ -9,6 +9,7 @@
  * 调用，Service 层禁止直接 include。
  */
 #include "BspLedWrgb.h"
+#include "BspPeripheralSleep.h"
 
 /* 构造函数 */
 BspLedWrgb::BspLedWrgb() : whitePwm_(), rgb_()
@@ -39,6 +40,36 @@ void BspLedWrgb::Init()
  * b 和 r 交换
  */
 void BspLedWrgb::LedWrgbSetDuty(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
+{
+    /* 休眠兼容：若总线曾 Suspend，输出前先 Resume */
+    BspPeripheralSleep::Instance().EnsureReadyBeforeOutput();
+
+    ApplyDutyRaw(w, r, g, b);
+}
+
+/**
+ * @brief 空闲挂起主灯总线
+ */
+void BspLedWrgb::SuspendBusForIdle()
+{
+    /* 直接下发，避免再走 EnsureReady（Suspend 过程中尚未置位） */
+    ApplyDutyRaw(0U, 0U, 0U, 0U);
+}
+
+/**
+ * @brief 活动恢复主灯总线
+ * @note 不用 Init()（内含 osDelay），避免在 sleeptimer 回调里阻塞。
+ */
+void BspLedWrgb::ResumeBusForActive()
+{
+    rgb_.SendReset();
+    rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_101_1MA);
+}
+
+/**
+ * @brief 写白光 PWM + SPI RGB 帧
+ */
+void BspLedWrgb::ApplyDutyRaw(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
 {
     uint8_t rgbMaxPwmBits;
     rgbMaxPwmBits = rgb_.GetMaxPwmBits();

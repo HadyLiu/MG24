@@ -12,22 +12,23 @@
 // BSP 层级 (L1)
 #include "BspIoConfig.h"
 #include "BspSleepTimer.h"
+#include "sl_sleeptimer.h"
 
 /* 充电芯片状态枚举 */
 enum class ChargeChipStatusEnum : uint8_t
 {
-    CHARGE_INIT = 0, // 充电状态未定（初始状态，尚未判断）
-    CHARGING,        // 正在充电 (持续低电平)
-    CHARGE_DONE,     // 充满电 (持续高电平)
-    CHARGE_FAULT     // 充电异常 (1.2Hz 闪烁脉冲)
+    CHARGE_INIT = 0,
+    CHARGING,
+    CHARGE_DONE,
+    CHARGE_FAULT
 };
 
 /* 电池放电状态枚举 */
 enum class BatteryVoltStatusEnum : uint8_t
 {
-    VOLT_NORMAL = 0,    // 电压正常
-    VOLT_LOW_WARNING,   // 低电量提示（建议用户充电，系统仍可运行）
-    VOLT_CRITICAL_EMPTY // 电池电压过低（触发死区保护，必须切断物理输出防止过放）
+    VOLT_NORMAL = 0,
+    VOLT_LOW_WARNING,
+    VOLT_CRITICAL_EMPTY
 };
 
 /* USB 连接状态枚举 */
@@ -40,13 +41,12 @@ enum class UsbConnectionStatusEnum : uint8_t
 /* 温度状态枚举 */
 enum class BatteryTempStatusEnum : uint8_t
 {
-    TEMP_NORMAL = 0,     // 温度正常，允许充电
-    TEMP_TOO_HIGH,       // 温度过高，必须停充保护
-    TEMP_TOO_LOW,        // 温度过低，必须停充保护
-    TEMP_BATTERY_REMOVED // 电池被移除（NTC 开路）
+    TEMP_NORMAL = 0,
+    TEMP_TOO_HIGH,
+    TEMP_TOO_LOW,
+    TEMP_BATTERY_REMOVED
 };
 
-/* 遵循 L1 BSP 层级规范，类名采用标准大驼峰 */
 class BspPowerMonitor
 {
   public:
@@ -56,17 +56,14 @@ class BspPowerMonitor
         return bspPowerMonitor;
     }
 
-    /* 公开 API 统一采用标准大驼峰 */
     void Init();
     void DeInit();
     void SetBatteryOutEnable(bool enable);
     void SetBatteryChargeEnable(bool enable, uint8_t fast = 0);
 
-    /* 对外回调注册接口 */
     typedef void (*PfUsbCallback)(UsbConnectionStatusEnum usbStatus);
     void RegisterUsbNotifyCallback(PfUsbCallback callback);
 
-    /* 供应用层轮询获取状态的接口 */
     ChargeChipStatusEnum GetChargeStatus();
     bool                 IsChargeEnabled() const
     {
@@ -75,7 +72,6 @@ class BspPowerMonitor
     BatteryTempStatusEnum GetBatteryTempStatus();
     BatteryVoltStatusEnum GetBatteryVoltStatus();
 
-    /* 内联函数严格遵循 Allman 大括号风格 */
     UsbConnectionStatusEnum GetUsbStatus() const
     {
         return usbStatus_;
@@ -84,22 +80,28 @@ class BspPowerMonitor
     HalStateEnum GetBatteryVoltage(uint16_t* batMv = nullptr);
     HalStateEnum GetBatteryNtcVoltage(uint16_t* ntcMv = nullptr);
 
-    /** @brief 轮询 PA08(USB_AD) ADC 检测 USB 插拔，状态变化时触发已注册回调 */
+    /**
+     * @brief 同步确认 USB 状态（ADC 阈值，与历史行为一致）
+     * @note 常态靠 EXTI 唤醒后防抖再 ADC；Fetch/Init 也可直接调用本接口。
+     */
     void PollUsbStatusRaw();
 
   private:
-    /* 硬件抽象与驱动对象 */
     HalIadc batIadc_;
     HalIadc ntcIadc_;
-    HalIadc usbIadc_;
+    HalIadc usbIadc_; /**< 仅用于插拔确认采样，不常开 */
 
     HalGpio batEnIo_;
     HalGpio chargeEnIo_;
     HalGpio chargeSpeedIo_;
 
     HalExti chargeStatExti_;
+    HalExti usbDetectExti_; /**< PA8 双边沿唤醒（无上下拉） */
 
-    /* 状态与计数私有变量 */
+    sl_sleeptimer_timer_handle_t usbDebounceTimer_;
+    bool                         usbDebounceArmed_;
+    bool                         usbConfirmBusy_;
+
     bool                    chargeState_;
     UsbConnectionStatusEnum usbStatus_;
     ChargeChipStatusEnum    chargeStatus_;
@@ -108,35 +110,28 @@ class BspPowerMonitor
     uint32_t                pulseCounter_;
     bool                    isPulsing_;
 
-    /* 回调函数指针 */
     PfUsbCallback appCallback_;
 
-    /* ADC 一阶低通状态（注解：防单次误采样进保护） */
     uint32_t filteredBatMv_;
     bool     batFilterSeeded_;
     uint32_t filteredNtcMv_;
     bool     ntcFilterSeeded_;
 
-    /** @brief NTC 原始 >=3150 连续次数（满 3 次判定电池断开） */
     uint8_t ntcRemovedHighCount_;
-    /** @brief NTC 原始 <3150 连续次数（满 3 次清零断开累计） */
     uint8_t ntcPresentLowCount_;
 
-    /* 构造函数 */
     BspPowerMonitor();
 
-    /* 🌟 私有辅助/中断中转函数：严格采用大驼峰 + Impl 后缀，视觉与语法双重隔离 */
     static void ChargeStatIsrBridgeCallbackImpl(uint8_t pin, bool pin_state, void* ctx);
+    static void UsbDetectIsrBridgeCallbackImpl(uint8_t pin, bool pin_state, void* ctx);
+    static void UsbDebounceTimerBridgeImpl(sl_sleeptimer_timer_handle_t* handle, void* data);
 
-    HalStateEnum GetUsbInputVoltageRaw(uint16_t* usbMv);
+    void ApplyUsbConnectedRaw(bool connected, bool invokeCallback);
+    void ScheduleUsbAdcConfirmRaw();
+    void ConfirmUsbByAdcRaw();
+    void ArmUsbExtiRaw();
+    void DisarmUsbExtiRaw();
 
-    /**
-     * @brief NTC 唯一硬件读取入口（读一次 ADC）
-     * @param pRawMv      原始 ADC mV（无偏差、无滤波；断电池连续判定用）
-     * @param pFilteredMv 偏差+一阶低通后的 mV（温区判定用）；可空
-     */
     HalStateEnum FetchNtcFromHardwareRaw(uint16_t* pRawMv, uint16_t* pFilteredMv);
-
-    /** @brief USB 插拔时重置 NTC/电池电压滤波与连续计数（注解） */
-    void ResetAdcAccumulatorsRaw();
+    void         ResetAdcAccumulatorsRaw();
 };

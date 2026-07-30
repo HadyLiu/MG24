@@ -26,6 +26,7 @@ set(APP_LAYER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspPowerMonitor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspSleepTimer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspUartLog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/bsp/src/BspPeripheralSleep.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/MatterBridge.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/middlewares/src/ButtonInput.cpp
@@ -41,6 +42,7 @@ set(APP_LAYER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/PowerServer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/LightDecisionCenter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/LightNvmStorage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../User/service/src/LowPowerCoordinator.cpp
 
 )
 

@@ -1,10 +1,10 @@
 /**
- * @file HalGpio.h
- * @brief GPIO 引脚 HAL，封装电源/充电/指示相关引脚
+ * @file BspIoConfig.h
+ * @brief 板级 IO 引脚定义
  * @author hady
  * @date 2026-06-12
- * @layer HAL
- * @note PA8 电源检测 GPIO 用于 EM2 唤醒；ISR 内禁止日志，仅调用已注册回调。
+ * @layer BSP
+ * @note PA8(USB_IN/POWER_IN) 数字 EXTI 检测插拔，并可作 EM2 唤醒源。
  */
 #pragma once
 
