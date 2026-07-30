@@ -209,6 +209,15 @@ class LightDecisionCenter
     /** @brief 复位后开机灯效完结桥接 */
     static void OnFactoryResetDoneSequenceFinishedBridge();
 
+    /** @brief §6.2 临界开灯尝试：亮→渐灭→渐亮→渐灭 */
+    void StartCriticalBatteryOpenSequence();
+
+    /** @brief 临界开灯时序完结：保持强控灭灯 */
+    void OnCriticalBatteryOpenSequenceFinishedRaw();
+
+    /** @brief 临界开灯时序完结桥接 */
+    static void OnCriticalBatteryOpenSequenceFinishedBridge();
+
     /** @brief Matter 识别时序：#5 @100% 正常闪循环，直至 Identify 结束 */
     void StartIdentifySequence();
 
@@ -268,6 +277,7 @@ class LightDecisionCenter
 
     LightSceneState m_sceneState{LightSceneState::Normal}; /**< 场景状态机 */
     bool            m_factoryResetArmed{false};            /**< 已按住≥13s：时序完结后执行工厂复位 */
+    bool            m_criticalOpenSequenceActive{false};   /**< §6.2 临界开灯演示时序进行中 */
     bool            m_isBatteryLow{false};                 /**< 极低电量强控锁 */
     bool            m_isBatteryLowWarning{false};          /**< 低电量警告（可开灯） */
     uint8_t         m_lastValidBrightness{255U};           /**< 上次非零亮度，低电恢复用 */

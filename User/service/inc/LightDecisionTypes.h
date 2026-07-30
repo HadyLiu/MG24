@@ -20,7 +20,7 @@ enum class LightSceneState : uint8_t
     Normal = 0,        /**< 常规用户/Matter 控制 */
     NetConfiguring,    /**< 配网混合时序进行中 */
     MatterIdentifying, /**< Matter 识别指示时序进行中 */
-    LowBattery         /**< 极低电量强控（禁止亮灯） */
+    LowBattery         /**< 临界电量强控（禁止常亮；可播开灯演示时序） */
 };
 
 /**
@@ -55,8 +55,8 @@ enum class NetControlAction : uint8_t
 enum class BatteryVoltLevel : uint8_t
 {
     Normal = 0,   /**< 电压正常 */
-    LowWarning,   /**< 低电量提示（仍可运行） */
-    CriticalEmpty /**< 临界电量（强控灭灯） */
+    LowWarning,   /**< 低电量提示（<7.0V，仍可运行） */
+    CriticalEmpty /**< 临界电量（<6.5V，强控灭灯） */
 };
 
 /**

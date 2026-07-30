@@ -107,6 +107,7 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
     m_pStorage     = pStorage;
     m_sceneState   = LightSceneState::Normal;
     m_isBatteryLow = false;
+    m_criticalOpenSequenceActive = false;
 
     const bool readOk = m_pStorage->Read(reinterpret_cast<uint8_t*>(&m_userTargetParam), sizeof(PersistParam_T));
     if (!readOk || !IsPersistValid(m_userTargetParam))
@@ -179,12 +180,18 @@ void LightDecisionCenter::InvokeNetControlRaw(NetControlAction action)
 /**
  * @brief 处理按键语义事件
  * @param event KeyEventType 事件类型
- * @note 极低电量时整段丢弃；配网时序由 StartNetConfigSequence 接管渲染。
+ * @note 临界电量：仅响应「尝试开灯」短按（播 §6.2 时序）；其它键丢弃。
  */
 void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
 {
     if (m_isBatteryLow)
     {
+        if ((event == KeyEventType::ShortPressCycleBrightness) && !m_criticalOpenSequenceActive)
+        {
+            // §6.2：临界下尝试开灯 → 主灯四段演示 + 红灯快闪×2
+            NotifyBatteryWarnIfNeeded(1U);
+            StartCriticalBatteryOpenSequence();
+        }
         return;
     }
     LOG_LIGHT_DC("Button: %u", static_cast<uint8_t>(event));
@@ -287,8 +294,23 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     }
 
     NotifyBatteryWarnIfNeeded(brightness);
-    if (m_isBatteryLow && (brightness > 0U))
+    if (m_isBatteryLow)
     {
+        if (brightness > 0U)
+        {
+            // §6.2：Hub/Matter 尝试开灯同样播临界演示（红闪已由 Notify 触发）
+            if (!m_criticalOpenSequenceActive)
+            {
+                StartCriticalBatteryOpenSequence();
+            }
+            return;
+        }
+
+        // 强控下仅接受关灯，保持 LowBattery，不点亮
+        memcpy(m_userTargetParam.wrgb, pWrgbBuffer, sizeof(m_userTargetParam.wrgb));
+        m_userTargetParam.brightness = 0U;
+        m_userTargetParam.op_id      = opId;
+        ReportToMatterIfRegistered();
         return;
     }
 
@@ -310,9 +332,8 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
         m_lastValidBrightness = brightness;
     }
 
-    if ((m_sceneState == LightSceneState::Normal) || (m_sceneState == LightSceneState::LowBattery))
+    if (m_sceneState == LightSceneState::Normal)
     {
-        m_sceneState = LightSceneState::Normal;
         ApplyArbitratedResult();
     }
 
@@ -336,16 +357,21 @@ void LightDecisionCenter::ProcessBatteryEvent(bool isLow)
 
     if (m_isBatteryLow)
     {
-        m_sceneState                  = LightSceneState::LowBattery;
-        m_isPairSuccessSequenceActive = false;
-        m_pSequence->StopSequence();
+        m_sceneState                    = LightSceneState::LowBattery;
+        m_isPairSuccessSequenceActive   = false;
+        m_criticalOpenSequenceActive    = false;
+        if (m_pSequence != nullptr)
+        {
+            m_pSequence->StopSequence();
+        }
         m_userTargetParam.brightness = 0U;
         ReportToMatterIfRegistered();
     }
     else if (m_sceneState == LightSceneState::LowBattery)
     {
-        m_sceneState                 = LightSceneState::Normal;
-        m_userTargetParam.brightness = m_lastValidBrightness;
+        m_criticalOpenSequenceActive     = false;
+        m_sceneState                     = LightSceneState::Normal;
+        m_userTargetParam.brightness     = m_lastValidBrightness;
         SafeSaveToStorage();
         ApplyArbitratedResult();
         ReportToMatterIfRegistered();
@@ -376,6 +402,76 @@ void LightDecisionCenter::ProcessBatteryVoltLevel(BatteryVoltLevel level)
         }
         break;
     }
+}
+
+/**
+ * @brief §6.2 临界开灯演示：亮起→渐灭→渐亮→渐灭（亮度用关灯前记忆色）
+ */
+void LightDecisionCenter::StartCriticalBatteryOpenSequence()
+{
+    if ((m_pSequence == nullptr) || !m_isBatteryLow)
+    {
+        return;
+    }
+
+    uint8_t peakBrightness = m_lastValidBrightness;
+    if (peakBrightness == 0U)
+    {
+        peakBrightness = kDefaultBrightness;
+    }
+
+    LightSequenceScheduler::SequenceStep steps[] = {
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+         {0U, 0U, 0U, 0U},
+         peakBrightness,
+         LightDimmingSpec::kFadeInMs,
+         0U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeOut,
+         {0U, 0U, 0U, 0U},
+         0U,
+         LightDimmingSpec::kFadeOutMs,
+         0U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+         {0U, 0U, 0U, 0U},
+         peakBrightness,
+         LightDimmingSpec::kFadeInMs,
+         0U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeOut,
+         {0U, 0U, 0U, 0U},
+         0U,
+         LightDimmingSpec::kFadeOutMs,
+         0U}};
+    memcpy(steps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    memcpy(steps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    memcpy(steps[2].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+    memcpy(steps[3].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+
+    m_criticalOpenSequenceActive = true;
+    m_pSequence->RegisterSequenceFinishedCallback(OnCriticalBatteryOpenSequenceFinishedBridge);
+    m_pSequence->StartSequence(steps, 4U, false);
+    LOG_LIGHT_DC("Critical battery open sequence start, peak=%u", peakBrightness);
+}
+
+/**
+ * @brief 临界开灯时序完结：维持强控关灯，不上报亮态
+ */
+void LightDecisionCenter::OnCriticalBatteryOpenSequenceFinishedRaw()
+{
+    m_criticalOpenSequenceActive     = false;
+    m_userTargetParam.brightness     = 0U;
+    if (m_sceneState != LightSceneState::LowBattery)
+    {
+        m_sceneState = LightSceneState::LowBattery;
+    }
+    LOG_LIGHT_DC("Critical battery open sequence done");
+}
+
+/**
+ * @brief 临界开灯时序完结桥接
+ */
+void LightDecisionCenter::OnCriticalBatteryOpenSequenceFinishedBridge()
+{
+    LightDecisionCenter::Instance().OnCriticalBatteryOpenSequenceFinishedRaw();
 }
 
 /**

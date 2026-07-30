@@ -111,6 +111,17 @@ class BspPowerMonitor
     /* 回调函数指针 */
     PfUsbCallback appCallback_;
 
+    /* ADC 一阶低通状态（注解：防单次误采样进保护） */
+    uint32_t filteredBatMv_;
+    bool     batFilterSeeded_;
+    uint32_t filteredNtcMv_;
+    bool     ntcFilterSeeded_;
+
+    /** @brief NTC 原始 >=3150 连续次数（满 3 次判定电池断开） */
+    uint8_t ntcRemovedHighCount_;
+    /** @brief NTC 原始 <3150 连续次数（满 3 次清零断开累计） */
+    uint8_t ntcPresentLowCount_;
+
     /* 构造函数 */
     BspPowerMonitor();
 
@@ -118,4 +129,14 @@ class BspPowerMonitor
     static void ChargeStatIsrBridgeCallbackImpl(uint8_t pin, bool pin_state, void* ctx);
 
     HalStateEnum GetUsbInputVoltageRaw(uint16_t* usbMv);
+
+    /**
+     * @brief NTC 唯一硬件读取入口（读一次 ADC）
+     * @param pRawMv      原始 ADC mV（无偏差、无滤波；断电池连续判定用）
+     * @param pFilteredMv 偏差+一阶低通后的 mV（温区判定用）；可空
+     */
+    HalStateEnum FetchNtcFromHardwareRaw(uint16_t* pRawMv, uint16_t* pFilteredMv);
+
+    /** @brief USB 插拔时重置 NTC/电池电压滤波与连续计数（注解） */
+    void ResetAdcAccumulatorsRaw();
 };

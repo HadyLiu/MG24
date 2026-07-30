@@ -84,7 +84,7 @@ ChargeIndicatorEffect IndicatorServer::ArbitrateChargeEffectsRaw(const BatteryCh
     case BatteryChargeStatus::Nobat:
     case BatteryChargeStatus::ChargeFault:
     case BatteryChargeStatus::TempFault:
-    case BatteryChargeStatus::CriticalEmpty:
+        // §6.3：充电异常持续红快闪；临界电量不占背景红闪（仅开灯尝试时×2，见 §6.2）
         effects |= static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink);
         break;
     default:

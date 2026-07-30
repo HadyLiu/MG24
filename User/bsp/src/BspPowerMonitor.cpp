@@ -13,21 +13,78 @@
  */
 
 #include "BspPowerMonitor.h"
+#include "CheckConsecutive.h"
 #include "DebugLog.h"
+#include "FirstOrderFilter.h"
 
-/** @name 放电与输入电压阈值（mV / 计数）
+/** @name ADC 检测规格（注解）
  *  @{ */
-#define BatDisChargeLowWarnVal (2300) ///< 低电告警电压(mV)
-#define BatDisChargeLowVal (2000)     ///< 低电保护截止(mV)
-#define PowerInLimitVol (3000)        ///< 外部输入过压阈值(mV)
+/** @brief 电池分压比 1/3：ADC 中点电压 × 本系数还原电池端电压 */
+static constexpr uint32_t kBatteryAdcDividerRestore = 3U;
+/** @brief 电池电压 ADC 固定偏差调节 (mV)，实测偏高则取负、偏低则取正 */
+static constexpr int16_t kBatteryAdcOffsetMv = 200;
+/** @brief NTC ADC 固定偏差调节 (mV) */
+static constexpr int16_t kNtcAdcOffsetMv = 12;
+/** @brief 电池电压滤波系数 A（注解建议 5~15，取中值） */
+static constexpr uint8_t kBatteryVoltFilterAlpha = 10U;
+/** @brief NTC/温度滤波系数 A（注解建议 2~8，取中值） */
+static constexpr uint8_t kNtcVoltFilterAlpha = 5U;
 /** @} */
 
-/** @name NTC 温度阈值（ADC 标定常量）
+/** @name 放电电压阈值（mV，还原后的电池端电压）
  *  @{ */
-#define NTCDetectBat (3092)     ///< NTC 采样基准
+static constexpr uint16_t kBatDischargeLowWarnMv  = 7000U; ///< §6.1 低电量：低于 7.0V
+static constexpr uint16_t kBatDischargeCriticalMv = 6500U; ///< §6.2 临界：低于 6.5V
+static constexpr uint16_t kPowerInLimitMv         = 3000U; ///< 外部输入过压阈值(mV)
+/** @} */
+
+/**
+ * @brief 对还原后的 ADC 值施加固定偏差调节（注解）
+ * @param rawMv  还原后的毫伏值
+ * @param offset 有符号固定偏差
+ * @return 调节后且钳位到非负的毫伏值
+ */
+static uint32_t ApplyAdcOffsetRaw(uint32_t rawMv, int16_t offset)
+{
+    const int32_t adjusted = static_cast<int32_t>(rawMv) + static_cast<int32_t>(offset);
+    if (adjusted <= 0)
+    {
+        return 0U;
+    }
+
+    return static_cast<uint32_t>(adjusted);
+}
+
+/**
+ * @brief 首次采样直接种子，之后一阶低通（注解：防单次误触发保护）
+ */
+static uint32_t FilterAdcSampleRaw(uint32_t sampleMv, uint8_t alpha, uint32_t* pFiltered, bool* pSeeded)
+{
+    if ((pFiltered == nullptr) || (pSeeded == nullptr))
+    {
+        return sampleMv;
+    }
+
+    if (!(*pSeeded))
+    {
+        *pFiltered = sampleMv;
+        *pSeeded   = true;
+        return sampleMv;
+    }
+
+    bsp::FirstOrderFilter::Apply(sampleMv, alpha, pFiltered);
+    return *pFiltered;
+}
+
+/** @name NTC 温度阈值（ADC mV；硬件上拉 20K，注解）
+ *  @{ */
+/** @brief 电池断开判定阈值：连续 3 次 NTC >= 本值 → 无电池 */
+static constexpr uint16_t kNtcBatteryRemovedMv = 3150U;
+static constexpr uint8_t  kNtcConsecutiveMax   = 3U;
 #define NTCLowValTemp (2026)    ///< 低温保护 ADC 阈值
 #define NTCOverValTemp (591)    ///< 高温保护 ADC 阈值
 #define NTCRecoverValTemp (660) ///< 高温恢复 ADC 阈值
+/** @} */
 
 /**
  * @brief 构造函数：完美对齐头文件声明顺序进行初始化
@@ -47,6 +104,12 @@ BspPowerMonitor::BspPowerMonitor()
     pulseCounter_      = 0;
     isPulsing_         = false;
     appCallback_       = nullptr;
+    filteredBatMv_     = 0U;
+    batFilterSeeded_   = false;
+    filteredNtcMv_     = 0U;
+    ntcFilterSeeded_   = false;
+    ntcRemovedHighCount_ = 0U;
+    ntcPresentLowCount_  = 0U;
 }
 
 /** * @brief 初始化 ADC 通道与外部中断（上电或唤醒后）
@@ -80,7 +143,8 @@ void BspPowerMonitor::DeInit()
 }
 
 /**
- * @brief 读取电池电压
+ * @brief 读取电池电压（分压还原 → 固定偏差 → 一阶低通）
+ * @note 无电池（NTC 已判断开）时不更新滤波，避免开路采样污染累计值。
  */
 HalStateEnum BspPowerMonitor::GetBatteryVoltage(uint16_t* bat_mv)
 {
@@ -92,7 +156,16 @@ HalStateEnum BspPowerMonitor::GetBatteryVoltage(uint16_t* bat_mv)
 
     if (batVoltageMv != 0)
     {
-        batVoltageMv = batVoltageMv * 3;
+        batVoltageMv = batVoltageMv * kBatteryAdcDividerRestore;
+        batVoltageMv = ApplyAdcOffsetRaw(batVoltageMv, kBatteryAdcOffsetMv);
+
+        // 无电池期间跳过滤波更新；有电池时正常低通
+        if (batteryTempStatus_ != BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
+        {
+            batVoltageMv = FilterAdcSampleRaw(batVoltageMv, kBatteryVoltFilterAlpha, &filteredBatMv_,
+                                              &batFilterSeeded_);
+        }
+
         if (bat_mv != nullptr)
         {
             *bat_mv = static_cast<uint16_t>(batVoltageMv);
@@ -106,12 +179,14 @@ HalStateEnum BspPowerMonitor::GetBatteryVoltage(uint16_t* bat_mv)
 }
 
 /**
- * @brief 读取 NTC 电压
+ * @brief NTC 唯一硬件读取入口：一次 ADC，输出原始与滤波值
+ * @note 注解：断电池连续判定必须用原始数据，不得用滤波结果。
  */
-HalStateEnum BspPowerMonitor::GetBatteryNtcVoltage(uint16_t* ntc_mv)
+HalStateEnum BspPowerMonitor::FetchNtcFromHardwareRaw(uint16_t* pRawMv, uint16_t* pFilteredMv)
 {
-    HalStateEnum state        = HalStateEnum::HAL_ERROR;
-    uint32_t     ntcVoltageMv = 0;
+    HalStateEnum state     = HalStateEnum::HAL_ERROR;
+    uint32_t     rawMv     = 0U;
+    uint32_t     filtered  = 0U;
 
     if (!chargeState_)
     {
@@ -119,24 +194,62 @@ HalStateEnum BspPowerMonitor::GetBatteryNtcVoltage(uint16_t* ntc_mv)
     }
 
     ntcIadc_.Init();
-    ntcVoltageMv = ntcIadc_.ReadVoltageMilliVolts();
-
-    if (ntcVoltageMv != 0)
-    {
-        if (ntc_mv != nullptr)
-        {
-            *ntc_mv = static_cast<uint16_t>(ntcVoltageMv);
-        }
-        state = HalStateEnum::HAL_OK;
-    }
-
+    rawMv = ntcIadc_.ReadVoltageMilliVolts();
     ntcIadc_.DeInit(gpioModePushPull, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
 
     if (!chargeState_)
     {
         chargeEnIo_.SetGpioPinState(HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
     }
-    LOG_POWER("NTC voltage: %u mV", ntcVoltageMv);
+
+    if (rawMv == 0U)
+    {
+        LOG_POWER("NTC raw read failed");
+        return HalStateEnum::HAL_ERROR;
+    }
+
+    // 无电池开路高压会污染低通；断开态只回原始值，插入后再种子化
+    if (batteryTempStatus_ != BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
+    {
+        filtered = ApplyAdcOffsetRaw(rawMv, kNtcAdcOffsetMv);
+        filtered = FilterAdcSampleRaw(filtered, kNtcVoltFilterAlpha, &filteredNtcMv_, &ntcFilterSeeded_);
+    }
+    else if (ntcFilterSeeded_)
+    {
+        filtered = filteredNtcMv_;
+    }
+    else
+    {
+        filtered = ApplyAdcOffsetRaw(rawMv, kNtcAdcOffsetMv);
+    }
+
+    if (pRawMv != nullptr)
+    {
+        *pRawMv = static_cast<uint16_t>(rawMv);
+    }
+    if (pFilteredMv != nullptr)
+    {
+        *pFilteredMv = static_cast<uint16_t>(filtered);
+    }
+
+    state = HalStateEnum::HAL_OK;
+    LOG_POWER("NTC raw=%u filtered=%u mV", static_cast<unsigned>(rawMv), static_cast<unsigned>(filtered));
+    return state;
+}
+
+/**
+ * @brief 读取 NTC 电压（对外：偏差 + 一阶低通后的值）
+ */
+HalStateEnum BspPowerMonitor::GetBatteryNtcVoltage(uint16_t* ntc_mv)
+{
+    uint16_t rawMv      = 0U;
+    uint16_t filteredMv = 0U;
+    const HalStateEnum state = FetchNtcFromHardwareRaw(&rawMv, &filteredMv);
+    (void)rawMv;
+    if ((state == HalStateEnum::HAL_OK) && (ntc_mv != nullptr))
+    {
+        *ntc_mv = filteredMv;
+    }
     return state;
 }
 
@@ -261,18 +374,25 @@ ChargeChipStatusEnum BspPowerMonitor::GetChargeStatus()
 
 BatteryVoltStatusEnum BspPowerMonitor::GetBatteryVoltStatus()
 {
+    // 无电池时电压采样无效，避免滤波虚低触发 CriticalEmpty 拖垮充电白呼吸
+    if (batteryTempStatus_ == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
+    {
+        return BatteryVoltStatusEnum::VOLT_NORMAL;
+    }
+
     uint16_t batMv = 0U;
     if (GetBatteryVoltage(&batMv) != HalStateEnum::HAL_OK)
     {
         return BatteryVoltStatusEnum::VOLT_NORMAL;
     }
 
-    if (batMv <= static_cast<uint16_t>(BatDisChargeLowVal))
+    // §6：低于 6.5V 临界；低于 7.0V 低电警告
+    if (batMv < kBatDischargeCriticalMv)
     {
         return BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY;
     }
 
-    if (batMv <= static_cast<uint16_t>(BatDisChargeLowWarnVal))
+    if (batMv < kBatDischargeLowWarnMv)
     {
         return BatteryVoltStatusEnum::VOLT_LOW_WARNING;
     }
@@ -307,6 +427,20 @@ HalStateEnum BspPowerMonitor::GetUsbInputVoltageRaw(uint16_t* usbMv)
 }
 
 /**
+ * @brief USB 插拔：重置 NTC/电池电压滤波累计与连续判定计数（注解）
+ */
+void BspPowerMonitor::ResetAdcAccumulatorsRaw()
+{
+    filteredBatMv_         = 0U;
+    batFilterSeeded_       = false;
+    filteredNtcMv_         = 0U;
+    ntcFilterSeeded_       = false;
+    ntcRemovedHighCount_   = 0U;
+    ntcPresentLowCount_    = 0U;
+    LOG_POWER("ADC accumulators reset (USB plug event)");
+}
+
+/**
  * @brief 轮询 PA08(USB_AD) 检测 USB 插拔
  */
 void BspPowerMonitor::PollUsbStatusRaw()
@@ -317,12 +451,13 @@ void BspPowerMonitor::PollUsbStatusRaw()
         return;
     }
 
-    const UsbConnectionStatusEnum newStatus = (usbMv >= static_cast<uint16_t>(PowerInLimitVol))
-                                                  ? UsbConnectionStatusEnum::UsbConnected
-                                                  : UsbConnectionStatusEnum::UsbNotConnected;
+    const UsbConnectionStatusEnum newStatus =
+        (usbMv >= kPowerInLimitMv) ? UsbConnectionStatusEnum::UsbConnected : UsbConnectionStatusEnum::UsbNotConnected;
 
     if (newStatus != usbStatus_)
     {
+        // 注解：每次插拔 USB 重置 NTC/电池电压累计
+        ResetAdcAccumulatorsRaw();
         usbStatus_ = newStatus;
         if (appCallback_ != nullptr)
         {
@@ -334,30 +469,62 @@ void BspPowerMonitor::PollUsbStatusRaw()
 /**
  * @brief 读取电池温度状态
  * @return 电池温度状态
- * @note 电池温度状态的判定逻辑：
- * 1. 如果电池温度状态为电池移除，则返回电池移除状态
- * 2. 如果电池温度状态为电池过低，则返回电池过低状态
- * 3. 如果电池温度状态为电池过高，则返回电池过高状态
- * 4. 如果电池温度状态为电池正常，则返回电池正常状态
+ * @note 注解：断电池连续判定用 NTC **原始数据**（非滤波）；
+ *       连续 3 次原始 >=3150mV → 断开；连续 3 次原始 <3150mV → 清零累计。
+ *       高/低温判定仍用滤波后数值，避免抖动。
  */
 BatteryTempStatusEnum BspPowerMonitor::GetBatteryTempStatus()
 {
-    uint16_t ntcMv = 0U;
-    if (GetBatteryNtcVoltage(&ntcMv) != HalStateEnum::HAL_OK)
+    uint16_t ntcRawMv      = 0U;
+    uint16_t ntcFilteredMv = 0U;
+    if (FetchNtcFromHardwareRaw(&ntcRawMv, &ntcFilteredMv) != HalStateEnum::HAL_OK)
     {
         return batteryTempStatus_;
     }
+
+    const bool batteryRemoved = bsp::CheckConsecutive::Apply(
+        ntcRawMv, kNtcBatteryRemovedMv, &ntcRemovedHighCount_, kNtcConsecutiveMax);
+    const bool presentStable = bsp::CheckConsecutive::ApplyBelow(
+        ntcRawMv, kNtcBatteryRemovedMv, &ntcPresentLowCount_, kNtcConsecutiveMax);
+
+    if (presentStable)
+    {
+        // 连续 3 次原始低于阈值：重置断开累计，并以当前原始值重新种子化滤波
+        ntcRemovedHighCount_ = 0U;
+        filteredNtcMv_ =
+            ApplyAdcOffsetRaw(static_cast<uint32_t>(ntcRawMv), kNtcAdcOffsetMv);
+        ntcFilterSeeded_ = true;
+        ntcFilteredMv    = static_cast<uint16_t>(filteredNtcMv_);
+
+        // 电压滤波在无电池期已停更；插入后下次采样重新种子，避免虚低临界态
+        batFilterSeeded_ = false;
+        filteredBatMv_   = 0U;
+
+        if (batteryTempStatus_ == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
+        {
+            batteryTempStatus_ = BatteryTempStatusEnum::TEMP_NORMAL;
+        }
+    }
+
+    if (batteryRemoved)
+    {
+        batteryTempStatus_ = BatteryTempStatusEnum::TEMP_BATTERY_REMOVED;
+        // 开路采样不进入低通累计
+        ntcFilterSeeded_ = false;
+        batFilterSeeded_ = false;
+        return batteryTempStatus_;
+    }
+
+    // 断开累计未满时，若仍处 REMOVED 锁存则保持（等低侧 3 次清除）
+    if (batteryTempStatus_ == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
+    {
+        return batteryTempStatus_;
+    }
+
     do
     {
-        /* 无电池 */
-        if (ntcMv >= static_cast<uint16_t>(NTCDetectBat))
-        {
-            batteryTempStatus_ = BatteryTempStatusEnum::TEMP_BATTERY_REMOVED;
-            break;
-        }
-
-        /* 低温 */
-        if (ntcMv >= static_cast<uint16_t>(NTCLowValTemp))
+        /* 低温（滤波值） */
+        if (ntcFilteredMv >= static_cast<uint16_t>(NTCLowValTemp))
         {
             batteryTempStatus_ = BatteryTempStatusEnum::TEMP_TOO_LOW;
             break;
@@ -366,14 +533,14 @@ BatteryTempStatusEnum BspPowerMonitor::GetBatteryTempStatus()
         /* 高温恢复 */
         if (batteryTempStatus_ == BatteryTempStatusEnum::TEMP_TOO_HIGH)
         {
-            if (ntcMv <= static_cast<uint16_t>(NTCRecoverValTemp))
+            if (ntcFilteredMv <= static_cast<uint16_t>(NTCRecoverValTemp))
             {
                 batteryTempStatus_ = BatteryTempStatusEnum::TEMP_NORMAL;
                 break;
             }
         }
         /* 高温 */
-        if (ntcMv <= static_cast<uint16_t>(NTCOverValTemp))
+        if (ntcFilteredMv <= static_cast<uint16_t>(NTCOverValTemp))
         {
             batteryTempStatus_ = BatteryTempStatusEnum::TEMP_TOO_HIGH;
             break;
