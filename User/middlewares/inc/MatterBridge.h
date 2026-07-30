@@ -92,6 +92,12 @@ class MatterBridge
     void RequestOpenCommissioningWindow(bool forceRestartTimer);
 
     /**
+     * @brief 用户本地操作（按键等）时延长 ICD Active 窗口
+     * @note 可从任意任务上下文调用；内部投递至 Matter 线程。
+     */
+    void NotifyUserInteraction();
+
+    /**
      * @brief 注册「主灯是否开启」查询（供自动配网门禁）
      * @param query 返回 true=亮度>0；nullptr=不检查灯态
      */

@@ -21,6 +21,10 @@
 
 #include <platform/silabs/KeyValueStoreManagerImpl.h>
 
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+#include <app/icd/server/ICDNotifier.h>
+#endif
+
 using namespace chip;
 using namespace chip::DeviceLayer;
 
@@ -198,6 +202,19 @@ void MatterBridge::RequestOpenCommissioningWindow(bool forceRestartTimer)
     {
         LOG_MATTER("[Commission] Schedule open window failed: %" CHIP_ERROR_FORMAT, err.Format());
     }
+}
+
+void MatterBridge::NotifyUserInteraction()
+{
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+    CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(
+        [](intptr_t) { chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification(); },
+        0);
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("[ICD] Schedule user interaction wake failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+#endif
 }
 
 /**

@@ -84,6 +84,12 @@ component:
   id: matter_groups
 - package: matter
   vendor: silabs
+  id: matter_icd_core
+- package: matter
+  vendor: silabs
+  id: matter_icd_management
+- package: matter
+  vendor: silabs
   id: matter_identify
 - package: matter
   vendor: silabs
@@ -151,6 +157,9 @@ component:
 - package: matter
   vendor: silabs
   id: matter_user_label
+- package: openthread
+  vendor: silabs
+  id: ot_stack_mtd
 - package: simplicity_sdk
   vendor: silabs
   id: EFR32MG24B010F1536IM40
@@ -227,6 +236,10 @@ configuration:
   value: '0'
 - name: SL_OPENTHREAD_ENABLE_CLI_TASK
   value: '0'
+- name: CHIP_CONFIG_ENABLE_ICD_SERVER
+  value: '1'
+- name: SL_ICD_ENABLED
+  value: '1'
 - name: OPENTHREAD_CONFIG_LOG_OUTPUT
   value: OPENTHREAD_CONFIG_LOG_OUTPUT_APP
 - condition:

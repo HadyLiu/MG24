@@ -5,7 +5,7 @@
   "name" : "Silicon-Laboratories",
   "documentNamespace" : "https://silabs.com",
   "creationInfo" : {
-    "created" : "2026-07-08T10:50:43Z",
+    "created" : "2026-07-30T08:47:38Z",
     "creators" : [ "Tool: Silicon Labs Configuration Tooling" ]
   },
   "comment" : "TERMS OF USE - SILICON LABORATORIES INC.\n(With respect to Silicon Labs software components, this Software Bill of Materials (SBOM) is based upon Silicon Labs'\nreview and analysis of the code version when released.  It is provided \"AS IS\" and does not modify, change or alter\nthe terms or conditions of your use of Silicon Labs' software and/or SDKs based upon license terms and/or agreements\nassociated with this software or SDKs when distributed to you, received by you, or installed by you.  Further, no\nwarranties or obligations are created by this SBOM.  It is your obligation to comply with the terms of licenses\nreferenced in this SBOM.)",
@@ -156,6 +156,22 @@
   }, {
     "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_groups",
     "name" : "Groups Server Cluster",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Apache 2.0"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_icd_core",
+    "name" : "ICD Server Configuration",
+    "versionInfo" : "2.8.1",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
+    "SPDXID" : "SPDXRef-silabs.matter-2.8.1-matter_icd_management",
+    "name" : "ICD Management Server Cluster",
     "versionInfo" : "2.8.1",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -777,6 +793,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "name" : "High Frequency RC Oscillator (HFRCO)",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
     "name" : "High Frequency Crystal Oscillator (HFXO)",
     "versionInfo" : "2025.12.2",
@@ -1024,14 +1048,6 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_ftd",
-    "name" : "Stack (FTD)",
-    "versionInfo" : "2025.12.2",
-    "primaryPackagePurpose" : "LIBRARY",
-    "downloadLocation" : "NOASSERTION",
-    "supplier" : "Organization: Silicon Laboratories, Inc.",
-    "licenseConcluded" : "Zlib"
-  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_platform_abstraction",
     "name" : "Platform Abstraction",
     "versionInfo" : "2025.12.2",
@@ -1262,6 +1278,14 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_mtd",
+    "name" : "Stack (MTD)",
+    "versionInfo" : "2025.12.2",
+    "primaryPackagePurpose" : "LIBRARY",
+    "downloadLocation" : "NOASSERTION",
+    "supplier" : "Organization: Silicon Laboratories, Inc.",
+    "licenseConcluded" : "Zlib"
+  }, {
     "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-interrupt_manager",
     "name" : "Interrupt Manager",
     "versionInfo" : "2025.12.2",
@@ -1350,16 +1374,16 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "MSLA"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led_core",
-    "name" : "Simple LED Core",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_rmu",
+    "name" : "RMU",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_rmu",
-    "name" : "RMU",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led_core",
+    "name" : "Simple LED Core",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -2325,16 +2349,16 @@
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-agents_md",
-    "name" : "AGENTS.md",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_psa_crypto",
+    "name" : "PSA Crypto",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
     "supplier" : "Organization: Silicon Laboratories, Inc.",
     "licenseConcluded" : "Zlib"
   }, {
-    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_psa_crypto",
-    "name" : "PSA Crypto",
+    "SPDXID" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-agents_md",
+    "name" : "AGENTS.md",
     "versionInfo" : "2025.12.2",
     "primaryPackagePurpose" : "LIBRARY",
     "downloadLocation" : "NOASSERTION",
@@ -2667,6 +2691,14 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_icd_core",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
+    "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_icd_management",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.matter-2.8.1",
     "relatedSpdxElement" : "SPDXRef-silabs.matter-2.8.1-matter_identify",
     "relationshipType" : "CONTAINS"
   }, {
@@ -2971,6 +3003,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfrco",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-device_init_hfxo",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3091,10 +3127,6 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_ftd",
-    "relationshipType" : "CONTAINS"
-  }, {
-    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_platform_abstraction",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3203,6 +3235,10 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_stack_mtd",
+    "relationshipType" : "CONTAINS"
+  }, {
+    "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
     "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-interrupt_manager",
     "relationshipType" : "CONTAINS"
   }, {
@@ -3247,11 +3283,11 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led_core",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_rmu",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-emlib_rmu",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-simple_led_core",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
@@ -3731,11 +3767,11 @@
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-agents_md",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_psa_crypto",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",
-    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-ot_psa_crypto",
+    "relatedSpdxElement" : "SPDXRef-silabs.simplicity_sdk-2025.12.2-agents_md",
     "relationshipType" : "CONTAINS"
   }, {
     "spdxElementId" : "SPDXRef-silabs.simplicity_sdk-2025.12.2",

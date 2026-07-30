@@ -37,6 +37,9 @@ void emberAfClusterInitCallback(EndpointId endpoint, ClusterId clusterId)
      case  app::Clusters::Groups::Id:
         emberAfGroupsClusterInitCallback(endpoint);
         break;
+     case  app::Clusters::IcdManagement::Id:
+        emberAfIcdManagementClusterInitCallback(endpoint);
+        break;
      case  app::Clusters::Identify::Id:
         emberAfIdentifyClusterInitCallback(endpoint);
         break;

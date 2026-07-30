@@ -171,6 +171,8 @@ void button_Init(void)
 
     // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
+        MatterBridge::Instance().NotifyUserInteraction();
+
         if (event == KeyEventType::LongPressClearNetLighting)
         {
             // 约 8s：红灯与主灯预警时序；≥13s 武装后，时序完结才工厂复位

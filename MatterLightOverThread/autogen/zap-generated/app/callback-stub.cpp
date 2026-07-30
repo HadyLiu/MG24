@@ -47,6 +47,11 @@ void __attribute__((weak)) emberAfGroupsClusterInitCallback(EndpointId endpoint)
     // To prevent warning
     (void) endpoint;
 }
+void __attribute__((weak)) emberAfIcdManagementClusterInitCallback(EndpointId endpoint)
+{
+    // To prevent warning
+    (void) endpoint;
+}
 void __attribute__((weak)) emberAfIdentifyClusterInitCallback(EndpointId endpoint)
 {
     // To prevent warning
