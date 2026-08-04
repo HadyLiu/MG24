@@ -280,36 +280,51 @@ void Matter_Init(void)
                 return;
             }
 
-            // 颜色上报：白光/色温曲线 → CT(mireds)；彩色 → HSV
+            // 颜色上报：有 W → CT；无 W → HSV + XY
             const LightTypes::WrgbColor wrgb = {pWrgb[0], pWrgb[1], pWrgb[2], pWrgb[3]};
-            const bool isPureWhite =
-                (pWrgb[0] > 0U) && (pWrgb[1] == 0U) && (pWrgb[2] == 0U) && (pWrgb[3] == 0U);
-            const bool isWarmCtBranch =
-                (pWrgb[0] > 0U) && (pWrgb[3] == 0U) && (pWrgb[1] > 0U); // W+R(+G)，无 B
-            const bool isCoolCtBranch =
-                (pWrgb[0] > 0U) && (pWrgb[1] == 0U) && (pWrgb[3] > 0U); // W+B(+G)，无 R
 
-            if (isPureWhite || isWarmCtBranch || isCoolCtBranch)
+            if (pWrgb[0] > 0U)
             {
                 uint32_t kelvin = ColorConverter::ToColorTemperature(wrgb);
                 if (kelvin < 1U)
                 {
                     kelvin = 2700U;
                 }
+                if (kelvin < 2200U)
+                {
+                    kelvin = 2200U;
+                }
+                if (kelvin > 6500U)
+                {
+                    kelvin = 6500U;
+                }
                 const uint16_t mireds = static_cast<uint16_t>(1000000U / kelvin);
                 MatterDownlinkUploadPayload ctPayload{};
                 ctPayload.element                   = MatterDataElement::kCt;
                 ctPayload.color.ct.colorTemperature = mireds;
+                LOG_MATTER("Color uplink CT: K=%lu mireds=%u WRGB=%u,%u,%u,%u",
+                           static_cast<unsigned long>(kelvin), mireds, pWrgb[0], pWrgb[1], pWrgb[2],
+                           pWrgb[3]);
                 MatterBridge::Instance().MatterUploadLocalReport(ctPayload);
             }
             else
             {
                 const LightTypes::HsvColor hsv = ColorConverter::ToHsv(wrgb);
                 MatterDownlinkUploadPayload hsvPayload{};
-                hsvPayload.element                = MatterDataElement::kHsv;
-                hsvPayload.color.hsv.hue          = hsv.h;
-                hsvPayload.color.hsv.saturation   = hsv.s;
+                hsvPayload.element              = MatterDataElement::kHsv;
+                hsvPayload.color.hsv.hue        = hsv.h;
+                hsvPayload.color.hsv.saturation = hsv.s;
+                LOG_MATTER("Color uplink HSV: H=%u S=%u WRGB=%u,%u,%u,%u", hsv.h, hsv.s, pWrgb[0],
+                           pWrgb[1], pWrgb[2], pWrgb[3]);
                 MatterBridge::Instance().MatterUploadLocalReport(hsvPayload);
+
+                const LightTypes::XyColor xy = ColorConverter::ToXy(wrgb);
+                MatterDownlinkUploadPayload xyPayload{};
+                xyPayload.element    = MatterDataElement::kXy;
+                xyPayload.color.xy.x = xy.x;
+                xyPayload.color.xy.y = xy.y;
+                LOG_MATTER("Color uplink XY: X=%u Y=%u", xy.x, xy.y);
+                MatterBridge::Instance().MatterUploadLocalReport(xyPayload);
             }
         });
 
