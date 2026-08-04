@@ -62,15 +62,14 @@ void HalPwm::PwmSetDutyCycle10bitResolutionRaw(uint16_t duty)
     }
 
 #if defined(_SILICON_LABS_32B_SERIES_2)
-    // 适用于 Series 2 芯片 (如 EFR32MG24)
+    // Series 2：compare = top * duty / 1023（满量程 1023 → 100%）
     uint32_t top         = TIMER_TopGet(pwm_instance->timer);
-    uint32_t compare_val = (top * duty); // 右移9位相当于除以512
-    compare_val /= 638;
+    uint32_t compare_val = (top * static_cast<uint32_t>(duty)) / 1023U;
     TIMER_CompareBufSet(pwm_instance->timer, pwm_instance->channel, compare_val);
 #else
-    // 适用于 Series 3 芯片
+    // Series 3：右移 10 位 ≈ /1024
     uint32_t top = sl_hal_timer_get_top(pwm_instance->timer);
-    // 右移10位相当于除以1024
-    sl_hal_timer_channel_set_compare_buffer(pwm_instance->timer, pwm_instance->channel, (top * duty) >> 10);
+    sl_hal_timer_channel_set_compare_buffer(pwm_instance->timer, pwm_instance->channel,
+                                            (top * static_cast<uint32_t>(duty)) >> 10);
 #endif
 }
