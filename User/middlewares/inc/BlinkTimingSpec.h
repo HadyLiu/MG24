@@ -22,9 +22,6 @@ namespace BlinkTimingSpec
     /** @brief 重置网络：起始熄灭时长 */
     static constexpr uint16_t kResetOffLeadMs = 400U;
 
-    /** @brief 重置网络：结尾熄灭时长 */
-    static constexpr uint16_t kResetOffTailMs = 2000U;
-
     /** @brief 重置网络：正常闪额外重复次数（共 3 次，repeatCount=2） */
     static constexpr uint8_t kResetNormalBlinkExtraRepeats = 2U;
 }

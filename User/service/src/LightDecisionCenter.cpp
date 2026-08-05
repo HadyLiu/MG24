@@ -43,8 +43,7 @@ static constexpr uint16_t kColorPalette[][4] = {
     {0U, 1023U, 322U, 0U}    /* #42 0/100/31.5/0 */
 };
 
-static constexpr uint8_t kColorPaletteCount =
-    static_cast<uint8_t>(sizeof(kColorPalette) / sizeof(kColorPalette[0]));
+static constexpr uint8_t kColorPaletteCount = static_cast<uint8_t>(sizeof(kColorPalette) / sizeof(kColorPalette[0]));
 
 /** @brief 出厂默认色：#5（调色板索引 0） */
 static constexpr uint8_t kDefaultColorIndex = 0U;
@@ -103,10 +102,10 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
         return;
     }
 
-    m_pSequence    = pSequence;
-    m_pStorage     = pStorage;
-    m_sceneState   = LightSceneState::Normal;
-    m_isBatteryLow = false;
+    m_pSequence                  = pSequence;
+    m_pStorage                   = pStorage;
+    m_sceneState                 = LightSceneState::Normal;
+    m_isBatteryLow               = false;
     m_criticalOpenSequenceActive = false;
 
     const bool readOk = m_pStorage->Read(reinterpret_cast<uint8_t*>(&m_userTargetParam), sizeof(PersistParam_T));
@@ -357,9 +356,9 @@ void LightDecisionCenter::ProcessBatteryEvent(bool isLow)
 
     if (m_isBatteryLow)
     {
-        m_sceneState                    = LightSceneState::LowBattery;
-        m_isPairSuccessSequenceActive   = false;
-        m_criticalOpenSequenceActive    = false;
+        m_sceneState                  = LightSceneState::LowBattery;
+        m_isPairSuccessSequenceActive = false;
+        m_criticalOpenSequenceActive  = false;
         if (m_pSequence != nullptr)
         {
             m_pSequence->StopSequence();
@@ -369,9 +368,9 @@ void LightDecisionCenter::ProcessBatteryEvent(bool isLow)
     }
     else if (m_sceneState == LightSceneState::LowBattery)
     {
-        m_criticalOpenSequenceActive     = false;
-        m_sceneState                     = LightSceneState::Normal;
-        m_userTargetParam.brightness     = m_lastValidBrightness;
+        m_criticalOpenSequenceActive = false;
+        m_sceneState                 = LightSceneState::Normal;
+        m_userTargetParam.brightness = m_lastValidBrightness;
         SafeSaveToStorage();
         ApplyArbitratedResult();
         ReportToMatterIfRegistered();
@@ -426,21 +425,13 @@ void LightDecisionCenter::StartCriticalBatteryOpenSequence()
          peakBrightness,
          LightDimmingSpec::kFadeInMs,
          0U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeOut,
-         {0U, 0U, 0U, 0U},
-         0U,
-         LightDimmingSpec::kFadeOutMs,
-         0U},
+        {LightEffectProcessor::GetBezier40BytesFactorFadeOut, {0U, 0U, 0U, 0U}, 0U, LightDimmingSpec::kFadeOutMs, 0U},
         {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
          {0U, 0U, 0U, 0U},
          peakBrightness,
          LightDimmingSpec::kFadeInMs,
          0U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeOut,
-         {0U, 0U, 0U, 0U},
-         0U,
-         LightDimmingSpec::kFadeOutMs,
-         0U}};
+        {LightEffectProcessor::GetBezier40BytesFactorFadeOut, {0U, 0U, 0U, 0U}, 0U, LightDimmingSpec::kFadeOutMs, 0U}};
     memcpy(steps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(steps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(steps[2].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
@@ -457,8 +448,8 @@ void LightDecisionCenter::StartCriticalBatteryOpenSequence()
  */
 void LightDecisionCenter::OnCriticalBatteryOpenSequenceFinishedRaw()
 {
-    m_criticalOpenSequenceActive     = false;
-    m_userTargetParam.brightness     = 0U;
+    m_criticalOpenSequenceActive = false;
+    m_userTargetParam.brightness = 0U;
     if (m_sceneState != LightSceneState::LowBattery)
     {
         m_sceneState = LightSceneState::LowBattery;
@@ -578,8 +569,7 @@ void LightDecisionCenter::MarkFirstCommissionDone()
         return;
     }
 
-    m_userTargetParam.reserved =
-        static_cast<uint8_t>(m_userTargetParam.reserved | kFirstCommissionDoneFlag);
+    m_userTargetParam.reserved = static_cast<uint8_t>(m_userTargetParam.reserved | kFirstCommissionDoneFlag);
     SafeSaveToStorage();
     LOG_LIGHT_DC("First commission marked done");
 }
@@ -708,10 +698,10 @@ void LightDecisionCenter::LoadDefaults()
     m_userTargetParam.brightness = kDefaultBrightness;
     m_userTargetParam.op_id      = LightEffectOpId::LinearLerp;
     memcpy(m_userTargetParam.wrgb, kColorPalette[kDefaultColorIndex], sizeof(m_userTargetParam.wrgb));
-    m_userTargetParam.reserved   = kBootEffectNone;
-    m_lastValidBrightness        = kDefaultBrightness;
-    m_brightnessCycleIndex       = 0U;
-    m_colorCycleIndex            = kDefaultColorIndex;
+    m_userTargetParam.reserved = kBootEffectNone;
+    m_lastValidBrightness      = kDefaultBrightness;
+    m_brightnessCycleIndex     = 0U;
+    m_colorCycleIndex          = kDefaultColorIndex;
 }
 
 /**
@@ -731,8 +721,8 @@ bool LightDecisionCenter::IsPersistValid(const PersistParam_T& param) const
 }
 
 /**
- * @brief 主灯工厂重置预警时序（一次性，4 步）
- * @note 注解：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭 2s；
+ * @brief 主灯工厂重置预警时序（一次性，3 步）
+ * @note 注解：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭；
  *       闪烁亮度=当前亮度，关灯则用关灯前亮度（m_lastValidBrightness）；
  *       完结后仅当已按住≥13s（m_factoryResetArmed）才触发工厂复位。
  */
@@ -755,31 +745,18 @@ void LightDecisionCenter::StartNetConfigSequence()
     }
 
     LightSequenceScheduler::SequenceStep kNetConfigSteps[] = {
-        {LightEffectProcessor::GetKeep,
-         {0U, 0U, 0U, 0U},
-         0U,
-         BlinkTimingSpec::kResetOffLeadMs,
-         0U},
+        {LightEffectProcessor::GetKeep, {0U, 0U, 0U, 0U}, 0U, BlinkTimingSpec::kResetOffLeadMs, 0U},
         {LightEffectProcessor::GetBlink,
          {0U, 0U, 0U, 0U},
          warnBrightness,
          BlinkTimingSpec::kNormalBlinkCycleMs,
          BlinkTimingSpec::kResetNormalBlinkExtraRepeats},
-        {LightEffectProcessor::GetBlink,
-         {0U, 0U, 0U, 0U},
-         warnBrightness,
-         BlinkTimingSpec::kSlowBlinkCycleMs,
-         0U},
-        {LightEffectProcessor::GetKeep,
-         {0U, 0U, 0U, 0U},
-         0U,
-         BlinkTimingSpec::kResetOffTailMs,
-         0U}};
+        {LightEffectProcessor::GetBlink, {0U, 0U, 0U, 0U}, warnBrightness, BlinkTimingSpec::kSlowBlinkCycleMs, 0U}};
     memcpy(kNetConfigSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(kNetConfigSteps[2].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
     m_pSequence->RegisterSequenceFinishedCallback(OnFactoryResetWarnSequenceFinishedBridge);
-    m_pSequence->StartSequence(kNetConfigSteps, 4U, false);
+    m_pSequence->StartSequence(kNetConfigSteps, 3U, false);
 }
 
 /**
@@ -812,7 +789,7 @@ void LightDecisionCenter::StopNetConfigAndRestoreRaw()
  */
 void LightDecisionCenter::OnFactoryResetWarnSequenceFinishedRaw()
 {
-    const bool doReset = m_factoryResetArmed;
+    const bool doReset  = m_factoryResetArmed;
     m_factoryResetArmed = false;
     m_sceneState        = LightSceneState::Normal;
 
@@ -867,6 +844,7 @@ void LightDecisionCenter::OnFactoryResetWarnSequenceFinishedBridge()
 
 /**
  * @brief 工厂复位重启后灯效：出厂色 65% 快闪×2 → 淡入 100%
+ * @note 淡入用 kTransitionMs(400)，缩短到 Normal 的等待。
  */
 void LightDecisionCenter::StartFactoryResetDoneSequence()
 {
@@ -883,11 +861,7 @@ void LightDecisionCenter::StartFactoryResetDoneSequence()
          kFactoryResetWarnBrightness,
          BlinkTimingSpec::kFastBlinkCycleMs,
          1U},
-        {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
-         {0U, 0U, 0U, 0U},
-         kDefaultBrightness,
-         kTransitionMs,
-         0U}};
+        {LightEffectProcessor::GetBezier40BytesFactorFadeIn, {0U, 0U, 0U, 0U}, kDefaultBrightness, kTransitionMs, 0U}};
     memcpy(doneSteps[0].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
     memcpy(doneSteps[1].targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
 
@@ -925,12 +899,11 @@ void LightDecisionCenter::StartIdentifySequence()
         return;
     }
 
-    LightSequenceScheduler::SequenceStep kIdentifySteps[] = {
-        {LightEffectProcessor::GetBlink,
-         {0U, 0U, 0U, 0U},
-         kDefaultBrightness,
-         BlinkTimingSpec::kNormalBlinkCycleMs,
-         0U}};
+    LightSequenceScheduler::SequenceStep kIdentifySteps[] = {{LightEffectProcessor::GetBlink,
+                                                              {0U, 0U, 0U, 0U},
+                                                              kDefaultBrightness,
+                                                              BlinkTimingSpec::kNormalBlinkCycleMs,
+                                                              0U}};
     memcpy(kIdentifySteps[0].targetChannels, kColorPalette[kDefaultColorIndex],
            sizeof(kColorPalette[kDefaultColorIndex]));
 

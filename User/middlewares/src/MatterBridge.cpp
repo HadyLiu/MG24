@@ -42,7 +42,7 @@ static bool s_commissioningDoneEffectLatched = false;
  * @brief 工厂重置前的缓冲延时：给指示灯展示与日志刷出留时间，随后擦除并重启
  * @note 重启后设备为未配网态，开机兜底打开 BLE + 可配网广播，可直接扫码重配。
  */
-static constexpr uint32_t kFactoryResetRebootDelayMs = 500U;
+static constexpr uint32_t kFactoryResetRebootDelayMs = 50U;
 
 /**
  * @brief 无 Fabric 时打开基础配网窗与 PASE 监听
@@ -783,8 +783,7 @@ void MatterBridge::RegisterDeviceEventListener(void)
 
 /**
  * @brief 工厂重置阶段 1：刷 KVS 映射并延时缓冲，随后擦除并重启
- * @note  延时用于让"清网中"指示灯展示；ForceKeyMapSave 避免 Silabs 平台
- *        复位前 nvm3 shadow key 泄漏导致重启后 KVS 异常。
+ * @note  ForceKeyMapSave 已在启动定时器前完成；延时仅留极短缓冲再擦除重启。
  */
 void MatterBridge::DoFactoryResetHandler(intptr_t arg)
 {
