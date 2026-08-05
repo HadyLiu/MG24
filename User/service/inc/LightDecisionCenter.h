@@ -284,8 +284,7 @@ class LightDecisionCenter
     uint8_t         m_brightnessCycleIndex{0U};            /**< 短按亮度循环索引 */
     uint8_t         m_colorCycleIndex{0U};                 /**< 双击颜色循环索引 */
     uint16_t        m_TransitionMs{400};                   /**< 当前单步渐变时长 (ms) */
-    uint32_t        m_lastPairSuccessEffectMs{0U};         /**< 上次配对成功灯效触发时刻 (ms) */
-    bool            m_isPairSuccessSequenceActive{false};  /**< 配对成功时序进行中，防重复启动 */
+    bool            m_isPairSuccessSequenceActive{false};  /**< 配对成功时序进行中，防 Matter 打断 */
 
     PersistParam_T m_userTargetParam{}; /**< 用户目标亮度/WRGB/算子（NVM 镜像） */
 
@@ -297,7 +296,6 @@ class LightDecisionCenter
     static constexpr uint16_t kTransitionMs                   = LightDimmingSpec::kFadeOutMs;
     static constexpr uint8_t  kDefaultBrightness              = 255U;
     static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65%，仅复位后开机快闪用 */
-    static constexpr uint32_t kPairSuccessEffectDebounceMs    = 3500U;
     static constexpr uint8_t  kBrightnessLevels[]             = {255U, 91U, 0U};
 
     static const EffectRenderAction kActionTable[static_cast<uint8_t>(LightEffectOpId::MaxOperators)];

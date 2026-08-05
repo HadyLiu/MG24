@@ -13,7 +13,6 @@
 #include "BlinkTimingSpec.h"
 #include "DebugLog.h"
 #include "LightDimmingSpec.h"
-#include "sl_sleeptimer.h"
 #include <cstring>
 
 #include "FreeRTOS.h"
@@ -193,6 +192,14 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         }
         return;
     }
+
+    // 配对成功确认灯效播放中：按键不打断（清网长按除外，仍允许武装复位）
+    if (m_isPairSuccessSequenceActive && (event != KeyEventType::LongPressClearNetLighting) &&
+        (event != KeyEventType::LongPressClearNet) && (event != KeyEventType::LongPressStopNet))
+    {
+        return;
+    }
+
     LOG_LIGHT_DC("Button: %u", static_cast<uint8_t>(event));
     switch (event)
     {
@@ -283,7 +290,7 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
  * @param pWrgbBuffer 逻辑 WRGB 数组
  * @param brightness  目标亮度 0~255
  * @param opId        渐变算子
- * @note NetConfiguring / MatterIdentifying 期间仅更新参数，不 Apply。
+ * @note NetConfiguring / MatterIdentifying / 配对成功灯效期间仅更新参数，不 Apply。
  */
 void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint8_t brightness, LightEffectOpId opId)
 {
@@ -331,7 +338,8 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
         m_lastValidBrightness = brightness;
     }
 
-    if (m_sceneState == LightSceneState::Normal)
+    // 配对成功确认灯效进行中：只记参数，禁止 StartSingleEffect 打断快闪×2
+    if ((m_sceneState == LightSceneState::Normal) && !m_isPairSuccessSequenceActive)
     {
         ApplyArbitratedResult();
     }
@@ -340,7 +348,7 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     SafeSaveToStorage();
 
     // §3.1：未入网且灯被开启时自动进入配网（刷新倒计时）
-    if (brightness > 0U)
+    if ((brightness > 0U) && !m_isPairSuccessSequenceActive)
     {
         InvokeNetControlRaw(NetControlAction::OpenCommissioning);
     }
@@ -484,7 +492,8 @@ void LightDecisionCenter::NotifyBatteryWarnIfNeeded(uint8_t targetBrightness)
 
 /**
  * @brief Matter 配网成功：当前色 60% 快闪×2 后淡入 100%，完结后再落盘并上报
- * @note Matter 栈可能对同一次配网重复投递 kCommissioningComplete，窗口内只播一次灯效。
+ * @note 每次 kCommissioningComplete 都重播确认灯效（栈可能投递多次，有几次播几次）。
+ *       播放期间禁止 Matter Level/Identify 经 Apply 打断（否则只剩“闪一下”）。
  */
 void LightDecisionCenter::ProcessMatterCommissioningComplete()
 {
@@ -493,19 +502,6 @@ void LightDecisionCenter::ProcessMatterCommissioningComplete()
         return;
     }
 
-    if (m_isPairSuccessSequenceActive)
-    {
-        LOG_LIGHT_DC("PairSuccess sequence already active");
-        return;
-    }
-
-    const uint32_t nowMs = sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count());
-    if ((nowMs - m_lastPairSuccessEffectMs) < kPairSuccessEffectDebounceMs)
-    {
-        LOG_LIGHT_DC("CommissioningComplete debounced");
-        return;
-    }
-    m_lastPairSuccessEffectMs     = nowMs;
     m_isPairSuccessSequenceActive = true;
     m_sceneState                  = LightSceneState::Normal;
 
@@ -515,6 +511,7 @@ void LightDecisionCenter::ProcessMatterCommissioningComplete()
     {
         m_pSequence->StopSequence();
     }
+    LOG_LIGHT_DC("PairSuccess: start 60%% blink x2 then fade full");
     StartCommissioningSuccessSequence();
 }
 
@@ -526,6 +523,13 @@ void LightDecisionCenter::ProcessMatterIdentify(bool active)
 {
     if (m_isBatteryLow)
     {
+        return;
+    }
+
+    // 配对成功确认优先于 Identify，避免配网尾声 Identify 边沿冲掉快闪×2
+    if (m_isPairSuccessSequenceActive)
+    {
+        LOG_LIGHT_DC("Identify ignored during PairSuccess");
         return;
     }
 
@@ -611,6 +615,11 @@ void LightDecisionCenter::ApplyArbitratedResult()
     }
 
     if (m_isBatteryLow)
+    {
+        return;
+    }
+
+    if (m_isPairSuccessSequenceActive)
     {
         return;
     }
@@ -917,8 +926,7 @@ void LightDecisionCenter::StartIdentifySequence()
  */
 void LightDecisionCenter::RestoreAfterIdentifyRaw()
 {
-    m_sceneState                  = LightSceneState::Normal;
-    m_isPairSuccessSequenceActive = false;
+    m_sceneState = LightSceneState::Normal;
 
     if (m_pSequence == nullptr)
     {

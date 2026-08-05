@@ -73,6 +73,8 @@ void LightSequenceScheduler::StartSingleEffect(LightEffectEngine::EffectRenderAc
     }
 
     // 2. 状态机切变：标记当前处于有时序活动状态，但是总步数只有 1 步
+    // 单步劫持不得继承链式完结回调（否则会误触发配对成功等回调）
+    m_finishedCallback  = nullptr;
     m_isSequenceActive  = true;
     m_isLoopForever     = false;
     m_totalSteps        = 1U;

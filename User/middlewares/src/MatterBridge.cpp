@@ -31,14 +31,6 @@ using namespace chip::DeviceLayer;
 bool MatterBridge::g_bypass_zcl_callback = false;
 
 /**
- * @brief 配网完成灯效一次性锁存
- * @note Matter 栈同一次配网会在"会话建立"与"运维完成"两个阶段先后投递
- *       kCommissioningComplete，两者可相隔 10s 以上，时间窗去重无法覆盖。
- *       改用锁存：本次配网只放一次灯效；工厂重置重启后静态变量自然清零。
- */
-static bool s_commissioningDoneEffectLatched = false;
-
-/**
  * @brief 工厂重置前的缓冲延时：给指示灯展示与日志刷出留时间，随后擦除并重启
  * @note 重启后设备为未配网态，开机兜底打开 BLE + 可配网广播，可直接扫码重配。
  */
@@ -710,24 +702,16 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
     // 🎯 核心事件：配网完成（手机成功将设备加入家庭网络）
     case DeviceEventType::kCommissioningComplete:
     {
-        // 一次性锁存：同一次配网多次投递只放一次灯效，直到下次清网复位
-        if (s_commissioningDoneEffectLatched)
-        {
-            LOG_MATTER("CommissioningComplete latched, ignore duplicate");
-            break;
-        }
-        s_commissioningDoneEffectLatched = true;
-
+        // 有几次 Complete 就下发几次灯效，不做锁存/去重
         LOG_MATTER("Commissioning complete!");
 
-        // 首次配网 UI 结束（停白呼吸等）
+        // 首次配网 UI 结束（停白呼吸等）；重复 Complete 再调一次无害
         if (self.m_commissioningUiCallback != nullptr)
         {
             self.m_commissioningUiCallback(false, true);
         }
         self.m_firstCommissionPending = false;
 
-        // 运行配对成功特效
         self.m_matterDownlinkUploadPayload.element = MatterDataElement::kCommissioningDone;
         if (self.m_matterDownlinkCallback != nullptr)
         {

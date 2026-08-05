@@ -65,7 +65,7 @@
 #endif
 
 #ifndef APP_LOG_CAT_POWER
-#define APP_LOG_CAT_POWER 1 ///< 电源
+#define APP_LOG_CAT_POWER 0 ///< 电源
 #endif
 /** @} */
 ///< 底层日志实现接口，基于 UART 输出
