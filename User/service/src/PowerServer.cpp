@@ -222,6 +222,11 @@ void PowerServer::RegisterLightPowerPathReadyHandler(LightPowerPathReadyHandler 
     m_powerPathReadyHandler = handler;
 }
 
+void PowerServer::RegisterUsbUnplugLightPrepareHandler(UsbUnplugLightPrepareHandler handler)
+{
+    m_usbUnplugPrepareHandler = handler;
+}
+
 /////////////////////////////////////////////////////////////////
 // §4 对外 API（薄封装）
 /////////////////////////////////////////////////////////////////
@@ -476,8 +481,6 @@ void PowerServer::EnableBatteryDischargeRaw()
     m_batteryOutEnabled = true;
     m_batterySettleMs   = kBatterySettleMs;
     LOG_BAT("Battery discharge enabled");
-    /* USB→电池或电池开灯：BAT_EN 打开后立刻重刷 WRGB */
-    NotifyPowerPathReadyRaw();
 }
 
 /** @brief 关闭电池放电通路 */
@@ -574,10 +577,14 @@ void PowerServer::UpdateChargeControlAndNotifyRaw()
 /** @brief 通知 entry 供电通路就绪，可刷新主灯 PWM */
 void PowerServer::NotifyPowerPathReadyRaw()
 {
-    if (m_powerPathReadyHandler != nullptr)
+    if (m_powerPathReadyHandler == nullptr)
     {
-        m_powerPathReadyHandler();
+        return;
     }
+
+    const bool usbUnplugFadeIn   = m_pendingUsbUnplugFadeIn;
+    m_pendingUsbUnplugFadeIn     = false;
+    m_powerPathReadyHandler(usbUnplugFadeIn);
 }
 
 /**
@@ -685,12 +692,34 @@ void PowerServer::ApplySupplyModeHardwareRaw()
         return;
     }
 
-    ApplyBatteryDischargeRaw();
-    /* 灯已亮时补刷 WRGB（Enable 早退时仍覆盖 USB→电池切换） */
-    if (m_mainLightActive)
+    const bool usbUnplugRestore = m_pendingUsbUnplugFadeIn;
+
+    if (usbUnplugRestore)
+    {
+        m_usbUnplugTransitionActive = true;
+        if (m_usbUnplugPrepareHandler != nullptr)
+        {
+            m_usbUnplugPrepareHandler();
+        }
+    }
+
+    if (usbUnplugRestore || m_mainLightActive)
+    {
+        EnableBatteryDischargeRaw();
+        m_batteryVoltPollEnabled = usbUnplugRestore || m_mainLightActive;
+    }
+    else
+    {
+        DisableBatteryDischargeRaw();
+        m_batteryVoltPollEnabled = false;
+    }
+
+    if (usbUnplugRestore || m_mainLightActive)
     {
         NotifyPowerPathReadyRaw();
     }
+
+    m_usbUnplugTransitionActive = false;
 }
 
 // ----- §5.8 事件响应 -----
@@ -709,12 +738,21 @@ void PowerServer::OnMainLightChangedRaw(bool mainLightActive)
     m_mainLightActive = mainLightActive;
     LOG_BAT("Main light active %u", static_cast<uint8_t>(mainLightActive));
 
+    if (m_usbUnplugTransitionActive)
+    {
+        return;
+    }
+
     FetchPowerMonitorSnapshotRaw();
     RefreshRunStateRaw();
 
     if (m_supplyMode == SupplyMode::Battery)
     {
         ApplyBatteryDischargeRaw();
+        if (mainLightActive)
+        {
+            NotifyPowerPathReadyRaw();
+        }
         return;
     }
 
@@ -744,6 +782,8 @@ void PowerServer::OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus)
         m_powerSnapshotValid = false;
         SetBatteryChargeEnableRaw(false, 0U);
         ClearChargeIndicatorRaw();
+        /* 注解10：灯亮时拔 USB → 切电池供电后 200ms 淡入 */
+        m_pendingUsbUnplugFadeIn = m_mainLightActive;
         LowPowerCoordinator::Instance().OnUsbPowerActivity(false, false);
     }
 

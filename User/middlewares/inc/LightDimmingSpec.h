@@ -12,6 +12,7 @@ namespace LightDimmingSpec
 {
     static constexpr uint16_t kFadeInMs                = 200U;
     static constexpr uint16_t kFadeOutMs               = 400U;
+    static constexpr uint16_t kUsbUnplugFadeInMs       = 400U; /**< 注解10：拔 USB 后淡入 */
     static constexpr uint8_t  kHubMinBrightnessPercent = 1U;
 
     /** @brief 物理 PWM 最低亮度：255 × 1% 向上取整（≈5lm 产品标定） */

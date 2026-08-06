@@ -13,6 +13,7 @@
 #include "BlinkTimingSpec.h"
 #include "DebugLog.h"
 #include "LightDimmingSpec.h"
+#include "LightEffectEngine.h"
 #include <cstring>
 
 #include "FreeRTOS.h"
@@ -626,11 +627,69 @@ void LightDecisionCenter::GetCurrentWrgb(uint16_t* outChannels, uint8_t count) c
 }
 
 /**
- * @brief 供电通路就绪后重下发灯效
- * @note 内部走 ApplyArbitratedResult，受场景与低电锁约束。
+ * @brief 注解10：拔 USB 切电池前先强制熄灭主灯，避免 BAT_EN 切换时 PWM 冲突闪一下
  */
-void LightDecisionCenter::RefreshOutputIfAllowed()
+void LightDecisionCenter::PrepareUsbUnplugLightOffRaw()
 {
+    if (m_pSequence != nullptr)
+    {
+        m_pSequence->StopSequence(true);
+    }
+    else
+    {
+        LightEffectEngine::Instance().StopCurrentEffect(true);
+    }
+}
+
+/**
+ * @brief 注解10：BAT_EN 就绪后从 0 淡入 400ms 至目标亮度/WRGB
+ */
+void LightDecisionCenter::StartUsbUnplugRestoreSequence()
+{
+    if (m_pSequence == nullptr)
+    {
+        return;
+    }
+
+    if (m_sceneState != LightSceneState::Normal)
+    {
+        return;
+    }
+
+    if (m_isBatteryLow || m_isPairSuccessSequenceActive)
+    {
+        return;
+    }
+
+    if (m_userTargetParam.brightness == 0U)
+    {
+        return;
+    }
+
+    LightSequenceScheduler::SequenceStep fadeInStep = {LightEffectProcessor::GetBezier40BytesFactorFadeIn,
+                                                       {0U, 0U, 0U, 0U},
+                                                       m_userTargetParam.brightness,
+                                                       LightDimmingSpec::kUsbUnplugFadeInMs,
+                                                       0U};
+    memcpy(fadeInStep.targetChannels, m_userTargetParam.wrgb, sizeof(m_userTargetParam.wrgb));
+
+    m_pSequence->RegisterSequenceFinishedCallback(nullptr);
+    m_pSequence->StartSequence(&fadeInStep, 1U, false);
+    LOG_LIGHT_DC("USB unplug restore: fade in %u ms", static_cast<unsigned>(LightDimmingSpec::kUsbUnplugFadeInMs));
+}
+
+/**
+ * @brief 供电通路就绪后重下发灯效
+ * @param usbUnplugFadeIn true=注解10：先灭后 400ms 淡入
+ */
+void LightDecisionCenter::RefreshOutputIfAllowed(bool usbUnplugFadeIn)
+{
+    if (usbUnplugFadeIn)
+    {
+        StartUsbUnplugRestoreSequence();
+        return;
+    }
+
     ApplyArbitratedResult();
 }
 

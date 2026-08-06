@@ -121,17 +121,27 @@ void power_Wire(void)
         LowPowerCoordinator::Instance().OnIndicatorActivity(indicActive);
     });
 
-    // 通知 entry 供电通路就绪
-    PowerServer::Instance().RegisterLightPowerPathReadyHandler([]() {
+    // 注解10：拔 USB 切电池 — 先灭主灯再开 BAT_EN，随后 400ms 淡入
+    PowerServer::Instance().RegisterUsbUnplugLightPrepareHandler([]() {
+        LightDecisionCenter::Instance().PrepareUsbUnplugLightOffRaw();
+    });
+
+    PowerServer::Instance().RegisterLightPowerPathReadyHandler([](bool usbUnplugFadeIn) {
         const bool wantLight = (LightDecisionCenter::Instance().GetCurrentBrightness() > 0U) &&
                                !LightDecisionCenter::Instance().IsBatteryLowLocked();
-        if (!wantLight && !LightEffectEngine::Instance().IsAnyChannelActive())
+        if (!wantLight && !usbUnplugFadeIn && !LightEffectEngine::Instance().IsAnyChannelActive())
         {
             return;
         }
 
+        if (usbUnplugFadeIn)
+        {
+            LightDecisionCenter::Instance().RefreshOutputIfAllowed(true);
+            return;
+        }
+
         LightEffectEngine::Instance().RefreshHardwareOutput();
-        LightDecisionCenter::Instance().RefreshOutputIfAllowed();
+        LightDecisionCenter::Instance().RefreshOutputIfAllowed(false);
     });
 
     // 电池低电量警告 → IndicatorServer

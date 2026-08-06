@@ -39,7 +39,7 @@ class PowerServer
     using ChargeStatusHandler = void (*)(const BatteryChargeSnapshot& snapshot);
 
     /** @brief 供电通路就绪回调（→ entry 刷新主灯 PWM） */
-    using LightPowerPathReadyHandler = void (*)();
+    using LightPowerPathReadyHandler = void (*)(bool usbUnplugToBatteryFadeIn);
 
     static PowerServer& Instance()
     {
@@ -61,6 +61,10 @@ class PowerServer
 
     /** @brief 注册供电通路就绪回调 */
     void RegisterLightPowerPathReadyHandler(LightPowerPathReadyHandler handler);
+
+    /** @brief 注册拔 USB 切电池前的主灯熄灭准备（注解10，须先于 BAT_EN） */
+    using UsbUnplugLightPrepareHandler = void (*)(void);
+    void RegisterUsbUnplugLightPrepareHandler(UsbUnplugLightPrepareHandler handler);
 
     /**
      * @brief 主灯物理输出状态变化通知
@@ -180,7 +184,8 @@ class PowerServer
     // ---- 回调指针 ----
     BatteryVoltHandler         m_batteryVoltHandler{nullptr};
     ChargeStatusHandler        m_chargeStatusHandler{nullptr};
-    LightPowerPathReadyHandler m_powerPathReadyHandler{nullptr};
+    LightPowerPathReadyHandler   m_powerPathReadyHandler{nullptr};
+    UsbUnplugLightPrepareHandler m_usbUnplugPrepareHandler{nullptr};
 
     // ---- 状态机 ----
     SupplyMode    m_supplyMode{SupplyMode::Battery};
@@ -201,7 +206,9 @@ class PowerServer
     bool m_mainLightActive{false};
     bool m_batteryOutEnabled{false};
     bool m_batteryVoltPollEnabled{false};
-    bool m_pendingSupplyApply{false}; /**< ISR 后待 Poll 刷新硬件 */
+    bool m_pendingSupplyApply{false};    /**< ISR 后待 Poll 刷新硬件 */
+    bool m_pendingUsbUnplugFadeIn{false};     /**< 注解10：拔 USB 后 400ms 淡入 */
+    bool m_usbUnplugTransitionActive{false};  /**< 过渡中忽略主灯灭导致的关 BAT_EN */
     bool m_chargeSnapshotValid{false};
     bool m_chargeSessionTimeout{false}; /**< 8h 超时视为充满 */
     bool m_chargeFaultLatched{false};   /**< 充电故障锁存 */

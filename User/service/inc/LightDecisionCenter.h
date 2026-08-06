@@ -142,8 +142,21 @@ class LightDecisionCenter
      */
     void GetCurrentWrgb(uint16_t* outChannels, uint8_t count) const;
 
-    /** @brief 电池通路就绪后重下发灯效（非低电且 Normal 场景） */
-    void RefreshOutputIfAllowed();
+    /**
+     * @brief 注解10：拔 USB 前先熄灭主灯（BAT_EN 切换前调用）
+     */
+    void PrepareUsbUnplugLightOffRaw();
+
+    /**
+     * @brief 注解10：BAT_EN 就绪后 400ms 淡入至目标亮度/WRGB
+     */
+    void StartUsbUnplugRestoreSequence();
+
+    /**
+     * @brief 电池通路就绪后重下发灯效（非低电且 Normal 场景）
+     * @param usbUnplugFadeIn true=走 StartUsbUnplugRestoreSequence
+     */
+    void RefreshOutputIfAllowed(bool usbUnplugFadeIn = false);
 
   private:
     LightDecisionCenter()                                      = default;
