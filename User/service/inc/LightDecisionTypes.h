@@ -56,7 +56,7 @@ enum class BatteryVoltLevel : uint8_t
 {
     Normal = 0,   /**< 电压正常 */
     LowWarning,   /**< 低电量提示（<7.0V，仍可运行） */
-    CriticalEmpty /**< 临界电量（<6.5V，强控灭灯） */
+    CriticalEmpty /**< 临界电量（<6.2V，强控灭灯） */
 };
 
 /**

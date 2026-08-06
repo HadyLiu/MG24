@@ -238,7 +238,7 @@ void IndicatorServer::OnChargeSnapshot(const BatteryChargeSnapshot& snapshot)
 }
 
 /**
- * @brief 低电量警告：红灯一次性时序
+ * @brief 低电量警告：仅开灯边沿时红灯快闪×2（PRD §6.1）
  */
 void IndicatorServer::OnBatteryLowWarn()
 {

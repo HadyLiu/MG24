@@ -209,7 +209,7 @@ class LightDecisionCenter
     /** @brief 复位后开机灯效完结桥接 */
     static void OnFactoryResetDoneSequenceFinishedBridge();
 
-    /** @brief §6.2 临界开灯尝试：亮→渐灭→渐亮→渐灭 */
+    /** @brief §6.2 临界演示：亮→渐灭→渐亮→渐灭（开灯尝试或已亮跌入临界） */
     void StartCriticalBatteryOpenSequence();
 
     /** @brief 临界开灯时序完结：保持强控灭灯 */
@@ -264,8 +264,8 @@ class LightDecisionCenter
     void InvokeNetControlRaw(NetControlAction action);
 
     /**
-     * @brief 用户尝试开灯时触发低电量指示
-     * @param targetBrightness 目标亮度，0 时不触发
+     * @brief 关灯→开灯边沿时触发低电量系统 LED 指示（§6.1/§6.2）
+     * @param targetBrightness 目标亮度；须结合当前 m_userTargetParam.brightness 判定开灯边沿
      */
     void NotifyBatteryWarnIfNeeded(uint8_t targetBrightness);
 

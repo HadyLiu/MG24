@@ -34,7 +34,7 @@ static constexpr uint8_t kNtcVoltFilterAlpha = 5U;
 /** @name 放电电压阈值（mV，还原后的电池端电压）
  *  @{ */
 static constexpr uint16_t kBatDischargeLowWarnMv  = 7000U; ///< §6.1 低电量：低于 7.0V
-static constexpr uint16_t kBatDischargeCriticalMv = 6500U; ///< §6.2 临界：低于 6.5V
+static constexpr uint16_t kBatDischargeCriticalMv = 6200U; ///< §6.2 临界：低于 6.2V
 /** @brief USB 分压还原后阈值(mV)：与历史 ADC 判定一致（引脚约 ≥1.5V） */
 static constexpr uint16_t kUsbDetectLimitMv = 3000U;
 /** @brief EXTI 后 ADC 确认防抖时间 */
@@ -398,7 +398,7 @@ BatteryVoltStatusEnum BspPowerMonitor::GetBatteryVoltStatus()
         return BatteryVoltStatusEnum::VOLT_NORMAL;
     }
 
-    // §6：低于 6.5V 临界；低于 7.0V 低电警告
+    // §6：低于 6.2V 临界；低于 7.0V 低电警告
     if (batMv < kBatDischargeCriticalMv)
     {
         return BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY;

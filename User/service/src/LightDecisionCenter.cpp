@@ -186,7 +186,7 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
     {
         if ((event == KeyEventType::ShortPressCycleBrightness) && !m_criticalOpenSequenceActive)
         {
-            // §6.2：临界下尝试开灯 → 主灯四段演示 + 红灯快闪×2
+            // §6.2：临界下尝试开灯 → 主灯四段演示；红闪仅开灯边沿（Notify 内判定）
             NotifyBatteryWarnIfNeeded(1U);
             StartCriticalBatteryOpenSequence();
         }
@@ -304,7 +304,7 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     {
         if (brightness > 0U)
         {
-            // §6.2：Hub/Matter 尝试开灯同样播临界演示（红闪已由 Notify 触发）
+            // §6.2：Hub/Matter 尝试开灯 → 临界演示；红闪仅开灯边沿
             if (!m_criticalOpenSequenceActive)
             {
                 StartCriticalBatteryOpenSequence();
@@ -356,33 +356,56 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
 
 /**
  * @brief 处理极低电量强控
- * @param isLow true=停时序、亮度置 0 并上报关；false=恢复 m_lastValidBrightness
+ * @param isLow true=进入临界强控；false=电压恢复后解除
+ * @note §6.2 已亮态跌入临界：播四段演示后强制关灯；未亮则立即关并上报。
  */
 void LightDecisionCenter::ProcessBatteryEvent(bool isLow)
 {
-    m_isBatteryLow = isLow;
-
-    if (m_isBatteryLow)
+    if (isLow)
     {
+        if (m_isBatteryLow)
+        {
+            return;
+        }
+
+        const bool wasLightOn = (m_userTargetParam.brightness > 0U);
+        m_isBatteryLow                = true;
         m_sceneState                  = LightSceneState::LowBattery;
         m_isPairSuccessSequenceActive = false;
-        m_criticalOpenSequenceActive  = false;
+
+        if (wasLightOn)
+        {
+            if (m_pSequence != nullptr)
+            {
+                m_pSequence->StopSequence();
+            }
+            LOG_LIGHT_DC("Critical enter while ON -> play fade sequence");
+            StartCriticalBatteryOpenSequence();
+            return;
+        }
+
+        m_criticalOpenSequenceActive = false;
         if (m_pSequence != nullptr)
         {
             m_pSequence->StopSequence();
         }
         m_userTargetParam.brightness = 0U;
         ReportToMatterIfRegistered();
+        return;
     }
-    else if (m_sceneState == LightSceneState::LowBattery)
+
+    if (!m_isBatteryLow)
     {
-        m_criticalOpenSequenceActive = false;
-        m_sceneState                 = LightSceneState::Normal;
-        m_userTargetParam.brightness = m_lastValidBrightness;
-        SafeSaveToStorage();
-        ApplyArbitratedResult();
-        ReportToMatterIfRegistered();
+        return;
     }
+
+    m_criticalOpenSequenceActive = false;
+    m_isBatteryLow               = false;
+    m_sceneState                 = LightSceneState::Normal;
+    m_userTargetParam.brightness = m_lastValidBrightness;
+    SafeSaveToStorage();
+    ApplyArbitratedResult();
+    ReportToMatterIfRegistered();
 }
 
 /**
@@ -452,7 +475,7 @@ void LightDecisionCenter::StartCriticalBatteryOpenSequence()
 }
 
 /**
- * @brief 临界开灯时序完结：维持强控关灯，不上报亮态
+ * @brief 临界开灯时序完结：维持强控关灯并上报 Matter
  */
 void LightDecisionCenter::OnCriticalBatteryOpenSequenceFinishedRaw()
 {
@@ -462,6 +485,7 @@ void LightDecisionCenter::OnCriticalBatteryOpenSequenceFinishedRaw()
     {
         m_sceneState = LightSceneState::LowBattery;
     }
+    ReportToMatterIfRegistered();
     LOG_LIGHT_DC("Critical battery open sequence done");
 }
 
@@ -474,12 +498,19 @@ void LightDecisionCenter::OnCriticalBatteryOpenSequenceFinishedBridge()
 }
 
 /**
- * @brief 用户尝试开灯时，低电/警告态触发指示灯回调
+ * @brief 关灯→开灯边沿时触发系统 LED 红灯快闪×2（§6.1 低电 / §6.2 临界）
  * @param targetBrightness 目标亮度，0 时不触发
+ * @note 须在更新 m_userTargetParam.brightness 之前调用，以便识别开灯边沿。
+ *       已亮态下调光/改色不再重复播红闪。
  */
 void LightDecisionCenter::NotifyBatteryWarnIfNeeded(uint8_t targetBrightness)
 {
     if (targetBrightness == 0U)
+    {
+        return;
+    }
+
+    if (m_userTargetParam.brightness > 0U)
     {
         return;
     }
