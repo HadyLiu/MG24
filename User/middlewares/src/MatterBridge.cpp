@@ -335,6 +335,12 @@ bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requi
     // 窗已开且正在听 PASE：非强制刷新则视为成功
     if (windowOpen && listeningForPase && !forceRestartTimer)
     {
+        // 栈可能在 entry_Init 之前已开窗（kServerReady 早于 UI 回调注册），
+        // 此处补触发首次配网白呼吸，避免上电/复位后窗开着但指示灯无动作。
+        if (m_firstCommissionPending && (m_commissioningUiCallback != nullptr))
+        {
+            m_commissioningUiCallback(true, false);
+        }
         return true;
     }
 

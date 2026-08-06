@@ -1030,8 +1030,12 @@ void LightDecisionCenter::OnFactoryResetDoneSequenceFinishedRaw()
     m_lastValidBrightness        = kDefaultBrightness;
     m_brightnessCycleIndex       = 0U;
     ReportToMatterIfRegistered();
-    // 配网窗由 MatterBridge::Init / kServerReady 兜底打开；此处不再 force 刷新，
-    // 避免灯效结束时 CHIP 队列正忙导致 ScheduleWork 失败刷屏。
+
+    // 复位后首次配网：主灯效结束再开窗/补白呼吸（避免与 CHIP 队列争抢）
+    if (!HasCompletedFirstCommission())
+    {
+        TryOpenCommissioningRaw();
+    }
 }
 
 /**
