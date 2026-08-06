@@ -86,8 +86,20 @@ ChargeIndicatorEffect IndicatorServer::ArbitrateChargeEffectsRaw(const BatteryCh
         // §6.3：充电异常持续红快闪；临界电量不占背景红闪（仅开灯尝试时×2，见 §6.2）
         effects |= static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink);
         break;
+    case BatteryChargeStatus::ChargeDone:
+        // §6.3：充满电系统 LED 熄灭
+        break;
     default:
         break;
+    }
+
+    if (snapshot.status == BatteryChargeStatus::ChargeDone)
+    {
+        if (effects == 0U)
+        {
+            return ChargeIndicatorEffect::Off;
+        }
+        return static_cast<ChargeIndicatorEffect>(effects);
     }
 
     if (snapshot.chipValid && snapshot.chipCharging)

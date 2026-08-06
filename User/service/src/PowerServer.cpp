@@ -115,15 +115,8 @@ void PowerServer::FetchPowerMonitorSnapshotRaw()
         snapshot.tempStatus    = monitor.GetBatteryTempStatus();
         snapshot.voltStatus    = monitor.GetBatteryVoltStatus();
         snapshot.chargeEnabled = monitor.IsChargeEnabled();
-
-        if (snapshot.chargeEnabled)
-        {
-            snapshot.chipStatus = monitor.GetChargeStatus();
-        }
-        else
-        {
-            snapshot.chipStatus = ChargeChipStatusEnum::CHARGE_INIT;
-        }
+        /* 充满关充后仍须读 STAT，否则误判 Idle 并重新开充、白呼吸不停 */
+        snapshot.chipStatus = monitor.GetChargeStatus();
     }
     else
     {
@@ -164,11 +157,17 @@ const PowerServer::PowerMonitorSnapshot& PowerServer::GetPowerSnapshotRaw() cons
 
 /**
  * @brief 判断当前时刻充电芯片状态是否可信
- * @note 充电已使能且 settle 倒计时归零；Fetch 后由本函数结合 m_chargeSettleMs 判定
+ * @note USB 供电且开充 settle 结束后可读；关充后仍读 STAT 以识别充满（§6.3）
  */
 bool PowerServer::IsChargeChipReadableNowRaw(const PowerMonitorSnapshot& snapshot) const
 {
-    return snapshot.chargeEnabled && (m_chargeSettleMs == 0U);
+    (void)snapshot;
+    if (m_supplyMode != SupplyMode::UsbPowered)
+    {
+        return false;
+    }
+
+    return m_chargeSettleMs == 0U;
 }
 
 /** @brief 控制电池对外放电通路 */
