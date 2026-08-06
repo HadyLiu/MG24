@@ -14,6 +14,10 @@ namespace
 
 static constexpr uint32_t kPwmMax1023 = 1023U;
 
+/** @brief Matter CT 混色时 W 占空比（40%） */
+static constexpr uint32_t kCtMixedWhiteFactor =
+    (kPwmMax1023 * 40U) / 100U;
+
 } // namespace
 
 /**
@@ -25,8 +29,6 @@ LightTypes::WrgbColor ColorConverter::FromColorTemperature(uint32_t kelvin)
 {
     LightTypes::WrgbColor c = {0, 0, 0, 0};
 
-    static constexpr uint32_t kCtWhiteFactor409 = (kPwmMax1023 * 40U) / 100U; /**< Matter CT：W 固定 40% */
-
     // 1. 边界安全限幅
     if (kelvin < 2200U)
     {
@@ -37,14 +39,20 @@ LightTypes::WrgbColor ColorConverter::FromColorTemperature(uint32_t kelvin)
         kelvin = 6500U;
     }
 
+    // Matter 常用 370 mireds≈2702K，对齐到纯 W 分支（§12）
+    if ((kelvin >= 2650U) && (kelvin <= 2750U))
+    {
+        kelvin = 2700U;
+    }
+
     uint32_t r_factor = 0U;
     uint32_t g_factor = 0U;
     uint32_t b_factor = 0U;
 
-    // 2. 分区间计算 RGB 放大因子 (0 ~ 1023)；W 固定 40% 占空比
+    // 2. 分区间计算 RGB 放大因子 (0 ~ 1023)
     if (kelvin == 2700U)
     {
-        /* 2700K：仅 W 通道，RGB 为 0 */
+        /* 2700K：仅 W 通道，RGB 为 0（§12 纯 W → W=100%） */
     }
     else if (kelvin < 2700U)
     {
@@ -65,7 +73,16 @@ LightTypes::WrgbColor ColorConverter::FromColorTemperature(uint32_t kelvin)
         g_factor = (range_factor * 410U) >> 10; // 40.0% 绿光
     }
 
-    c.w = static_cast<uint16_t>(kCtWhiteFactor409);
+    const bool pureWhiteOnly = (r_factor == 0U) && (g_factor == 0U) && (b_factor == 0U);
+    if (pureWhiteOnly)
+    {
+        c.w = static_cast<uint16_t>(kPwmMax1023);
+    }
+    else
+    {
+        c.w = static_cast<uint16_t>(kCtMixedWhiteFactor);
+    }
+
     c.r = static_cast<uint16_t>(r_factor);
     c.g = static_cast<uint16_t>(g_factor);
     c.b = static_cast<uint16_t>(b_factor);

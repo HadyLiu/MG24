@@ -18,7 +18,7 @@ class ColorConverter
     /**
      * @brief 色温(K) → WRGB（Matter CT 下行专用）
      * @param kelvin 色温（2200~6500，超出限幅）
-     * @return WRGB（0~1023）；W 固定 40% 占空比，RGB 随色温变化
+     * @return WRGB（0~1023）；纯 W（2700K）时 W=100%；W+RGB 混色时 W=40%，亮度不衰减
      */
     static LightTypes::WrgbColor FromColorTemperature(uint32_t kelvin);
 
