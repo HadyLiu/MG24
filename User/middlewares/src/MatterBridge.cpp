@@ -51,6 +51,10 @@ static constexpr uint32_t kOpenRetryMaxDelayMs = 3000U; //
 
 static sl_sleeptimer_timer_handle_t s_openRetryAppTimer{};
 
+/** @brief 本地上报去重：与 Hub 属性对齐，Report 前可 Reset */
+static uint8_t s_lastReportedOnOff  = 0xFFU;
+static uint8_t s_lastReportedLevel  = 0xFFU;
+
 /**
  * @brief 按已重试次数做线性退避
  * @note  CHIP 事件队列在开机擦写 NVM 期间会满好几秒；固定 300ms 猛刷只会刷屏，
@@ -645,6 +649,18 @@ void MatterBridge::MatterClearNetwork()
  * @param aValue 动作值
  * @return 无
  */
+void MatterBridge::ResetLocalReportDedup()
+{
+    s_lastReportedOnOff = 0xFFU;
+    s_lastReportedLevel = 0xFFU;
+}
+
+void MatterBridge::SyncLocalReportDedupFromHub(bool on, uint8_t matterLevel0to254)
+{
+    s_lastReportedOnOff = on ? 1U : 0U;
+    s_lastReportedLevel = matterLevel0to254;
+}
+
 void MatterBridge::MatterOnBrightnessBridge(int aAction, uint8_t* aValue)
 {
     bool change = false;
@@ -655,11 +671,21 @@ void MatterBridge::MatterOnBrightnessBridge(int aAction, uint8_t* aValue)
         {
             SetOn(true);
             change = true;
+            uint8_t matterLevel = s_lastReportedLevel;
+            chip::app::DataModel::Nullable<uint8_t> curLevel;
+            if (chip::app::Clusters::LevelControl::Attributes::CurrentLevel::Get(
+                    1, curLevel) == chip::Protocols::InteractionModel::Status::Success &&
+                !curLevel.IsNull())
+            {
+                matterLevel = curLevel.Value();
+            }
+            SyncLocalReportDedupFromHub(true, matterLevel);
         }
         else if (aAction == LightingManager::OFF_ACTION)
         {
             SetOn(false);
             change = true;
+            SyncLocalReportDedupFromHub(false, 0U);
         }
     }
     // 1. 判断是否是亮度
@@ -674,6 +700,7 @@ void MatterBridge::MatterOnBrightnessBridge(int aAction, uint8_t* aValue)
             if (!matterOn)
             {
                 SetOn(false);
+                SyncLocalReportDedupFromHub(false, *aValue);
                 if (m_matterDownlinkCallback != nullptr)
                 {
                     m_matterDownlinkCallback(m_matterDownlinkUploadPayload);
@@ -681,6 +708,7 @@ void MatterBridge::MatterOnBrightnessBridge(int aAction, uint8_t* aValue)
             }
 
             SetBrightness(*aValue);
+            SyncLocalReportDedupFromHub(matterOn, *aValue);
             change = true;
         }
     }
@@ -770,10 +798,9 @@ void MatterBridge::Safe_Upload_OnOff_Callback(intptr_t context)
 {
     const bool       is_on               = (context != 0);
     chip::EndpointId targetEndpoint      = 1;
-    static uint8_t   last_reported_onoff = 0xFF;
-    const uint8_t    onoff_value         = is_on ? 1 : 0;
+    const uint8_t    onoff_value         = is_on ? 1U : 0U;
 
-    if (onoff_value == last_reported_onoff)
+    if (onoff_value == s_lastReportedOnOff)
     {
         return;
     }
@@ -785,7 +812,7 @@ void MatterBridge::Safe_Upload_OnOff_Callback(intptr_t context)
 
     if (status == chip::Protocols::InteractionModel::Status::Success)
     {
-        last_reported_onoff = onoff_value;
+        s_lastReportedOnOff = onoff_value;
         // 属性与 LightingManager 状态机对齐，避免手机 Toggle 方向反了
         LightMgr().SyncCompletedState(is_on);
         LOG_MATTER("OnOff report OK: %s \n", is_on ? "ON" : "OFF");
@@ -824,16 +851,23 @@ void MatterBridge::Safe_Upload_Brightness_Callback(intptr_t context)
     }
 
     // 转换成 Matter 的 0~254 标准值
-    uint8_t matter_level = (uint8_t)((uint16_t)driver_brightness_percent * 254 / 100);
+    uint8_t matter_level = static_cast<uint8_t>((static_cast<uint16_t>(driver_brightness_percent) * 254U) / 100U);
 
-    // 线程本地静态变量防重复轰炸
-    static uint8_t last_reported_level = 0xFF;
-    if (matter_level == last_reported_level)
+    if (matter_level == s_lastReportedLevel)
     {
         return;
     }
 
-    // 🎯 2. 此时这里也可以正确识别它，不再报错
+    // Hub MoveToLevel 渐变中禁止直写 CurrentLevel，否则会打乱状态机触发 assert
+    uint16_t remainingTime = 0U;
+    const auto remainStatus =
+        chip::app::Clusters::LevelControl::Attributes::RemainingTime::Get(targetEndpoint, &remainingTime);
+    if ((remainStatus == chip::Protocols::InteractionModel::Status::Success) && (remainingTime > 0U))
+    {
+        LOG_MATTER("Skip Level report: move-to-level active (remaining=%u)", remainingTime);
+        return;
+    }
+
     g_bypass_zcl_callback = true;
 
     // 写入属性数据库
@@ -846,7 +880,12 @@ void MatterBridge::Safe_Upload_Brightness_Callback(intptr_t context)
     if (status == chip::Protocols::InteractionModel::Status::Success)
     {
         LOG_MATTER("Level report OK (no LEVEL_ACTION): %d%% \n", driver_brightness_percent);
-        last_reported_level = matter_level;
+        s_lastReportedLevel = matter_level;
+    }
+    else
+    {
+        LOG_MATTER("Level report failed: 0x%02X pct=%u", static_cast<uint8_t>(status),
+                   driver_brightness_percent);
     }
 }
 

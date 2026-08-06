@@ -401,6 +401,9 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     {
         TryOpenCommissioningRaw();
     }
+
+    // Hub 下行不在此 Report：栈内 Level 可能在 move-to-level 渐变中，
+    // 再 CurrentLevel::Set 会打乱状态机并触发 level-control.cpp assert。
 }
 
 /**

@@ -352,6 +352,7 @@ void Matter_Init(void)
     // 唯一上报：LDC 本地状态 → 同步下行缓存 + 写回 Matter 属性（防手机 Toggle 反了）
     LightDecisionCenter::Instance().RegisterMatterReporter(
         [](bool on, uint8_t brightness, const uint16_t* pWrgb) {
+            MatterBridge::Instance().ResetLocalReportDedup();
             MatterBridgeServer::Instance().SyncLocalLightState(on, brightness, pWrgb);
 
             MatterDownlinkUploadPayload onPayload{};

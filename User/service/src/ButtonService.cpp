@@ -11,9 +11,19 @@
 #include "ButtonService.h"
 #include "DebugLog.h"
 
+#include "FreeRTOS.h"
+#include "timers.h"
+
 namespace {
 static constexpr uint8_t kLightSwitchIdx = ButtonBoard::kLightSwitchIdx;
 static constexpr uint8_t kSystemResetIdx = ButtonBoard::kSystemResetIdx;
+
+/** @brief 按键语义 ISR → 定时器服务任务，避免 Matter 上报/落盘在 ISR 内被丢弃 */
+static void DeferredKeyEventDispatch(void* param1, uint32_t param2)
+{
+    (void)param1;
+    ButtonService::Instance().DispatchKeyEventInTaskRaw(static_cast<KeyEventType>(param2));
+}
 } // namespace
 
 /**
@@ -70,6 +80,27 @@ void ButtonService::DispatchMail(const ButtonMailMsg& msg)
  * @return 无
  */
 void ButtonService::PostKeyEventRaw(KeyEventType event)
+{
+    if (xPortIsInsideInterrupt() != pdFALSE)
+    {
+        BaseType_t       higherPriorityTaskWoken = pdFALSE;
+        const BaseType_t posted                  = xTimerPendFunctionCallFromISR(
+            DeferredKeyEventDispatch, nullptr, static_cast<uint32_t>(event), &higherPriorityTaskWoken);
+        if (posted == pdPASS)
+        {
+            portYIELD_FROM_ISR(higherPriorityTaskWoken);
+        }
+        else
+        {
+            LOG_BTN("KeyEvent defer failed: ev=%u", static_cast<uint8_t>(event));
+        }
+        return;
+    }
+
+    DispatchKeyEventInTaskRaw(event);
+}
+
+void ButtonService::DispatchKeyEventInTaskRaw(KeyEventType event)
 {
     if (m_keyHandler != nullptr)
     {

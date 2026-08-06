@@ -141,6 +141,9 @@ class MatterBridge
     void SetFirstCommissionPending(bool pending);
     bool IsFirstCommissionPending() const;
 
+    /** @brief 本地状态上报前清除去重缓存，确保亮度/颜色/色温写回 Matter */
+    void ResetLocalReportDedup();
+
   private:
     MatterBridge()  = default;
     ~MatterBridge() = default;
@@ -171,6 +174,9 @@ class MatterBridge
     /** @param colorTemperature Matter mireds（非 Kelvin） */
     void MatterUploadCt(uint16_t colorTemperature);
     void MatterUploadXy(uint16_t x, uint16_t y);
+
+    /** @brief Hub 下行后同步去重缓存，避免与栈内属性值冲突 */
+    void SyncLocalReportDedupFromHub(bool on, uint8_t matterLevel0to254);
 
     void RegisterDeviceEventListener(void);
 

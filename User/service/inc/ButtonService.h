@@ -48,6 +48,9 @@ class ButtonService
      */
     void DispatchMail(const ButtonMailMsg& msg);
 
+    /** @brief 任务上下文分发按键语义（ISR 经 DeferredKeyEventDispatch 转入） */
+    void DispatchKeyEventInTaskRaw(KeyEventType event);
+
   private:
     ButtonService() = default;
 
