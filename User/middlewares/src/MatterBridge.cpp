@@ -64,6 +64,7 @@ static uint32_t OpenRetryDelayMsRaw()
 
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
 static bool s_icdCommissioningRefreshActive = false;
+static bool s_mainLightIcdHoldActive        = false;
 
 static void IcdCommissioningRefreshTimerCallback(chip::System::Layer* layer, void* appState)
 {
@@ -73,6 +74,19 @@ static void IcdCommissioningRefreshTimerCallback(chip::System::Layer* layer, voi
     {
         layer->StartTimer(chip::System::Clock::Milliseconds32(5000U),
                           IcdCommissioningRefreshTimerCallback,
+                          nullptr);
+    }
+}
+
+/** @brief 主灯亮期间周期性刷新 ICD Active，防止长时间亮灯后跌回慢轮询 */
+static void IcdMainLightRefreshTimerCallback(chip::System::Layer* layer, void* appState)
+{
+    (void)appState;
+    chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification();
+    if (s_mainLightIcdHoldActive)
+    {
+        layer->StartTimer(chip::System::Clock::Milliseconds32(3000U),
+                          IcdMainLightRefreshTimerCallback,
                           nullptr);
     }
 }
@@ -220,6 +234,47 @@ static void SetBleCommissioningIcdHoldRaw(bool active)
         chip::app::ICDNotifier::GetInstance().NotifyActiveRequestWithdrawal(
             KeepActiveFlag::kExchangeContextOpen);
     }
+}
+
+/**
+ * @brief 主灯亮时保持 ICD Active（全速轮询），灭灯后恢复 SIT 慢轮询
+ * @note  使用 kTestEventTriggerActiveMode；亮灯期间 3s 刷新网络活动。
+ */
+static void ApplyMainLightIcdHoldRaw(bool active)
+{
+    using KeepActiveFlag = chip::app::ICDListener::KeepActiveFlag;
+    if (active)
+    {
+        if (!s_mainLightIcdHoldActive)
+        {
+            s_mainLightIcdHoldActive = true;
+            chip::app::ICDNotifier::GetInstance().NotifyActiveRequestNotification(
+                KeepActiveFlag::kTestEventTriggerActiveMode);
+            DeviceLayer::SystemLayer().StartTimer(
+                System::Clock::Milliseconds32(3000U),
+                IcdMainLightRefreshTimerCallback,
+                nullptr);
+            LOG_MATTER("[ICD] Main light ON: hold Active (full poll)");
+        }
+        chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification();
+    }
+    else
+    {
+        if (!s_mainLightIcdHoldActive)
+        {
+            return;
+        }
+        s_mainLightIcdHoldActive = false;
+        DeviceLayer::SystemLayer().CancelTimer(IcdMainLightRefreshTimerCallback, nullptr);
+        chip::app::ICDNotifier::GetInstance().NotifyActiveRequestWithdrawal(
+            KeepActiveFlag::kTestEventTriggerActiveMode);
+        LOG_MATTER("[ICD] Main light OFF: release Active hold");
+    }
+}
+
+static void SetMainLightIcdHoldHandler(intptr_t arg)
+{
+    ApplyMainLightIcdHoldRaw(arg != 0);
 }
 #endif
 
@@ -436,6 +491,26 @@ void MatterBridge::NotifyUserInteraction()
     (void)PlatformMgr().ScheduleWork(
         [](intptr_t) { chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification(); },
         0);
+#endif
+}
+
+void MatterBridge::SetMainLightIcdHold(bool lightOn)
+{
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+    if (s_factoryResetInFlight)
+    {
+        return;
+    }
+
+    if (PlatformMgr().IsChipStackLockedByCurrentThread())
+    {
+        ApplyMainLightIcdHoldRaw(lightOn);
+        return;
+    }
+
+    (void)PlatformMgr().ScheduleWork(SetMainLightIcdHoldHandler, lightOn ? 1 : 0);
+#else
+    (void)lightOn;
 #endif
 }
 
@@ -1063,7 +1138,10 @@ void MatterBridge::DoFactoryResetHandler(intptr_t arg)
     s_openRetryCount         = 0U;
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
     s_icdCommissioningRefreshActive = false;
+    s_mainLightIcdHoldActive         = false;
     DeviceLayer::SystemLayer().CancelTimer(IcdCommissioningRefreshTimerCallback, nullptr);
+    DeviceLayer::SystemLayer().CancelTimer(IcdMainLightRefreshTimerCallback, nullptr);
+    ApplyMainLightIcdHoldRaw(false);
 #endif
 
     LOG_MATTER("=============================================");

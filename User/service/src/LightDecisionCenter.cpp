@@ -341,15 +341,29 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
         return;
     }
 
+    const bool wasOn =
+        (m_userTargetParam.brightness > 0U);
+    const bool sameWrgb =
+        (memcmp(m_userTargetParam.wrgb, pWrgbBuffer, sizeof(m_userTargetParam.wrgb)) == 0);
+
     memcpy(m_userTargetParam.wrgb, pWrgbBuffer, sizeof(m_userTargetParam.wrgb));
     m_userTargetParam.brightness = brightness;
     m_userTargetParam.op_id      = opId;
 
+    // Matter 已开灯且仅调亮度：1ms 跟手；开/关/改色仍用 200/400ms
+    if ((brightness > 0U) && wasOn && sameWrgb && (m_sceneState == LightSceneState::Normal) &&
+        !m_isPairSuccessSequenceActive)
+    {
+        m_TransitionMs = LightDimmingSpec::kMatterLevelOnlyTransitionMs;
+    }
+    else
+    {
+        m_TransitionMs =
+            (brightness > 0U) ? LightDimmingSpec::kFadeInMs : LightDimmingSpec::kFadeOutMs;
+    }
+
     // Matter 改色后尽量对齐色库索引，便于后续双击从下一色继续
     SyncColorCycleIndexFromStoredRaw();
-
-    // §1.2：网关/Matter 调光 200ms 淡入，关灯 400ms 淡出
-    m_TransitionMs = (brightness > 0U) ? LightDimmingSpec::kFadeInMs : LightDimmingSpec::kFadeOutMs;
 
     // Matter 开灯/调光/改色/色温后：下一次短按直接关灯；Matter 关灯后下次短按 100%
     ArmBrightnessCycleAfterMatterRaw(brightness);

@@ -106,6 +106,12 @@ class MatterBridge
     void NotifyUserInteraction();
 
     /**
+     * @brief 主灯亮时保持 ICD Active（全速连接）；灭灯恢复慢轮询
+     * @param lightOn true=主灯有物理输出
+     */
+    void SetMainLightIcdHold(bool lightOn);
+
+    /**
      * @brief 注册「主灯是否开启」查询（供自动配网门禁）
      * @param query 返回 true=亮度>0；nullptr=不检查灯态
      */

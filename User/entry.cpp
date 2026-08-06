@@ -44,6 +44,22 @@
 
 static LightNvmStorage s_lightNvmStorage;
 static bool            s_earlyFactoryResetBootStarted = false;
+static bool            s_mainLightMatterFullSpeedHeld = false;
+
+/**
+ * @brief 按 LDC 目标亮度同步 Matter ICD：brightness>0 全速，灭灯释放
+ * @note  仅边沿变化时 ScheduleWork，避免 10ms 灯效回调刷队列。
+ */
+static void SyncMainLightMatterFullSpeedRaw(void)
+{
+    const bool lightOn = LightDecisionCenter::Instance().GetCurrentBrightness() > 0U;
+    if (lightOn == s_mainLightMatterFullSpeedHeld)
+    {
+        return;
+    }
+    s_mainLightMatterFullSpeedHeld = lightOn;
+    MatterBridge::Instance().SetMainLightIcdHold(lightOn);
+}
 
 void power_Init(void);
 void power_Wire(void);
@@ -106,8 +122,13 @@ void entry_Init(void)
 
     /* 低功耗协调：架构兼容，默认不进入真休眠（见 LowPowerConfig） */
     LowPowerCoordinator::Instance().Init();
-    LowPowerCoordinator::Instance().OnMainLightActivity(
-        LightEffectEngine::Instance().IsAnyChannelActive());
+    const bool mainLightActive =
+        (LightDecisionCenter::Instance().GetCurrentBrightness() > 0U) ||
+        LightEffectEngine::Instance().IsAnyChannelActive();
+    LowPowerCoordinator::Instance().OnMainLightActivity(mainLightActive);
+    s_mainLightMatterFullSpeedHeld =
+        (LightDecisionCenter::Instance().GetCurrentBrightness() > 0U);
+    MatterBridge::Instance().SetMainLightIcdHold(s_mainLightMatterFullSpeedHeld);
     LowPowerCoordinator::Instance().OnUsbPowerActivity(
         BspPowerMonitor::Instance().GetUsbStatus() == UsbConnectionStatusEnum::UsbConnected);
 }
@@ -131,7 +152,9 @@ void power_Wire(void)
     // 主灯变化输出回调
     LightEffectEngine::Instance().RegisterOutputActivityCallback([](bool isActive) {
         PowerServer::Instance().OnLightOutputChanged(isActive);
-        LowPowerCoordinator::Instance().OnMainLightActivity(isActive);
+        const bool holdActive =
+            (LightDecisionCenter::Instance().GetCurrentBrightness() > 0U) || isActive;
+        LowPowerCoordinator::Instance().OnMainLightActivity(holdActive);
     });
 
     // 电池电压等级变化回调
@@ -305,6 +328,17 @@ void Matter_Init(void)
         // Hub 下行：Resume SPI/PWM + 延长 ICD Active，避免灯灭 3s 后外设挂起导致首包慢
         LowPowerCoordinator::Instance().RequestMatterControlWake();
         MatterBridge::Instance().NotifyUserInteraction();
+
+        // 指令到达时立即 Hold ICD（不等到物理出光），避免首包/调光等 2s 慢轮询
+        if (mdc.element == MatterDataElement::kOn)
+        {
+            MatterBridge::Instance().SetMainLightIcdHold(mdc.on);
+        }
+        else if (mdc.element == MatterDataElement::kBrightness)
+        {
+            MatterBridge::Instance().SetMainLightIcdHold(mdc.brightness > 0U);
+        }
+
         MatterBridgeServer::Instance().OnMatterDataReceived(mdc);
     });
 
@@ -331,6 +365,7 @@ void Matter_Init(void)
 
             if (pWrgb == nullptr)
             {
+                SyncMainLightMatterFullSpeedRaw();
                 return;
             }
 
@@ -380,6 +415,7 @@ void Matter_Init(void)
                 LOG_MATTER("Color uplink XY: X=%u Y=%u", xy.x, xy.y);
                 MatterBridge::Instance().MatterUploadLocalReport(xyPayload);
             }
+            SyncMainLightMatterFullSpeedRaw();
         });
 
     // 唯一下行回调：Matter 数据(开关/亮度/WRGB/识别/配网) → LDC
@@ -389,11 +425,16 @@ void Matter_Init(void)
         case MatterBridgeServer::DownlinkKind::kLightControl:
             LOG_LIGHT_DC("DownlinkKind: brightness=%u, W=%u, R=%u, G=%u, B=%u", d.brightness, d.wrgb[0], d.wrgb[1],
                          d.wrgb[2], d.wrgb[3]);
+            if (d.brightness > 0U)
+            {
+                MatterBridge::Instance().SetMainLightIcdHold(true);
+            }
             LightDecisionCenter::Instance().ProcessMatterCommand(
                 d.wrgb,
                 d.brightness,
                 d.brightness > 0U ? LightEffectOpId::LinearLerp
                                   : LightEffectOpId::Bezier40FadeOut);
+            SyncMainLightMatterFullSpeedRaw();
             break;
         case MatterBridgeServer::DownlinkKind::kIdentify:
             LOG_LIGHT_DC("Identify: on=%u", d.on);
