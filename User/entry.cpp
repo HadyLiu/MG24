@@ -255,6 +255,14 @@ void button_Init(void)
 
     // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
+        // §3.2：首次配网白呼吸 — 主键/系统键短按或主键双击后停止
+        if ((event == KeyEventType::ShortPressCycleBrightness) ||
+            (event == KeyEventType::ShortPressOpenCommissioning) ||
+            (event == KeyEventType::DoublePressCycleColor))
+        {
+            IndicatorServer::Instance().OnFirstCommissionBreathStop();
+        }
+
         // 长按清网/复位期间 Matter 栈可能关机或队列已满，禁止 ScheduleWork 唤醒 ICD
         const bool isNetResetKey =
             (event == KeyEventType::LongPressClearNetLighting) ||

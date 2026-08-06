@@ -51,9 +51,10 @@ void IndicatorServer::Init()
     m_chargeInput             = BatteryChargeSnapshot{};
     m_chargeInputValid        = false;
     m_chargeEffects           = ChargeIndicatorEffect::Off;
-    m_redOverrideActive           = false;
-    m_redOverrideLoopForever      = false;
-    m_firstCommissionBreathActive = false;
+    m_redOverrideActive                = false;
+    m_redOverrideLoopForever           = false;
+    m_firstCommissionBreathActive      = false;
+    m_firstCommissionBreathSuppressed  = false;
 
     BspLedIndicatorRed::Instance().Init();
     BspLedIndicatorWhite::Instance().Init();
@@ -287,11 +288,11 @@ void IndicatorServer::OnNetConfigIndicatorStop()
 }
 
 /**
- * @brief 首次出厂配网：系统 LED 白呼吸
+ * @brief 首次出厂配网：系统 LED 白呼吸（§3.2）
  */
 void IndicatorServer::OnFirstCommissionBreathStart()
 {
-    if (m_firstCommissionBreathActive)
+    if (m_firstCommissionBreathSuppressed || m_firstCommissionBreathActive)
     {
         return;
     }
@@ -302,10 +303,12 @@ void IndicatorServer::OnFirstCommissionBreathStart()
 }
 
 /**
- * @brief 首次配网结束：停止白呼吸覆盖
+ * @brief 配网成功或任意按键后：停止白呼吸（§3.2）
  */
 void IndicatorServer::OnFirstCommissionBreathStop()
 {
+    m_firstCommissionBreathSuppressed = true;
+
     if (!m_firstCommissionBreathActive)
     {
         return;
@@ -321,12 +324,13 @@ void IndicatorServer::OnFirstCommissionBreathStop()
  */
 void IndicatorServer::StopAll()
 {
-    m_chargeInputValid            = false;
-    m_chargeEffects               = ChargeIndicatorEffect::Off;
-    m_chargeInput                 = BatteryChargeSnapshot{};
-    m_redOverrideActive           = false;
-    m_redOverrideLoopForever      = false;
-    m_firstCommissionBreathActive = false;
+    m_chargeInputValid                 = false;
+    m_chargeEffects                    = ChargeIndicatorEffect::Off;
+    m_chargeInput                      = BatteryChargeSnapshot{};
+    m_redOverrideActive                = false;
+    m_redOverrideLoopForever           = false;
+    m_firstCommissionBreathActive      = false;
+    m_firstCommissionBreathSuppressed  = false;
 
     IndicatorEffectEngine::Instance().Stop();
     LOG_BAT("IndicatorServer stop all");

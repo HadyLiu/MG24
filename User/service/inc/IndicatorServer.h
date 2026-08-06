@@ -44,10 +44,10 @@ class IndicatorServer
     /** @brief 配网结束：仅停止红灯覆盖并恢复故障红闪背景 */
     void OnNetConfigIndicatorStop();
 
-    /** @brief 首次出厂配网：系统 LED 白呼吸开始 */
+    /** @brief 首次出厂配网：系统 LED 白呼吸开始（§3.2） */
     void OnFirstCommissionBreathStart();
 
-    /** @brief 首次配网结束 / 配网成功：停止白呼吸覆盖，恢复充电白通道 */
+    /** @brief 配网成功或用户按键后：停止白呼吸，恢复充电白通道（§3.2） */
     void OnFirstCommissionBreathStop();
 
     /** @brief 熄灭全部指示灯并复位仲裁状态 */
@@ -95,4 +95,6 @@ class IndicatorServer
     bool                  m_redOverrideActive{false};
     bool                  m_redOverrideLoopForever{false};
     bool                  m_firstCommissionBreathActive{false};
+    /** @brief §3.2：用户按键或配网成功后不再自动重启首次白呼吸 */
+    bool                  m_firstCommissionBreathSuppressed{false};
 };
