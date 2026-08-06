@@ -93,7 +93,7 @@ void ButtonService::OnShortPress(uint8_t buttonIdx)
 
     if (buttonIdx == kSystemResetIdx)
     {
-        // §3.1：短按系统键 → 未入网时打开/刷新配网
+        // §15：短按系统键 → 未入网时进入配网；§14 已配网中刷新 15min
         PostKeyEventRaw(KeyEventType::ShortPressOpenCommissioning);
     }
 }

@@ -85,6 +85,10 @@ class LightDecisionCenter
     /** @brief 注册配网控制回调（entry → MatterBridge） */
     void RegisterNetControlCallback(NetControlCallback callback);
 
+    /** @brief 注册 Matter 入网查询（§15：未入网才允许手动/刷新配网） */
+    using FabricJoinedQuery = bool (*)(void);
+    void RegisterFabricJoinedQuery(FabricJoinedQuery query);
+
     /** @brief 注册低电量警告指示回调（entry → IndicatorServer） */
     void RegisterBatteryWarnIndicatorCallback(BatteryWarnIndicatorCallback callback);
 
@@ -283,6 +287,9 @@ class LightDecisionCenter
     /** @brief 调用已注册的配网控制回调 */
     void InvokeNetControlRaw(NetControlAction action);
 
+    /** @brief §14/§15：未入网时打开/刷新配网窗（已入网则跳过） */
+    void TryOpenCommissioningRaw();
+
     /**
      * @brief 关灯→开灯边沿时触发低电量系统 LED 指示（§6.1/§6.2）
      * @param targetBrightness 目标亮度；须结合当前 m_userTargetParam.brightness 判定开灯边沿
@@ -293,6 +300,7 @@ class LightDecisionCenter
     LightStorageProvider*        m_pStorage{nullptr};
     MatterReportCallback         m_matterReporter{nullptr};
     NetControlCallback           m_netControl{nullptr};
+    FabricJoinedQuery            m_fabricJoinedQuery{nullptr};
     BatteryWarnIndicatorCallback m_batteryWarnIndicator{nullptr};
 
     LightSceneState m_sceneState{LightSceneState::Normal}; /**< 场景状态机 */

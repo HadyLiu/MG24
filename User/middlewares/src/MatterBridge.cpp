@@ -65,6 +65,8 @@ static uint32_t OpenRetryDelayMsRaw()
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
 static bool s_icdCommissioningRefreshActive = false;
 static bool s_mainLightIcdHoldActive        = false;
+/** @brief 是否已加入 Matter Fabric（供 LDC §14/§15 门禁，Matter 线程更新） */
+static bool s_fabricJoined = false;
 
 static void IcdCommissioningRefreshTimerCallback(chip::System::Layer* layer, void* appState)
 {
@@ -335,9 +337,14 @@ bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requi
     chip::app::FailSafeContext& failSafeContext = server.GetFailSafeContext();
     if (!failSafeContext.IsFailSafeFullyDisarmed())
     {
-        // 配网进行中（窗开着、Fail-Safe 已武装）：不要再抢开窗，停止重试
+        // 配网进行中（Fail-Safe 已武装）：非强制刷新则停止重试
         if (windowOpen)
         {
+            if (forceRestartTimer)
+            {
+                // §14：配对会话进行中无法关窗重开，待 BLE 断开后由 kFailSafeTimerExpired 再开窗
+                LOG_MATTER("[Commission] §14 refresh deferred: pairing session active");
+            }
             return true;
         }
         LOG_MATTER("[Commission] Fail-Safe busy, will retry open later");
@@ -462,6 +469,11 @@ void MatterBridge::RegisterCommissioningSessionCallback(CommissioningSessionCall
 void MatterBridge::SetFirstCommissionPending(bool pending)
 {
     m_firstCommissionPending = pending;
+}
+
+bool MatterBridge::IsJoinedToFabric() const
+{
+    return s_fabricJoined;
 }
 
 bool MatterBridge::IsFirstCommissionPending() const
@@ -1009,6 +1021,7 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
     {
         // 有几次 Complete 就下发几次灯效，不做锁存/去重
         LOG_MATTER("Commissioning complete!");
+        s_fabricJoined = true;
         self.NotifyCommissioningSessionRaw(false);
 
         // 首次配网 UI 结束（停白呼吸等）；重复 Complete 再调一次无害
@@ -1047,6 +1060,10 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
     case DeviceEventType::kServerReady:
     case DeviceEventType::kDnssdInitialized:
     {
+        {
+            chip::Server& server = chip::Server::GetInstance();
+            s_fabricJoined       = (server.GetFabricTable().FabricCount() != 0U);
+        }
         (void)self.OpenCommissioningWindowRaw(false, true);
         break;
     }
@@ -1135,7 +1152,8 @@ void MatterBridge::DoFactoryResetHandler(intptr_t arg)
     (void)arg;
 
     s_factoryResetInFlight = true;
-    s_openRetryCount         = 0U;
+    s_fabricJoined         = false;
+    s_openRetryCount       = 0U;
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
     s_icdCommissioningRefreshActive = false;
     s_mainLightIcdHoldActive         = false;

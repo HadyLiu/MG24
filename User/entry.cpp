@@ -234,6 +234,12 @@ void LightDecisionCenter_Init(void)
     LightDecisionCenter::Instance().Init(&LightSequenceScheduler::Instance(), &s_lightNvmStorage);
 }
 
+static void RegisterMatterFabricQuery(void)
+{
+    LightDecisionCenter::Instance().RegisterFabricJoinedQuery(
+        []() { return MatterBridge::Instance().IsJoinedToFabric(); });
+}
+
 /**
  * @brief 按键链初始化（ButtonInput + ButtonService + 10ms 扫描定时器）
  * @return 无
@@ -282,7 +288,7 @@ void button_Init(void)
         }
         else if (action == NetControlAction::OpenCommissioning)
         {
-            // 手动/短按/灯开自动：强制刷新 15 分钟倒计时
+            // §14：已配网中短按强制关窗再开，重置 15min；§15 未入网手动开窗
             MatterBridge::Instance().RequestOpenCommissioningWindow(true);
         }
     });
@@ -324,6 +330,7 @@ void Matter_Init(void)
     });
 
     MatterBridge::Instance().Init();
+    RegisterMatterFabricQuery();
     MatterBridge::Instance().MatterDownlinkLocalRegister([](const MatterDownlinkUploadPayload& mdc) {
         // Hub 下行：Resume SPI/PWM + 延长 ICD Active，避免灯灭 3s 后外设挂起导致首包慢
         LowPowerCoordinator::Instance().RequestMatterControlWake();

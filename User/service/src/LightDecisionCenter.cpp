@@ -175,6 +175,11 @@ void LightDecisionCenter::RegisterNetControlCallback(NetControlCallback callback
     m_netControl = callback;
 }
 
+void LightDecisionCenter::RegisterFabricJoinedQuery(FabricJoinedQuery query)
+{
+    m_fabricJoinedQuery = query;
+}
+
 /**
  * @brief 注册低电量警告指示回调
  * @param callback entry 注入的 IndicatorServer 入口
@@ -194,6 +199,15 @@ void LightDecisionCenter::InvokeNetControlRaw(NetControlAction action)
     {
         m_netControl(action);
     }
+}
+
+void LightDecisionCenter::TryOpenCommissioningRaw()
+{
+    if ((m_fabricJoinedQuery != nullptr) && m_fabricJoinedQuery())
+    {
+        return;
+    }
+    InvokeNetControlRaw(NetControlAction::OpenCommissioning);
 }
 
 /**
@@ -243,13 +257,13 @@ void LightDecisionCenter::ProcessKeyEvent(KeyEventType event)
         ApplyArbitratedResult();
         SafeSaveToStorage();
         ReportToMatterIfRegistered();
-        // §3.1：未入网时短按灯键打开/刷新配网倒计时
-        InvokeNetControlRaw(NetControlAction::OpenCommissioning);
+        // §14/§15：未入网时短按灯键仍走亮度循环，并打开/刷新 15min 配网倒计时
+        TryOpenCommissioningRaw();
         break;
     }
     case KeyEventType::ShortPressOpenCommissioning: {
-        // §3.1：短按系统键手动打开/刷新配网
-        InvokeNetControlRaw(NetControlAction::OpenCommissioning);
+        // §15：未入网时短按系统键手动进入配网；§14 已配网中则刷新倒计时
+        TryOpenCommissioningRaw();
         break;
     }
     case KeyEventType::DoublePressCycleColor: {
@@ -382,10 +396,10 @@ void LightDecisionCenter::ProcessMatterCommand(const uint16_t* pWrgbBuffer, uint
     // 记忆灯光：用户目标（含关灯 brightness=0）落盘，供下次上电恢复
     SafeSaveToStorage();
 
-    // §3.1：未入网且灯被开启时自动进入配网（刷新倒计时）
+    // §3.1 / §14：未入网且灯被开启时自动进入配网（刷新倒计时）
     if ((brightness > 0U) && !m_isPairSuccessSequenceActive)
     {
-        InvokeNetControlRaw(NetControlAction::OpenCommissioning);
+        TryOpenCommissioningRaw();
     }
 }
 

@@ -91,6 +91,9 @@ class MatterBridge
      */
     void RequestOpenCommissioningWindow(bool forceRestartTimer);
 
+    /** @brief 是否已接入 Matter 网络（FabricCount>0，§15 门禁） */
+    bool IsJoinedToFabric() const;
+
     /**
      * @brief 带重试的配网窗调度（ScheduleWork 失败时 300ms 后再试）
      * @param requireLightOn true=主灯未开则跳过（开机自动配网门禁）
