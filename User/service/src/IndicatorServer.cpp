@@ -26,7 +26,7 @@ static constexpr IndicatorEffectEngine::BlinkSequenceStep kBatteryLowWarnSteps[]
 
 /**
  * @brief 重置网络红灯（与主灯同步，PRD「注」）
- * @note 熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭
+ * @note 熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭（慢闪结束即灭，与主灯同步）
  *       peakPwm=0 + GetKeep 表示保持熄灭（见 BeginRedBlinkSequenceStepRaw）
  */
 static constexpr IndicatorEffectEngine::BlinkSequenceStep kNetConfigIndicatorSteps[] = {

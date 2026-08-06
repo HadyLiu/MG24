@@ -9,6 +9,13 @@
 #include "ColorConverter.h"
 #include <stdint.h>
 
+namespace
+{
+
+static constexpr uint32_t kPwmMax1023 = 1023U;
+
+} // namespace
+
 /**
  * @brief 色温(K) → WRGB
  * @param kelvin 色温（2200~6500，超出限幅）
@@ -18,72 +25,62 @@ LightTypes::WrgbColor ColorConverter::FromColorTemperature(uint32_t kelvin)
 {
     LightTypes::WrgbColor c = {0, 0, 0, 0};
 
-#define PWM_MAX_1023 1023 // 硬件最大PWM值 (10位)
-#define SCALE_10BIT 1023  // 内部高精度计算基底 (2^10)
+    static constexpr uint32_t kCtWhiteFactor409 = (kPwmMax1023 * 40U) / 100U; /**< Matter CT：W 固定 40% */
+
     // 1. 边界安全限幅
-    if (kelvin < 2200)
+    if (kelvin < 2200U)
     {
-        kelvin = 2200;
+        kelvin = 2200U;
     }
-    if (kelvin > 6500)
+    if (kelvin > 6500U)
     {
-        kelvin = 6500;
+        kelvin = 6500U;
     }
 
-    uint32_t w_factor = PWM_MAX_1023;
-    uint32_t r_factor = 0;
-    uint32_t g_factor = 0;
-    uint32_t b_factor = 0;
+    uint32_t r_factor = 0U;
+    uint32_t g_factor = 0U;
+    uint32_t b_factor = 0U;
 
-    // 2. 分区间计算各个通道的放大因子 (0 ~ 1023)
-    if (kelvin == 2700)
+    // 2. 分区间计算 RGB 放大因子 (0 ~ 1023)；W 固定 40% 占空比
+    if (kelvin == 2700U)
     {
-        w_factor = PWM_MAX_1023;
+        /* 2700K：仅 W 通道，RGB 为 0 */
     }
-    else if (kelvin < 2700)
+    else if (kelvin < 2700U)
     {
-        // 【暖调光区间】2200K ~ 2699K -> W全开 + R + 少许 G
-        uint32_t range_factor = ((2700 - kelvin) * PWM_MAX_1023) / (2700 - 2200);
+        // 【暖调光区间】2200K ~ 2699K -> W 40% + R + 少许 G
+        const uint32_t range_factor = ((2700U - kelvin) * kPwmMax1023) / (2700U - 2200U);
 
-        w_factor = PWM_MAX_1023;
-        r_factor = (range_factor * 358) >> 10; // 35.0% 红光
-        g_factor = (range_factor * 82) >> 10;  // 8.0% 绿光校准
-        b_factor = 0;
+        r_factor = (range_factor * 358U) >> 10; // 35.0% 红光
+        g_factor = (range_factor * 82U) >> 10;  // 8.0% 绿光校准
+        b_factor = 0U;
     }
     else
     {
-        // 【冷调光区间】2701K ~ 6500K -> W渐减 + B + G
-        uint32_t range_factor = ((kelvin - 2700) * PWM_MAX_1023) / (6500 - 2700);
+        // 【冷调光区间】2701K ~ 6500K -> W 40% + B + G
+        const uint32_t range_factor = ((kelvin - 2700U) * kPwmMax1023) / (6500U - 2700U);
 
-        w_factor = PWM_MAX_1023 - ((range_factor * 205) >> 10); // W 渐减至 80%
-        r_factor = 0;
-        b_factor = (range_factor * 563) >> 10; // 55.0% 蓝光
-        g_factor = (range_factor * 410) >> 10; // 40.0% 绿光
+        r_factor = 0U;
+        b_factor = (range_factor * 563U) >> 10; // 55.0% 蓝光
+        g_factor = (range_factor * 410U) >> 10; // 40.0% 绿光
     }
 
-    // 3. 将 1023 基底精确定位到 0 ~  空间
-    // 数学公式：实际输出 = (factor * 255) / 1023，利用 >> 8 代替除法
-    c.w = (uint16_t)(w_factor);
-    c.r = (uint16_t)(r_factor);
-    c.g = (uint16_t)(g_factor);
-    c.b = (uint16_t)(b_factor);
+    c.w = static_cast<uint16_t>(kCtWhiteFactor409);
+    c.r = static_cast<uint16_t>(r_factor);
+    c.g = static_cast<uint16_t>(g_factor);
+    c.b = static_cast<uint16_t>(b_factor);
 
-    // 4. 严谨性限幅保护
-    if (c.w >= PWM_MAX_1023)
+    if (c.r >= kPwmMax1023)
     {
-        c.w = PWM_MAX_1023;
+        c.r = static_cast<uint16_t>(kPwmMax1023);
     }
-    if (c.r >= PWM_MAX_1023)
+    if (c.g >= kPwmMax1023)
     {
-        c.r = PWM_MAX_1023;
+        c.g = static_cast<uint16_t>(kPwmMax1023);
     }
-    if (c.g >= PWM_MAX_1023)
+    if (c.b >= kPwmMax1023)
     {
-        c.g = PWM_MAX_1023;
-    }
-    if (c.b >= PWM_MAX_1023)
-    {
-        c.b = PWM_MAX_1023;
+        c.b = static_cast<uint16_t>(kPwmMax1023);
     }
     return c;
 }
@@ -102,14 +99,14 @@ uint32_t ColorConverter::ToColorTemperature(const LightTypes::WrgbColor& color)
         // 正向公式: b_factor = (range_factor * 563) >> 10
         // 反推 range_factor = (b_factor << 10) / 563
         uint32_t range_factor = ((uint32_t)color.b << 10) / 563;
-        if (range_factor > PWM_MAX_1023)
+        if (range_factor > kPwmMax1023)
         {
-            range_factor = PWM_MAX_1023;
+            range_factor = kPwmMax1023;
         }
 
         // 正向公式: range_factor = ((kelvin - 2700) * 1023) / (6500 - 2700)
         // 反推 kelvin = 2700 + (range_factor * (6500 - 2700)) / 1023
-        uint32_t kelvin = 2700 + (range_factor * (6500 - 2700)) / PWM_MAX_1023;
+        uint32_t kelvin = 2700U + (range_factor * (6500U - 2700U)) / kPwmMax1023;
 
         if (kelvin > 6500)
         {
@@ -123,14 +120,14 @@ uint32_t ColorConverter::ToColorTemperature(const LightTypes::WrgbColor& color)
         // 正向公式: r_f = (range_factor * 358) >> 10
         // 反推 range_factor = (r_f << 10) / 358
         uint32_t range_factor = ((uint32_t)color.r << 10) / 358;
-        if (range_factor > PWM_MAX_1023)
+        if (range_factor > kPwmMax1023)
         {
-            range_factor = PWM_MAX_1023;
+            range_factor = kPwmMax1023;
         }
 
         // 正向公式: range_factor = ((2700 - kelvin) * 1023) / (2700 - 2200)
         // 反推 kelvin = 2700 - (range_factor * (2700 - 2200)) / 1023
-        uint32_t kelvin = 2700 - (range_factor * (2700 - 2200)) / PWM_MAX_1023;
+        uint32_t kelvin = 2700U - (range_factor * (2700U - 2200U)) / kPwmMax1023;
 
         if (kelvin < 2200)
         {

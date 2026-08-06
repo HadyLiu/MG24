@@ -15,11 +15,16 @@
 #include "timers.h"
 
 #include <app/FailSafeContext.h>
+#include <app/server/CommissioningWindowManager.h>
 #include <app/server/Dnssd.h>
 #include <crypto/OperationalKeystore.h>
 #include <lib/core/DataModelTypes.h>
 
 #include <platform/silabs/KeyValueStoreManagerImpl.h>
+
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_THREAD_SRP_CLIENT
+#include <platform/ThreadStackManager.h>
+#endif
 
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
 #include <app/icd/server/ICDNotifier.h>
@@ -30,28 +35,226 @@ using namespace chip::DeviceLayer;
 
 bool MatterBridge::g_bypass_zcl_callback = false;
 
+namespace
+{
+
+/** @brief 工厂复位进行中：禁止再向已满/关机的 CHIP 队列 ScheduleWork */
+static bool s_factoryResetInFlight = false;
+
+/** @brief 打开配网窗重试（ScheduleWork 失败或 Fail-Safe 未释放） */
+static bool     s_openRetryForce         = false;
+static bool     s_openRetryRequireLightOn = false;
+static uint8_t  s_openRetryCount         = 0U;
+static constexpr uint8_t  kOpenRetryMax        = 8U;
+static constexpr uint32_t kOpenRetryBaseMs     = 500U;
+static constexpr uint32_t kOpenRetryMaxDelayMs = 3000U;
+
+static sl_sleeptimer_timer_handle_t s_openRetryAppTimer{};
+
 /**
- * @brief 工厂重置前的缓冲延时：给指示灯展示与日志刷出留时间，随后擦除并重启
- * @note 重启后设备为未配网态，开机兜底打开 BLE + 可配网广播，可直接扫码重配。
+ * @brief 按已重试次数做线性退避
+ * @note  CHIP 事件队列在开机擦写 NVM 期间会满好几秒；固定 300ms 猛刷只会刷屏，
+ *        既救不回队列也淹没真正有用的日志。
  */
-static constexpr uint32_t kFactoryResetRebootDelayMs = 50U;
+static uint32_t OpenRetryDelayMsRaw()
+{
+    const uint32_t delay = kOpenRetryBaseMs * static_cast<uint32_t>(s_openRetryCount);
+    return (delay > kOpenRetryMaxDelayMs) ? kOpenRetryMaxDelayMs : delay;
+}
+
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+static bool s_icdCommissioningRefreshActive = false;
+
+static void IcdCommissioningRefreshTimerCallback(chip::System::Layer* layer, void* appState)
+{
+    (void)appState;
+    chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification();
+    if (s_icdCommissioningRefreshActive)
+    {
+        layer->StartTimer(chip::System::Clock::Milliseconds32(5000U),
+                          IcdCommissioningRefreshTimerCallback,
+                          nullptr);
+    }
+}
+#endif
+
+static intptr_t PackOpenWindowArg(bool forceRestart, bool requireLightOn)
+{
+    intptr_t arg = 0;
+    if (forceRestart)
+    {
+        arg |= 1;
+    }
+    if (requireLightOn)
+    {
+        arg |= 2;
+    }
+    return arg;
+}
+
+static void UnpackOpenWindowArg(intptr_t arg, bool* pForceRestart, bool* pRequireLightOn)
+{
+    if (pForceRestart != nullptr)
+    {
+        *pForceRestart = ((arg & 1) != 0);
+    }
+    if (pRequireLightOn != nullptr)
+    {
+        *pRequireLightOn = ((arg & 2) != 0);
+    }
+}
+
+static void OpenCommissioningRetryAppTimerCallback(sl_sleeptimer_timer_handle_t* handle,
+                                                    void* data)
+{
+    (void)handle;
+    (void)data;
+    MatterBridge::ScheduleOpenCommissioningFromAppRaw(s_openRetryForce, s_openRetryRequireLightOn);
+}
+
+static void CancelOpenCommissioningRetriesRaw()
+{
+    s_openRetryCount = 0U;
+    (void)sl_sleeptimer_stop_timer(&s_openRetryAppTimer);
+    DeviceLayer::SystemLayer().CancelTimer(
+        MatterBridge::OpenCommissioningRetryMatterTimerCallback,
+        reinterpret_cast<void*>(PackOpenWindowArg(s_openRetryForce, s_openRetryRequireLightOn)));
+}
+
+void ScheduleOpenCommissioningRetryOnMatterRaw(bool forceRestart, bool requireLightOn)
+{
+    if (s_factoryResetInFlight)
+    {
+        return;
+    }
+
+    if (s_openRetryCount >= kOpenRetryMax)
+    {
+        LOG_MATTER("[Commission] Open window retry exhausted");
+        return;
+    }
+
+    s_openRetryForce          = forceRestart;
+    s_openRetryRequireLightOn = requireLightOn;
+    s_openRetryCount          = static_cast<uint8_t>(s_openRetryCount + 1U);
+
+    const intptr_t packed = PackOpenWindowArg(forceRestart, requireLightOn);
+    CHIP_ERROR err        = DeviceLayer::SystemLayer().StartTimer(
+        System::Clock::Milliseconds32(OpenRetryDelayMsRaw()),
+        MatterBridge::OpenCommissioningRetryMatterTimerCallback,
+        reinterpret_cast<void*>(packed));
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("[Commission] Matter retry timer failed: %" CHIP_ERROR_FORMAT, err.Format());
+    }
+}
+
+} // namespace
+
+void MatterBridge::ScheduleOpenCommissioningFromAppRaw(bool forceRestart, bool requireLightOn)
+{
+    if (s_factoryResetInFlight)
+    {
+        return;
+    }
+
+    const intptr_t argPacked = PackOpenWindowArg(forceRestart, requireLightOn);
+    CHIP_ERROR err           = DeviceLayer::PlatformMgr().ScheduleWork(OpenCommissioningWindowHandler,
+                                                               argPacked);
+    if (err == CHIP_NO_ERROR)
+    {
+        return;
+    }
+
+    if (s_openRetryCount >= kOpenRetryMax)
+    {
+        LOG_MATTER("[Commission] Schedule open window failed, retry exhausted: %" CHIP_ERROR_FORMAT,
+                   err.Format());
+        return;
+    }
+
+    s_openRetryForce          = forceRestart;
+    s_openRetryRequireLightOn = requireLightOn;
+    s_openRetryCount          = static_cast<uint8_t>(s_openRetryCount + 1U);
+
+    LOG_MATTER("[Commission] Schedule open window failed: %" CHIP_ERROR_FORMAT ", retry %u",
+               err.Format(),
+               static_cast<unsigned>(s_openRetryCount));
+
+    (void)sl_sleeptimer_start_timer_ms(&s_openRetryAppTimer,
+                                       OpenRetryDelayMsRaw(),
+                                       OpenCommissioningRetryAppTimerCallback,
+                                       nullptr,
+                                       0U,
+                                       0U);
+}
+
+void MatterBridge::OpenCommissioningRetryMatterTimerCallback(chip::System::Layer* layer,
+                                                              void* appState)
+{
+    (void)layer;
+    MatterBridge::OpenCommissioningWindowHandler(reinterpret_cast<intptr_t>(appState));
+}
+
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+/**
+ * @brief BLE 配网期间强制 ICD Active（Thread 入网 + SRP 注册阶段 radio 不休眠）
+ */
+static void SetBleCommissioningIcdHoldRaw(bool active)
+{
+    using KeepActiveFlag = chip::app::ICDListener::KeepActiveFlag;
+    if (active)
+    {
+        chip::app::ICDNotifier::GetInstance().NotifyActiveRequestNotification(
+            KeepActiveFlag::kExchangeContextOpen);
+        chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification();
+        s_icdCommissioningRefreshActive = true;
+        DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(5000U),
+                                              IcdCommissioningRefreshTimerCallback,
+                                              nullptr);
+    }
+    else
+    {
+        s_icdCommissioningRefreshActive = false;
+        DeviceLayer::SystemLayer().CancelTimer(IcdCommissioningRefreshTimerCallback, nullptr);
+        chip::app::ICDNotifier::GetInstance().NotifyActiveRequestWithdrawal(
+            KeepActiveFlag::kExchangeContextOpen);
+    }
+}
+#endif
+
+/**
+ * @brief 通知 entry 层：BLE 配网会话开始/结束
+ */
+void MatterBridge::NotifyCommissioningSessionRaw(bool sessionActive)
+{
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+    SetBleCommissioningIcdHoldRaw(sessionActive);
+#endif
+    if (m_commissioningSessionCallback != nullptr)
+    {
+        m_commissioningSessionCallback(sessionActive);
+    }
+}
 
 /**
  * @brief 无 Fabric 时打开基础配网窗与 PASE 监听
  * @param forceRestartTimer true=已开窗也先关再开，重置发现超时倒计时
  * @param requireLightOn    true=主灯未开则跳过（自动配网门禁）
- * @return true=本次成功调用了 OpenBasicCommissioningWindow
+ * @return true=目标态已满足（已开窗 / 已入网 / 配网进行中），调用方应停止重试；
+ *         false=暂时失败，可稍后重试（如队列忙、Fail-Safe 清理中）
  * @note  必须在 Matter 线程且已持有 ChipStack 锁时调用。
+ *        严禁把「已开窗」当成失败再重试：会每 300ms 刷队列导致 1fffffc。
  */
 bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requireLightOn)
 {
     chip::Server& server = chip::Server::GetInstance();
     const uint8_t fabricCount = server.GetFabricTable().FabricCount();
 
+    // 已入网：目标已达成，停止重试（勿返回 false，否则会刷屏 Skip）
     if (fabricCount != 0U)
     {
-        LOG_MATTER("[Commission] Skip open window, fabricCount=%u", fabricCount);
-        return false;
+        return true;
     }
 
     if (requireLightOn)
@@ -59,7 +262,7 @@ bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requi
         if ((m_lightOnQuery != nullptr) && !m_lightOnQuery())
         {
             LOG_MATTER("[Commission] Skip auto-open: light is OFF");
-            return false;
+            return true;
         }
     }
 
@@ -68,23 +271,28 @@ bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requi
     const chip::Dnssd::CommissioningMode mode = windowMgr.GetCommissioningMode();
     const bool listeningForPase = (mode != chip::Dnssd::CommissioningMode::kDisabled);
 
-    LOG_MATTER("[Commission] fabric=0 windowOpen=%u listening=%u force=%u",
-               windowOpen ? 1U : 0U,
-               listeningForPase ? 1U : 0U,
-               forceRestartTimer ? 1U : 0U);
-
-    // 窗已开且正在听 PASE：非强制刷新则无需动作
+    // 窗已开且正在听 PASE：非强制刷新则视为成功
     if (windowOpen && listeningForPase && !forceRestartTimer)
     {
-        return false;
+        return true;
     }
 
     chip::app::FailSafeContext& failSafeContext = server.GetFailSafeContext();
     if (!failSafeContext.IsFailSafeFullyDisarmed())
     {
-        LOG_MATTER("[Commission] Fail-Safe armed, skip opening commissioning window");
+        // 配网进行中（窗开着、Fail-Safe 已武装）：不要再抢开窗，停止重试
+        if (windowOpen)
+        {
+            return true;
+        }
+        LOG_MATTER("[Commission] Fail-Safe busy, will retry open later");
         return false;
     }
+
+    LOG_MATTER("[Commission] opening windowOpen=%u listening=%u force=%u",
+               windowOpen ? 1U : 0U,
+               listeningForPase ? 1U : 0U,
+               forceRestartTimer ? 1U : 0U);
 
     // 强制刷新或窗开着但不听 PASE：先关再开
     if (windowOpen)
@@ -120,17 +328,33 @@ bool MatterBridge::OpenCommissioningWindowRaw(bool forceRestartTimer, bool requi
 void MatterBridge::EnsureCommissioningWindowOnBootHandler(intptr_t arg)
 {
     (void)arg;
-    (void)MatterBridge::Instance().OpenCommissioningWindowRaw(false, true);
+    bool forceRestart  = false;
+    bool requireLightOn = true;
+    if (MatterBridge::Instance().OpenCommissioningWindowRaw(forceRestart, requireLightOn))
+    {
+        CancelOpenCommissioningRetriesRaw();
+        return;
+    }
+    ScheduleOpenCommissioningRetryOnMatterRaw(forceRestart, requireLightOn);
 }
 
 /**
- * @brief Matter 线程：打开/刷新配网窗（手动触发，不检查灯态）
- * @param arg 非 0=强制重启倒计时
+ * @brief Matter 线程：打开/刷新配网窗
+ * @param arg bit0=强制重启倒计时 bit1=需灯开
  */
 void MatterBridge::OpenCommissioningWindowHandler(intptr_t arg)
 {
-    const bool forceRestart = (arg != 0);
-    (void)MatterBridge::Instance().OpenCommissioningWindowRaw(forceRestart, false);
+    bool forceRestart  = false;
+    bool requireLightOn = false;
+    UnpackOpenWindowArg(arg, &forceRestart, &requireLightOn);
+
+    if (MatterBridge::Instance().OpenCommissioningWindowRaw(forceRestart, requireLightOn))
+    {
+        CancelOpenCommissioningRetriesRaw();
+        return;
+    }
+
+    ScheduleOpenCommissioningRetryOnMatterRaw(forceRestart, requireLightOn);
 }
 
 /**
@@ -156,12 +380,12 @@ void MatterBridge::Init()
     }
 
     // Server 已初始化完毕：未入网且灯开时自动开窗
-    CHIP_ERROR err =
-        chip::DeviceLayer::PlatformMgr().ScheduleWork(EnsureCommissioningWindowOnBootHandler, 0);
+    CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(EnsureCommissioningWindowOnBootHandler, 0);
     if (err != CHIP_NO_ERROR)
     {
         LOG_MATTER("[Commission] Schedule boot window ensure failed: %" CHIP_ERROR_FORMAT,
                    err.Format());
+        ScheduleOpenCommissioningFromAppRaw(false, true);
     }
 }
 
@@ -173,6 +397,11 @@ void MatterBridge::RegisterLightOnQuery(bool (*query)(void))
 void MatterBridge::RegisterCommissioningUiCallback(CommissioningUiCallback callback)
 {
     m_commissioningUiCallback = callback;
+}
+
+void MatterBridge::RegisterCommissioningSessionCallback(CommissioningSessionCallback callback)
+{
+    m_commissioningSessionCallback = callback;
 }
 
 void MatterBridge::SetFirstCommissionPending(bool pending)
@@ -187,25 +416,20 @@ bool MatterBridge::IsFirstCommissionPending() const
 
 void MatterBridge::RequestOpenCommissioningWindow(bool forceRestartTimer)
 {
-    const intptr_t arg = forceRestartTimer ? 1 : 0;
-    CHIP_ERROR err =
-        chip::DeviceLayer::PlatformMgr().ScheduleWork(OpenCommissioningWindowHandler, arg);
-    if (err != CHIP_NO_ERROR)
-    {
-        LOG_MATTER("[Commission] Schedule open window failed: %" CHIP_ERROR_FORMAT, err.Format());
-    }
+    ScheduleOpenCommissioningFromAppRaw(forceRestartTimer, false);
 }
 
 void MatterBridge::NotifyUserInteraction()
 {
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
-    CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(
+    if (s_factoryResetInFlight)
+    {
+        return;
+    }
+
+    (void)PlatformMgr().ScheduleWork(
         [](intptr_t) { chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification(); },
         0);
-    if (err != CHIP_NO_ERROR)
-    {
-        LOG_MATTER("[ICD] Schedule user interaction wake failed: %" CHIP_ERROR_FORMAT, err.Format());
-    }
 #endif
 }
 
@@ -704,6 +928,7 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
     {
         // 有几次 Complete 就下发几次灯效，不做锁存/去重
         LOG_MATTER("Commissioning complete!");
+        self.NotifyCommissioningSessionRaw(false);
 
         // 首次配网 UI 结束（停白呼吸等）；重复 Complete 再调一次无害
         if (self.m_commissioningUiCallback != nullptr)
@@ -724,8 +949,16 @@ void MatterBridge::OnMatterDeviceEvent(const ChipDeviceEvent* event, intptr_t ar
     case DeviceEventType::kCHIPoBLEConnectionEstablished:
     {
         LOG_MATTER("BLE connection established");
+        self.NotifyCommissioningSessionRaw(true);
         // 配网中途：不检查灯态，确保窗仍在听 PASE
         (void)self.OpenCommissioningWindowRaw(false, false);
+        break;
+    }
+
+    case DeviceEventType::kCHIPoBLEConnectionClosed:
+    {
+        LOG_MATTER("BLE connection closed");
+        self.NotifyCommissioningSessionRaw(false);
         break;
     }
 
@@ -766,62 +999,97 @@ void MatterBridge::RegisterDeviceEventListener(void)
 }
 
 /**
- * @brief 工厂重置阶段 1：刷 KVS 映射并延时缓冲，随后擦除并重启
- * @note  ForceKeyMapSave 已在启动定时器前完成；延时仅留极短缓冲再擦除重启。
+ * @brief 工厂重置前主动释放 Matter/BLE 资源（替代预警时序末尾被动等待 2s）
+ * @note 必须在 Matter 线程且已持有 ChipStack 锁时调用。
+ */
+static void PrepareFactoryResetShutdownRaw()
+{
+    chip::Server& server = chip::Server::GetInstance();
+
+    chip::CommissioningWindowManager& windowMgr = server.GetCommissioningWindowManager();
+    if (windowMgr.IsCommissioningWindowOpen())
+    {
+        LOG_MATTER("[FactoryReset] Closing commissioning window");
+        windowMgr.CloseCommissioningWindow();
+    }
+
+    chip::app::FailSafeContext& failSafeContext = server.GetFailSafeContext();
+    if (failSafeContext.IsFailSafeArmed())
+    {
+        LOG_MATTER("[FactoryReset] Force disarm Fail-Safe");
+        failSafeContext.ForceFailSafeTimerExpiry();
+    }
+
+    chip::DeviceLayer::PersistedStorage::KeyValueStoreMgrImpl().ForceKeyMapSave();
+}
+
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_THREAD_SRP_CLIENT
+/**
+ * @brief 擦除 Thread NVM 前，通知边界路由器注销本机 SRP 主机名并释放 key lease
+ * @note  SRP 主机名由 EUI64 推导，工厂复位后保持不变；而 SRP 私钥存在 Thread NVM 里，
+ *        复位后会重新生成。若不先释放 key lease，边界路由器会继续按旧密钥持有该主机名，
+ *        下次配网的 SRP 注册就会被拒（operation refused for security reasons），
+ *        设备无法在 Thread 上被发现，配网停在 CommissioningComplete 之前。
+ * @note  内部等待边界路由器确认，最长阻塞 2s，必须在未持 ChipStack 锁时调用。
+ */
+static void ReleaseSrpRegistrationRaw()
+{
+    const CHIP_ERROR err = ThreadStackMgr().ClearAllSrpHostAndServices();
+    if (err != CHIP_NO_ERROR)
+    {
+        LOG_MATTER("[FactoryReset] SRP release request failed: %" CHIP_ERROR_FORMAT, err.Format());
+        return;
+    }
+
+    LOG_MATTER("[FactoryReset] SRP host/service release requested");
+}
+#endif
+
+/**
+ * @brief 工厂重置：主动关窗/解 Fail-Safe → 清 PSA → Silabs 官方擦除重启
+ * @note Silabs DoFactoryReset 内部另有 osDelay(500ms) 再 SoftwareReset，无需额外定时器。
  */
 void MatterBridge::DoFactoryResetHandler(intptr_t arg)
 {
     (void)arg;
 
+    s_factoryResetInFlight = true;
+    s_openRetryCount         = 0U;
+#if CHIP_CONFIG_ENABLE_ICD_SERVER
+    s_icdCommissioningRefreshActive = false;
+    DeviceLayer::SystemLayer().CancelTimer(IcdCommissioningRefreshTimerCallback, nullptr);
+#endif
+
     LOG_MATTER("=============================================");
-    LOG_MATTER("[FactoryReset] Starting factory reset, erase and reboot in %lu ms...",
-               static_cast<unsigned long>(kFactoryResetRebootDelayMs));
+    LOG_MATTER("[FactoryReset] Prepare shutdown and initiate factory reset");
     LOG_MATTER("=============================================");
 
     PlatformMgr().LockChipStack();
-    chip::DeviceLayer::PersistedStorage::KeyValueStoreMgrImpl().ForceKeyMapSave();
+    PrepareFactoryResetShutdownRaw();
+
+    chip::Server& server = chip::Server::GetInstance();
+    chip::Crypto::OperationalKeystore* pKeystore = const_cast<chip::Crypto::OperationalKeystore*>(
+        server.GetFabricTable().GetOperationalKeystore());
+    if (pKeystore != nullptr)
+    {
+        for (chip::FabricIndex fabricIndex = chip::kMinValidFabricIndex;
+             fabricIndex <= CHIP_CONFIG_MAX_FABRICS;
+             ++fabricIndex)
+        {
+            (void)pKeystore->RemoveOpKeypairForFabric(fabricIndex);
+        }
+        pKeystore->RevertPendingKeypair();
+        LOG_MATTER("[FactoryReset] PSA operational keys cleared");
+    }
+
     PlatformMgr().UnlockChipStack();
 
-    DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(kFactoryResetRebootDelayMs),
-                                          FactoryResetRebootTimerCallback, nullptr);
-}
+#if CHIP_DEVICE_CONFIG_ENABLE_THREAD && CHIP_DEVICE_CONFIG_ENABLE_THREAD_SRP_CLIENT
+    ReleaseSrpRegistrationRaw();
+#endif
 
-/**
- * @brief 工厂重置阶段 2：Silabs 系统工厂复位（擦除 Matter Config/KVS/Thread 后重启）
- * @note 等价于 BaseApplication::ScheduleFactoryReset()（该类方法为 protected，无法直接调用）。
- *       复位前先清 PSA 运维密钥：该密钥在 Opaque PSA 区，不在 NVM3 KVS 内，
- *       仅 ErasePartition 清不掉，会导致下次配网出现 "PSA key recycled" 并拖慢 CSR。
- *       用户域 NVM（如灯光 0xA001）不在 Matter Config 擦除范围，开机灯效标记可跨重启。
- */
-void MatterBridge::FactoryResetRebootTimerCallback(chip::System::Layer* layer, void* appState)
-{
-    (void)layer;
-    (void)appState;
-
-    LOG_MATTER("[FactoryReset] Calling system factory reset (erase + reboot)");
-
-    PlatformMgr().ScheduleWork([](intptr_t) {
-        chip::Server& server = chip::Server::GetInstance();
-
-        // PSA Opaque 运维密钥不在 KVS 分区内，必须在整段擦除前显式删除
-        chip::Crypto::OperationalKeystore* pKeystore = const_cast<chip::Crypto::OperationalKeystore*>(
-            server.GetFabricTable().GetOperationalKeystore());
-        if (pKeystore != nullptr)
-        {
-            for (chip::FabricIndex fabricIndex = chip::kMinValidFabricIndex;
-                 fabricIndex <= CHIP_CONFIG_MAX_FABRICS;
-                 ++fabricIndex)
-            {
-                (void)pKeystore->RemoveOpKeypairForFabric(fabricIndex);
-            }
-            pKeystore->RevertPendingKeypair();
-            LOG_MATTER("[FactoryReset] PSA operational keys cleared");
-        }
-
-        // 与 BaseApplication::ScheduleFactoryReset 相同的系统复位路径
-        PlatformMgr().HandleServerShuttingDown();
-        ConfigurationMgr().InitiateFactoryReset();
-    });
+    PlatformMgr().HandleServerShuttingDown();
+    ConfigurationMgr().InitiateFactoryReset();
 }
 
 /**

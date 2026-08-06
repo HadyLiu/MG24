@@ -92,6 +92,14 @@ class MatterBridge
     void RequestOpenCommissioningWindow(bool forceRestartTimer);
 
     /**
+     * @brief 带重试的配网窗调度（ScheduleWork 失败时 300ms 后再试）
+     * @param requireLightOn true=主灯未开则跳过（开机自动配网门禁）
+     */
+    static void ScheduleOpenCommissioningFromAppRaw(bool forceRestart, bool requireLightOn);
+
+    static void OpenCommissioningRetryMatterTimerCallback(chip::System::Layer* layer, void* appState);
+
+    /**
      * @brief 用户本地操作（按键等）时延长 ICD Active 窗口
      * @note 可从任意任务上下文调用；内部投递至 Matter 线程。
      */
@@ -109,6 +117,13 @@ class MatterBridge
      */
     using CommissioningUiCallback = void (*)(bool windowOpenedForFirstPair, bool commissioningDone);
     void RegisterCommissioningUiCallback(CommissioningUiCallback callback);
+
+    /**
+     * @brief 注册 BLE 配网会话起止回调
+     * @note entry 可据此保持 LP/外设唤醒，直至 kCommissioningComplete。
+     */
+    using CommissioningSessionCallback = void (*)(bool sessionActive);
+    void RegisterCommissioningSessionCallback(CommissioningSessionCallback callback);
 
     /**
      * @brief 是否尚未成功配网过（首次出厂 / 工厂复位后）
@@ -130,6 +145,7 @@ class MatterBridge
 
     bool (*m_lightOnQuery)(void){nullptr};
     CommissioningUiCallback m_commissioningUiCallback{nullptr};
+    CommissioningSessionCallback m_commissioningSessionCallback{nullptr};
     bool m_firstCommissionPending{true};
 
     void SetOn(bool isOn);
@@ -182,7 +198,6 @@ class MatterBridge
 
     /* 工厂重置（擦除持久化数据后受控重启）路径 */
     static void DoFactoryResetHandler(intptr_t arg);
-    static void FactoryResetRebootTimerCallback(chip::System::Layer* layer, void* appState);
 
     /** @brief Matter 线程：按 arg 打开/刷新配网窗（arg=1 强制重启倒计时） */
     static void OpenCommissioningWindowHandler(intptr_t arg);
@@ -195,4 +210,7 @@ class MatterBridge
      * @return true=本次成功 OpenBasicCommissioningWindow
      */
     bool OpenCommissioningWindowRaw(bool forceRestartTimer, bool requireLightOn);
+
+    /** @brief BLE 配网会话 ICD/entry 通知（须在 Matter 线程调用） */
+    void NotifyCommissioningSessionRaw(bool sessionActive);
 };

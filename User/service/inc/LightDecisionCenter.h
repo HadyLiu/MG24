@@ -72,6 +72,13 @@ class LightDecisionCenter
      */
     void Init(LightSequenceScheduler* pSequence, LightStorageProvider* pStorage);
 
+    /**
+     * @brief 探测 NVM 是否标记「工厂复位后开机灯效」
+     * @param pStorage 持久化适配器
+     * @return true=应播快闪×2+淡入（无副作用，仅读 NVM）
+     */
+    static bool ProbeFactoryResetBootEffect(LightStorageProvider* pStorage);
+
     /** @brief 注册 Matter 上报回调（entry → MatterBridge） */
     void RegisterMatterReporter(MatterReportCallback callback);
 

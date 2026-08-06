@@ -108,6 +108,19 @@
 #ifndef OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE
 #define OPENTHREAD_CONFIG_SRP_CLIENT_ENABLE         1
 #endif
+// <o OPENTHREAD_CONFIG_SRP_CLIENT_DEFAULT_LEASE> SRP 服务租约（秒）
+// <i> OpenThread 默认 2 小时。
+#ifndef OPENTHREAD_CONFIG_SRP_CLIENT_DEFAULT_LEASE
+#define OPENTHREAD_CONFIG_SRP_CLIENT_DEFAULT_LEASE      (2 * 60 * 60)
+#endif
+// <o OPENTHREAD_CONFIG_SRP_CLIENT_DEFAULT_KEY_LEASE> SRP 主机名密钥租约（秒）
+// <i> OpenThread 默认 14 天。工厂复位会擦掉 Thread NVM 里的 SRP 私钥，
+// <i> 而主机名由 EUI64 推导、复位后不变；边界路由器若仍按旧密钥持有该主机名，
+// <i> 新密钥的注册会被拒绝（SRP update error: operation refused for security reasons）。
+// <i> 缩短到 4 小时，让这种残留最多 4 小时后自动失效，而不是卡住 14 天。
+#ifndef OPENTHREAD_CONFIG_SRP_CLIENT_DEFAULT_KEY_LEASE
+#define OPENTHREAD_CONFIG_SRP_CLIENT_DEFAULT_KEY_LEASE  (4 * 60 * 60)
+#endif
 // <q>  Service Registration Protocol (SRP) Server
 #ifndef OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
 #define OPENTHREAD_CONFIG_SRP_SERVER_ENABLE         0

@@ -140,6 +140,19 @@ void LowPowerCoordinator::RequestUserWake()
 }
 
 /**
+ * @brief BLE 配网会话保持：防止 3s 空闲 Suspend 外设干扰长时配网
+ */
+void LowPowerCoordinator::SetCommissioningHold(bool enable)
+{
+    SetHoldRaw(HoldReason::Commissioning, enable);
+    if (enable)
+    {
+        EnterActiveRaw();
+    }
+    EvaluateSleepRaw();
+}
+
+/**
  * @brief 周期评估空闲计时；并做 USB ADC 1s 兜底（分压脚数字沿可能不够陡）
  */
 void LowPowerCoordinator::Poll(uint16_t elapsedMs)

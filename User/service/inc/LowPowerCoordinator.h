@@ -25,7 +25,8 @@ class LowPowerCoordinator
         Indicator = 1U << 1,
         Button    = 1U << 2,
         UsbPower  = 1U << 3,
-        UserMatter = 1U << 4,
+        UserMatter    = 1U << 4,
+        Commissioning = 1U << 5,
         DebugForce = 1U << 7 /**< 调试强制保持 Active */
     };
 
@@ -70,6 +71,12 @@ class LowPowerCoordinator
      * @note 置 Button/UserMatter 保持位；由 Poll 递减超时后清除。
      */
     void RequestUserWake();
+
+    /**
+     * @brief BLE 配网全程保持 Active（至 kCommissioningComplete / BLE 断开）
+     * @param enable true=配网会话进行中
+     */
+    void SetCommissioningHold(bool enable);
 
     /**
      * @brief 周期驱动（建议挂 200ms 或电源同周期）

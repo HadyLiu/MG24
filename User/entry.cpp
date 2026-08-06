@@ -43,6 +43,7 @@
 #include "PowerServer.h"
 
 static LightNvmStorage s_lightNvmStorage;
+static bool            s_earlyFactoryResetBootStarted = false;
 
 void power_Init(void);
 void power_Wire(void);
@@ -53,19 +54,46 @@ void button_Init(void);
 void Matter_Init(void);
 
 /**
+ * @brief 工厂复位重启后尽早播放「快闪×2+淡入」，与 Matter 栈初始化并行
+ * @note 在 AppTask::AppInit 开头调用；entry_Init 检测到已启动则跳过重复 Init。
+ */
+void entry_EarlyFactoryResetBootEffect(void)
+{
+    if (s_earlyFactoryResetBootStarted)
+    {
+        return;
+    }
+
+    if (!LightDecisionCenter::ProbeFactoryResetBootEffect(&s_lightNvmStorage))
+    {
+        return;
+    }
+
+    led_Init();
+    LightDecisionCenter_Init();
+    s_earlyFactoryResetBootStarted = true;
+}
+
+/**
  * @brief 系统总初始化入口
  * @return 无
  * @note 先 BSP/引擎，再初始化 LDC，最后接线 Matter（须在 LDC.Init 之后）。
  */
 void entry_Init(void)
 {
-    led_Init();
+    if (!s_earlyFactoryResetBootStarted)
+    {
+        led_Init();
+    }
 
     /* 指示灯初始化 */
     Indicator_Init();
 
     /* 主灯控制中心 */
-    LightDecisionCenter_Init();
+    if (!s_earlyFactoryResetBootStarted)
+    {
+        LightDecisionCenter_Init();
+    }
 
     /* 电源服务接线（须在 LDC / 灯效引擎初始化之后） */
     power_Init();
@@ -198,7 +226,15 @@ void button_Init(void)
 
     // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
-        MatterBridge::Instance().NotifyUserInteraction();
+        // 长按清网/复位期间 Matter 栈可能关机或队列已满，禁止 ScheduleWork 唤醒 ICD
+        const bool isNetResetKey =
+            (event == KeyEventType::LongPressClearNetLighting) ||
+            (event == KeyEventType::LongPressClearNet) ||
+            (event == KeyEventType::LongPressStopNet);
+        if (!isNetResetKey)
+        {
+            MatterBridge::Instance().NotifyUserInteraction();
+        }
         LowPowerCoordinator::Instance().RequestUserWake();
 
         if (event == KeyEventType::LongPressClearNetLighting)
@@ -259,6 +295,10 @@ void Matter_Init(void)
                 IndicatorServer::Instance().OnFirstCommissionBreathStart();
             }
         });
+
+    MatterBridge::Instance().RegisterCommissioningSessionCallback([](bool sessionActive) {
+        LowPowerCoordinator::Instance().SetCommissioningHold(sessionActive);
+    });
 
     MatterBridge::Instance().Init();
     MatterBridge::Instance().MatterDownlinkLocalRegister(

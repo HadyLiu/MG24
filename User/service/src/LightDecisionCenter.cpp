@@ -138,6 +138,26 @@ void LightDecisionCenter::Init(LightSequenceScheduler* pSequence, LightStoragePr
 }
 
 /**
+ * @brief 探测 NVM 是否标记工厂复位后开机灯效（只读，无副作用）
+ */
+bool LightDecisionCenter::ProbeFactoryResetBootEffect(LightStorageProvider* pStorage)
+{
+    if (pStorage == nullptr)
+    {
+        return false;
+    }
+
+    PersistParam_T param{};
+    const bool readOk = pStorage->Read(reinterpret_cast<uint8_t*>(&param), sizeof(PersistParam_T));
+    if (!readOk || !Instance().IsPersistValid(param))
+    {
+        return false;
+    }
+
+    return ((param.reserved & kBootEffectMask) == kBootEffectFactoryResetDone);
+}
+
+/**
  * @brief 注册 Matter 上报回调
  * @param callback entry 注入的上报函数
  */
@@ -821,7 +841,8 @@ bool LightDecisionCenter::IsPersistValid(const PersistParam_T& param) const
 
 /**
  * @brief 主灯工厂重置预警时序（一次性，3 步）
- * @note 注解：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭；
+ * @note 注解：熄灭 400ms → 正常闪×3 → 慢闪×1 → 熄灭（慢闪结束即灭）；
+ *       Matter 释放改由 MatterBridge 主动关窗/解 Fail-Safe，无需末尾被动等待 2s；
  *       闪烁亮度=当前亮度，关灯则用关灯前亮度（m_lastValidBrightness）；
  *       完结后仅当已按住≥13s（m_factoryResetArmed）才触发工厂复位。
  */
@@ -978,6 +999,8 @@ void LightDecisionCenter::OnFactoryResetDoneSequenceFinishedRaw()
     m_lastValidBrightness        = kDefaultBrightness;
     m_brightnessCycleIndex       = 0U;
     ReportToMatterIfRegistered();
+    // 配网窗由 MatterBridge::Init / kServerReady 兜底打开；此处不再 force 刷新，
+    // 避免灯效结束时 CHIP 队列正忙导致 ScheduleWork 失败刷屏。
 }
 
 /**

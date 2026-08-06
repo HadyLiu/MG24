@@ -102,6 +102,10 @@ CHIP_ERROR AppTask::AppInit()
 {
   CHIP_ERROR err = CHIP_NO_ERROR;
 
+  // 工厂复位重启：尽早播「快闪×2+淡入」，与后续 Matter 初始化并行
+  extern void entry_EarlyFactoryResetBootEffect(void);
+  entry_EarlyFactoryResetBootEffect();
+
   // 将自定义按键中断回调函数注册到芯片平台，以便在按键事件发生时能够正确地触发我们的状态机逻辑
   chip::DeviceLayer::Silabs::GetPlatform().SetButtonsCb(
       [](uint8_t button, uint8_t action) {
