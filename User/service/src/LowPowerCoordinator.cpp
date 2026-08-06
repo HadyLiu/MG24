@@ -21,6 +21,9 @@
 /** @brief 用户交互保持时长（ms），超时后清 Button/UserMatter 位 */
 static constexpr uint16_t kUserWakeHoldMs = 2000U;
 
+/** @brief Matter 下行控制保持时长（ms），覆盖连续调光/色温指令间隔 */
+static constexpr uint16_t kMatterControlWakeHoldMs = 8000U;
+
 /** @brief 协调器 Poll 周期（与电源轮询同量级） */
 static constexpr uint16_t kLpPollIntervalMs = 200U;
 
@@ -135,6 +138,21 @@ void LowPowerCoordinator::RequestUserWake()
     SetHoldRaw(HoldReason::Button, true);
     SetHoldRaw(HoldReason::UserMatter, true);
     m_userWakeHoldMs = kUserWakeHoldMs;
+    EnterActiveRaw();
+    EvaluateSleepRaw();
+}
+
+/**
+ * @brief Matter Hub 下行：立即 Resume 外设并延长 UserMatter 保持
+ */
+void LowPowerCoordinator::RequestMatterControlWake()
+{
+    EnsurePeripheralsReady();
+    SetHoldRaw(HoldReason::UserMatter, true);
+    if (m_userWakeHoldMs < kMatterControlWakeHoldMs)
+    {
+        m_userWakeHoldMs = kMatterControlWakeHoldMs;
+    }
     EnterActiveRaw();
     EvaluateSleepRaw();
 }

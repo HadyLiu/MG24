@@ -47,7 +47,7 @@ static bool     s_openRetryRequireLightOn = false;
 static uint8_t  s_openRetryCount         = 0U;
 static constexpr uint8_t  kOpenRetryMax        = 8U;
 static constexpr uint32_t kOpenRetryBaseMs     = 500U;
-static constexpr uint32_t kOpenRetryMaxDelayMs = 3000U;
+static constexpr uint32_t kOpenRetryMaxDelayMs = 3000U; //
 
 static sl_sleeptimer_timer_handle_t s_openRetryAppTimer{};
 
@@ -424,6 +424,12 @@ void MatterBridge::NotifyUserInteraction()
 #if CHIP_CONFIG_ENABLE_ICD_SERVER
     if (s_factoryResetInFlight)
     {
+        return;
+    }
+
+    if (PlatformMgr().IsChipStackLockedByCurrentThread())
+    {
+        chip::app::ICDNotifier::GetInstance().NotifyNetworkActivityNotification();
         return;
     }
 

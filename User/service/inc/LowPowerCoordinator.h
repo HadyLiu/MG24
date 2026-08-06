@@ -73,6 +73,12 @@ class LowPowerCoordinator
     void RequestUserWake();
 
     /**
+     * @brief Matter Hub 下行控制：Resume 外设 + 延长 Active（防 3s 空闲 Suspend SPI）
+     * @note 比 RequestUserWake 保持更久，覆盖 ICD Active 窗口内的连续调光。
+     */
+    void RequestMatterControlWake();
+
+    /**
      * @brief BLE 配网全程保持 Active（至 kCommissioningComplete / BLE 断开）
      * @param enable true=配网会话进行中
      */

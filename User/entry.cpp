@@ -301,8 +301,12 @@ void Matter_Init(void)
     });
 
     MatterBridge::Instance().Init();
-    MatterBridge::Instance().MatterDownlinkLocalRegister(
-        [](const MatterDownlinkUploadPayload& mdc) { MatterBridgeServer::Instance().OnMatterDataReceived(mdc); });
+    MatterBridge::Instance().MatterDownlinkLocalRegister([](const MatterDownlinkUploadPayload& mdc) {
+        // Hub 下行：Resume SPI/PWM + 延长 ICD Active，避免灯灭 3s 后外设挂起导致首包慢
+        LowPowerCoordinator::Instance().RequestMatterControlWake();
+        MatterBridge::Instance().NotifyUserInteraction();
+        MatterBridgeServer::Instance().OnMatterDataReceived(mdc);
+    });
 
     // 唯一上报：LDC 本地状态 → 同步下行缓存 + 写回 Matter 属性（防手机 Toggle 反了）
     LightDecisionCenter::Instance().RegisterMatterReporter(

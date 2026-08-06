@@ -2,7 +2,7 @@
 #define SL_MATTER_ICD_CONFIG_H
 
 // SIT ICD configuration for battery-powered Matter light.
-// Hub control latency target: ~5s idle poll; active window extended on user/network activity.
+// Hub 控制延迟：空闲慢轮询 2s（原 5s）；收到下行后 Active 窗口内 300ms 快轮询。
 
 // <<< Use Configuration Wizard in Context Menu >>>
 
@@ -25,11 +25,11 @@
 #define SL_ICD_SUPPORTED_CLIENTS_PER_FABRIC 2
 
 // <o SL_TRANSPORT_IDLE_INTERVAL>  Transport Idle Interval (ms)
-// <i> SIT slow poll (must be <= 15000 ms)
-#define SL_TRANSPORT_IDLE_INTERVAL 5000
+// <i> SIT slow poll (must be <= 15000 ms). 2000ms ≈ 平均 1s 内收到 Hub 指令。
+#define SL_TRANSPORT_IDLE_INTERVAL 2000
 
 // <o SL_TRANSPORT_ACTIVE_INTERVAL>  Transport Active Interval (ms)
-#define SL_TRANSPORT_ACTIVE_INTERVAL 500
+#define SL_TRANSPORT_ACTIVE_INTERVAL 300
 
 // <o SL_CSL_TIMEOUT>  CSL Timeout (sec)
 #define SL_CSL_TIMEOUT 30
