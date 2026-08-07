@@ -118,7 +118,7 @@ class LightEffectEngine
      * @param brightness     目标全局亮度 0~255
      * @param durationMs     过渡时长 (ms)
      * @return 无
-     * @note 起点快照为当前物理输出，终点 = RGBW×brightness/255；
+     * @note 起点快照为当前物理输出，终点 = RGBW×§17占空比缩放；
      *       保证亮度切换时曲线连续无跳变。
      */
     void StartEffect(EffectRenderAction pAction, const uint16_t* targetChannels, uint8_t brightness,

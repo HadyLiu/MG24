@@ -5,7 +5,7 @@
  * @date 2026-06-19
  * @layer Middlewares
  * @note 物理 PWM 插值模型：
- *       物理占空比 = 逻辑 RGBW × 亮度 / 255；
+ *       §17：物理占空比 = 逻辑 RGBW × MapBrightnessToDutyScale(亮度) / 255；
  *       算子输入/输出均为物理 PWM 域，blendingOperator 返回值须 >>12。
  */
 #include "LightEffectEngine.h"
@@ -218,19 +218,20 @@ uint16_t LightEffectEngine::ClampOutputChannel(uint16_t value) const
 }
 
 /**
- * @brief 逻辑 RGBW × 亮度 → 物理 PWM
+ * @brief 逻辑 RGBW × 亮度 → 物理 PWM（§17：1%~100% 亮度 → 10%~100% 占空比）
  * @param channel    逻辑通道值（100% RGBW）
- * @param brightness 全局亮度 0~255
+ * @param brightness 全局逻辑亮度 0~255
  * @return 物理占空比；brightness=0 时返回 0
  */
 uint32_t LightEffectEngine::CalcPhysicalPwmRaw(uint32_t channel, uint8_t brightness) const
 {
-    if (brightness == 0U)
+    const uint8_t dutyScale = LightDimmingSpec::MapBrightnessToDutyScale(brightness);
+    if (dutyScale == 0U)
     {
         return 0U;
     }
 
-    return (channel * brightness + (kMaxBrightness / 2U)) / kMaxBrightness;
+    return (channel * dutyScale + (kMaxBrightness / 2U)) / kMaxBrightness;
 }
 
 /**
@@ -285,7 +286,7 @@ void LightEffectEngine::StopCurrentEffect(bool clearHardwareOutput)
  * @param brightness     目标全局亮度 0~255
  * @param durationMs     过渡时长 (ms)
  * @return 无
- * @note 起点 = 当前物理输出；终点 = RGBW×brightness/255；
+ * @note 起点 = 当前物理输出；终点 = RGBW×§17占空比缩放；
  *       预计算后渲染循环不再做亮度乘法，保证切换连续。
  */
 void LightEffectEngine::StartEffect(EffectRenderAction pAction, const uint16_t* targetChannels, uint8_t brightness,
@@ -299,6 +300,7 @@ void LightEffectEngine::StartEffect(EffectRenderAction pAction, const uint16_t* 
     m_state               = EngineState::Idle;
     m_pCurrentAction      = pAction;
     m_totalDurationMs     = durationMs;
+    /* 快照仍存逻辑亮度；物理映射仅在 CalcPhysicalPwmRaw 中完成 */
     m_globalBrightness    = LightDimmingSpec::ClampPhysicalBrightness(brightness);
     m_singleEffectRunTime = 0U;
     m_state               = EngineState::Running;
