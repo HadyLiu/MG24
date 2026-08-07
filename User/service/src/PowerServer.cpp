@@ -69,12 +69,15 @@ void PowerServer::StartPollTimerRaw(bool enable)
 
 /**
  * @brief 根据运行状态同步轮询定时器启停
- * @note UsbChargeManage / BatteryDischarging 需轮询；BatteryIdle 停表省电
+ * @note UsbChargeManage / BatteryDischarging 需轮询；
+ *       注解16 拔 USB 后 BatteryIdle 若仍在电压重检也需保活定时器。
  */
 void PowerServer::SyncPollTimerFromRunStateRaw()
 {
     const bool needTimer =
-        (m_runState == PowerRunState::UsbChargeManage) || (m_runState == PowerRunState::BatteryDischarging);
+        (m_runState == PowerRunState::UsbChargeManage) ||
+        (m_runState == PowerRunState::BatteryDischarging) ||
+        m_batteryVoltPollEnabled;
 
     if (needTimer == m_pollTimerEnabled)
     {
@@ -83,7 +86,8 @@ void PowerServer::SyncPollTimerFromRunStateRaw()
 
     m_pollTimerEnabled = needTimer;
     StartPollTimerRaw(m_pollTimerEnabled);
-    LOG_BAT("Poll timer %s, runState=%u", m_pollTimerEnabled ? "on" : "off", static_cast<uint8_t>(m_runState));
+    LOG_BAT("Poll timer %s, runState=%u voltPoll=%u", m_pollTimerEnabled ? "on" : "off",
+            static_cast<uint8_t>(m_runState), m_batteryVoltPollEnabled ? 1U : 0U);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -193,6 +197,12 @@ void PowerServer::SetBatteryChargeEnableRaw(bool enable, uint8_t fastCharge)
 void PowerServer::RegisterBatteryVoltHandler(BatteryVoltHandler handler)
 {
     m_batteryVoltHandler = handler;
+
+    /* 接线晚于 Init：USB 供电时补清临界锁（若此前已报 CriticalEmpty） */
+    if (handler != nullptr)
+    {
+        ClearCriticalVoltLockForUsbRaw();
+    }
 }
 
 /**
@@ -587,12 +597,63 @@ void PowerServer::NotifyPowerPathReadyRaw()
 }
 
 /**
+ * @brief 注解16：插入 USB → 解除电池死锁；USB 模式下不再判定/触发临界死锁
+ * @note 每个 USB 会话只清一次；期间禁止 PollBatteryVoltRaw 向 LDC 报 CriticalEmpty。
+ */
+void PowerServer::ClearCriticalVoltLockForUsbRaw()
+{
+    if (m_supplyMode != SupplyMode::UsbPowered)
+    {
+        return;
+    }
+
+    if (m_usbVoltDeadlockSuppressed)
+    {
+        return;
+    }
+
+    m_usbVoltDeadlockSuppressed = true;
+    m_batteryVoltPollEnabled    = false;
+    m_forceNextVoltReport       = false;
+    m_lastReportedVoltLevel     = BatteryVoltLevel::Normal;
+
+    LOG_BAT("§16 USB in: clear lock, suppress volt-deadlock while USB");
+    if (m_batteryVoltHandler != nullptr)
+    {
+        m_batteryVoltHandler(BatteryVoltLevel::Normal);
+    }
+}
+
+/**
+ * @brief 注解16：断开 USB → 去掉以前死锁，重新开始电池电压检测
+ * @note 须在任务上下文调用（ApplySupplyMode）；先解锁再 settle 后采新值。
+ */
+void PowerServer::RestartBatteryVoltDetectionRaw()
+{
+    m_usbVoltDeadlockSuppressed = false;
+
+    if (m_batteryVoltHandler != nullptr)
+    {
+        m_batteryVoltHandler(BatteryVoltLevel::Normal);
+    }
+    m_lastReportedVoltLevel  = BatteryVoltLevel::Normal;
+    m_forceNextVoltReport    = true;
+    m_batteryVoltPollEnabled = true;
+    m_batterySettleMs        = kBatterySettleMs;
+    SyncPollTimerFromRunStateRaw();
+
+    LOG_BAT("§16 USB out: restart battery volt detect (settle=%u ms)",
+            static_cast<unsigned>(kBatterySettleMs));
+}
+
+/**
  * @brief 电池模式电量轮询与上报（只读快照）
- * @note CriticalEmpty 时硬切断放电并切至 BatteryIdle
+ * @note 注解16：USB 供电期间不调用本函数判定死锁；CriticalEmpty 时硬切断放电。
  */
 void PowerServer::PollBatteryVoltRaw()
 {
-    if (m_supplyMode != SupplyMode::Battery)
+    /* 注解16：USB 模式不判断电池临界死锁 */
+    if ((m_supplyMode != SupplyMode::Battery) || m_usbVoltDeadlockSuppressed)
     {
         return;
     }
@@ -600,11 +661,12 @@ void PowerServer::PollBatteryVoltRaw()
     const PowerMonitorSnapshot& snapshot = GetPowerSnapshotRaw();
     const BatteryVoltLevel      level    = MapVoltLevelRaw(snapshot.voltStatus);
 
-    if (level == m_lastReportedVoltLevel)
+    if (!m_forceNextVoltReport && (level == m_lastReportedVoltLevel))
     {
         return;
     }
 
+    m_forceNextVoltReport   = false;
     m_lastReportedVoltLevel = level;
     LOG_BAT("Battery level %u", static_cast<uint8_t>(level));
 
@@ -615,6 +677,12 @@ void PowerServer::PollBatteryVoltRaw()
 
     if (level != BatteryVoltLevel::CriticalEmpty)
     {
+        /* 灯灭且检测完成：停轮询省电（灯亮时由放电态持续轮询） */
+        if (!m_mainLightActive)
+        {
+            m_batteryVoltPollEnabled = false;
+            SyncPollTimerFromRunStateRaw();
+        }
         return;
     }
 
@@ -678,19 +746,28 @@ void PowerServer::EvaluateChargeStatusRaw()
 
 /**
  * @brief 按当前供电来源执行硬件策略
- * @note 调用前须已 Fetch；USB：关放电+充电仲裁；电池：按灯状态放电
+ * @note 调用前须已 Fetch；若 USB 切换清掉了 valid，此处补 Fetch（唯一读入口）。
+ *       USB：关放电+充电仲裁；电池：按灯状态放电。
  */
 void PowerServer::ApplySupplyModeHardwareRaw()
 {
+    if (!m_powerSnapshotValid)
+    {
+        FetchPowerMonitorSnapshotRaw();
+    }
+
     if (m_supplyMode == SupplyMode::UsbPowered)
     {
         DisableBatteryDischargeRaw();
         m_batteryVoltPollEnabled = false;
+        m_forceNextVoltReport    = false;
+        ClearCriticalVoltLockForUsbRaw();
         UpdateChargeControlAndNotifyRaw();
         NotifyPowerPathReadyRaw();
         return;
     }
 
+    /* 注解16：先切放电硬件，再清死锁并重启电压检测（避免 Disable 清掉 settle） */
     const bool usbUnplugRestore = m_pendingUsbUnplugFadeIn;
 
     if (usbUnplugRestore)
@@ -705,13 +782,13 @@ void PowerServer::ApplySupplyModeHardwareRaw()
     if (usbUnplugRestore || m_mainLightActive)
     {
         EnableBatteryDischargeRaw();
-        m_batteryVoltPollEnabled = usbUnplugRestore || m_mainLightActive;
     }
     else
     {
         DisableBatteryDischargeRaw();
-        m_batteryVoltPollEnabled = false;
     }
+
+    RestartBatteryVoltDetectionRaw();
 
     if (usbUnplugRestore || m_mainLightActive)
     {
@@ -799,10 +876,12 @@ void PowerServer::Init()
     s_pollTimer.Init(PollTimerBridgeImpl, kPollIntervalMs, nullptr);
 
     FetchPowerMonitorSnapshotRaw();
-    /* Init 阶段 Poll 早于回调注册；此处按当前 USB 状态补一次策略同步 */
+    /* Init 阶段按当前 USB 状态同步策略；OnUsb 会清 valid / 置 pending */
     OnUsbConnectionChangedRaw(BspPowerMonitor::Instance().GetUsbStatus());
-    m_mainLightActive = LightEffectEngine::Instance().IsAnyChannelActive();
+    m_pendingSupplyApply = false;
+    m_mainLightActive    = LightEffectEngine::Instance().IsAnyChannelActive();
     RefreshRunStateRaw();
+    /* Apply 内若 valid 被清会再 Fetch，避免 GetPowerSnapshotRaw assert */
     ApplySupplyModeHardwareRaw();
     SyncPollTimerFromRunStateRaw();
 }
@@ -820,13 +899,22 @@ void PowerServer::DeInit()
 
 // ----- §5.10 各状态 Tick + Poll 入口 -----
 
-/** @brief BatteryIdle 态 Tick：无额外操作（放电策略由事件/Apply 驱动） */
+/** @brief BatteryIdle 态 Tick：注解16 拔 USB 后仍可 settle+轮询一次电压 */
 void PowerServer::TickBatteryIdleRaw(uint16_t elapsedMs)
 {
-    (void)elapsedMs;
+    if (!m_batteryVoltPollEnabled)
+    {
+        return;
+    }
+
+    TickSettleCountdownRaw(m_batterySettleMs, elapsedMs);
+    if (m_batterySettleMs == 0U)
+    {
+        PollBatteryVoltRaw();
+    }
 }
 
-/** @brief BatteryDischarging 态 Tick：轮询电压 */
+/** @brief BatteryDischarging 态 Tick：轮询电压（settle 已在 PowerPoll 递减） */
 void PowerServer::TickBatteryDischargingRaw(uint16_t elapsedMs)
 {
     (void)elapsedMs;
@@ -841,6 +929,8 @@ void PowerServer::TickBatteryDischargingRaw(uint16_t elapsedMs)
 void PowerServer::TickUsbChargeManageRaw(uint16_t elapsedMs)
 {
     TickChargingSessionRaw(elapsedMs);
+    /* 注解16：USB 会话内仅补清一次死锁，不做电池临界判定 */
+    ClearCriticalVoltLockForUsbRaw();
     UpdateChargeControlAndNotifyRaw();
 }
 

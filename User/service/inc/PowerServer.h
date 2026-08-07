@@ -157,6 +157,16 @@ class PowerServer
     void DisableBatteryDischargeRaw();
 
     void PollBatteryVoltRaw();
+    /**
+     * @brief 注解16：插入 USB → 解除死锁；USB 会话内不再判定/触发电池临界死锁
+     */
+    void ClearCriticalVoltLockForUsbRaw();
+
+    /**
+     * @brief 注解16：断开 USB → 去掉以前死锁，重新开始电池电压检测
+     */
+    void RestartBatteryVoltDetectionRaw();
+
     void NotifyPowerPathReadyRaw();
 
     static BatteryChargeStatus ResolveChargeStatusFromSnapshotRaw(const PowerMonitorSnapshot& snapshot, bool chipValid,
@@ -206,6 +216,8 @@ class PowerServer
     bool m_mainLightActive{false};
     bool m_batteryOutEnabled{false};
     bool m_batteryVoltPollEnabled{false};
+    bool m_forceNextVoltReport{false};   /**< 注解16：拔 USB 后强制重新上报电压等级 */
+    bool m_usbVoltDeadlockSuppressed{false}; /**< 注解16：USB 会话内已解锁且禁止再触发临界死锁 */
     bool m_pendingSupplyApply{false};    /**< ISR 后待 Poll 刷新硬件 */
     bool m_pendingUsbUnplugFadeIn{false};     /**< 注解10：拔 USB 后 400ms 淡入 */
     bool m_usbUnplugTransitionActive{false};  /**< 过渡中忽略主灯灭导致的关 BAT_EN */
