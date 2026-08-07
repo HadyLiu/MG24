@@ -74,6 +74,7 @@ ChargeIndicatorEffect IndicatorServer::GetAppliedEffects() const
 
 /**
  * @brief 由充电快照推导背景灯效
+ * @note §6.3：仅 Charging 白呼吸；ChargeDone 必须熄灭（不看 chipCharging 瞬时脚）
  */
 ChargeIndicatorEffect IndicatorServer::ArbitrateChargeEffectsRaw(const BatteryChargeSnapshot& snapshot) const
 {
@@ -90,26 +91,11 @@ ChargeIndicatorEffect IndicatorServer::ArbitrateChargeEffectsRaw(const BatteryCh
     case BatteryChargeStatus::ChargeDone:
         // §6.3：充满电系统 LED 熄灭
         break;
+    case BatteryChargeStatus::Charging:
+        effects |= static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath);
+        break;
     default:
         break;
-    }
-
-    if (snapshot.status == BatteryChargeStatus::ChargeDone)
-    {
-        if (effects == 0U)
-        {
-            return ChargeIndicatorEffect::Off;
-        }
-        return static_cast<ChargeIndicatorEffect>(effects);
-    }
-
-    if (snapshot.chipValid && snapshot.chipCharging)
-    {
-        effects |= static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath);
-    }
-    else if (snapshot.status == BatteryChargeStatus::Charging)
-    {
-        effects |= static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath);
     }
 
     if (effects == 0U)

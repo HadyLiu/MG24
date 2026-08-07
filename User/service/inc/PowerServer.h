@@ -170,13 +170,15 @@ class PowerServer
     void NotifyPowerPathReadyRaw();
 
     static BatteryChargeStatus ResolveChargeStatusFromSnapshotRaw(const PowerMonitorSnapshot& snapshot, bool chipValid,
-                                                                  bool chargeFaultLatched, bool chargeSessionTimeout);
+                                                                  bool chargeFaultLatched, bool chargeDoneLatched);
     bool                       ShouldLatchChargeFaultRaw(const PowerMonitorSnapshot& snapshot) const;
     ChargeEvaluation           EvaluateChargeRaw(const PowerMonitorSnapshot& snapshot) const;
     static bool                DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status);
     void ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval, const PowerMonitorSnapshot& snapshot,
                                         bool chipValid);
     void UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasChargeEnabled);
+    /** @brief §6.3：看到芯片 DONE / 8h 超时则锁存充满；拔 USB / 无电池则清除 */
+    void UpdateChargeDoneLatchRaw(const PowerMonitorSnapshot& snapshot, bool chipValid);
     void RefreshChargeSnapshotRaw();
     void UpdateChargeControlAndNotifyRaw();
 
@@ -223,6 +225,7 @@ class PowerServer
     bool m_usbUnplugTransitionActive{false};  /**< 过渡中忽略主灯灭导致的关 BAT_EN */
     bool m_chargeSnapshotValid{false};
     bool m_chargeSessionTimeout{false}; /**< 8h 超时视为充满 */
+    bool m_chargeDoneLatched{false};    /**< §6.3：充满锁存，防关充后误判再开充/白呼吸 */
     bool m_chargeFaultLatched{false};   /**< 充电故障锁存 */
 
     // ---- 计时器（与硬件控制隔离）----

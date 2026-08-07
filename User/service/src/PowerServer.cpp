@@ -346,10 +346,11 @@ BatteryVoltLevel PowerServer::MapVoltLevelRaw(BatteryVoltStatusEnum status)
 
 /**
  * @brief 按优先级表仲裁充电综合状态（EvaluateChargeRaw 内部使用）
+ * @note chargeDoneLatched：充满后关充，STAT 可能回落；须锁存 ChargeDone 直至拔 USB/换电池
  */
 BatteryChargeStatus PowerServer::ResolveChargeStatusFromSnapshotRaw(const PowerMonitorSnapshot& snapshot,
                                                                     bool chipValid, bool chargeFaultLatched,
-                                                                    bool chargeSessionTimeout)
+                                                                    bool chargeDoneLatched)
 {
     if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
     {
@@ -371,6 +372,11 @@ BatteryChargeStatus PowerServer::ResolveChargeStatusFromSnapshotRaw(const PowerM
     {
         return BatteryChargeStatus::CriticalEmpty;
     }
+    /* §6.3：已充满锁存优先于芯片瞬时 CHARGING / chargeEnabled→Charging */
+    if (chargeDoneLatched)
+    {
+        return BatteryChargeStatus::ChargeDone;
+    }
     if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGING))
     {
         return BatteryChargeStatus::Charging;
@@ -379,15 +385,36 @@ BatteryChargeStatus PowerServer::ResolveChargeStatusFromSnapshotRaw(const PowerM
     {
         return BatteryChargeStatus::ChargeDone;
     }
-    if (chargeSessionTimeout)
-    {
-        return BatteryChargeStatus::ChargeDone;
-    }
     if (snapshot.chargeEnabled)
     {
         return BatteryChargeStatus::Charging;
     }
     return BatteryChargeStatus::Idle;
+}
+
+/**
+ * @brief §6.3：更新充满锁存
+ * @note 芯片 DONE 或 8h 超时置位；无电池清除（便于换电池再充）；拔 USB 在 Clear 中清
+ */
+void PowerServer::UpdateChargeDoneLatchRaw(const PowerMonitorSnapshot& snapshot, bool chipValid)
+{
+    if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
+    {
+        m_chargeDoneLatched    = false;
+        m_chargeSessionTimeout = false;
+        return;
+    }
+
+    if (m_chargeSessionTimeout)
+    {
+        m_chargeDoneLatched = true;
+        return;
+    }
+
+    if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE))
+    {
+        m_chargeDoneLatched = true;
+    }
 }
 
 /**
@@ -417,8 +444,10 @@ PowerServer::ChargeEvaluation PowerServer::EvaluateChargeRaw(const PowerMonitorS
 
     /* 根据当前快充状态和主灯状态决定快速充电标志 */
     const bool chipValid = IsChargeChipReadableNowRaw(snapshot);
-    /* 根据芯片有效性、故障状态和会话超时状态决定充电状态 */
-    eval.status = ResolveChargeStatusFromSnapshotRaw(snapshot, chipValid, m_chargeFaultLatched, m_chargeSessionTimeout);
+    /* 根据芯片有效性、故障状态和充满锁存决定充电状态 */
+    eval.status =
+        ResolveChargeStatusFromSnapshotRaw(snapshot, chipValid, m_chargeFaultLatched,
+                                           m_chargeDoneLatched || m_chargeSessionTimeout);
     eval.allowCharge = DeriveAllowChargeFromStatusRaw(eval.status);
 
     LOG_BAT("EvaluateCharge: status=%u, allowCharge=%d, fastChargeFlag=%u", static_cast<uint8_t>(eval.status),
@@ -549,6 +578,7 @@ void PowerServer::RefreshChargeSnapshotRaw()
 {
     const PowerMonitorSnapshot& snapshot  = GetPowerSnapshotRaw();
     const bool                  chipValid = IsChargeChipReadableNowRaw(snapshot);
+    UpdateChargeDoneLatchRaw(snapshot, chipValid);
     ApplyChargeSnapshotFromEvalRaw(EvaluateChargeRaw(snapshot), snapshot, chipValid);
 }
 
@@ -567,6 +597,7 @@ void PowerServer::UpdateChargeControlRaw()
 
     const bool             wasChargeEnabled = snapshot.chargeEnabled;
     const bool             chipValid        = IsChargeChipReadableNowRaw(snapshot);
+    UpdateChargeDoneLatchRaw(snapshot, chipValid);
     const ChargeEvaluation eval             = EvaluateChargeRaw(snapshot);
 
     SetBatteryChargeEnableRaw(eval.allowCharge, eval.fastChargeFlag);
@@ -707,6 +738,7 @@ void PowerServer::ClearChargeIndicatorRaw()
     m_chargeSnapshotValid        = false;
     m_currentChargeSnapshot      = {};
     m_chargeFaultLatched         = false;
+    m_chargeDoneLatched          = false;
     m_chargeSettleMs             = 0U;
     m_powerSnapshotValid         = false;
     ResetChargingSessionRaw();
@@ -845,6 +877,7 @@ void PowerServer::OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus)
     {
         m_supplyMode         = SupplyMode::UsbPowered;
         m_chargeFaultLatched = false;
+        m_chargeDoneLatched  = false;
         m_chargeSettleMs     = kChargeSettleMs;
         m_powerSnapshotValid = false;
         DisableBatteryDischargeRaw();
@@ -854,6 +887,7 @@ void PowerServer::OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus)
     {
         m_supplyMode         = SupplyMode::Battery;
         m_chargeFaultLatched = false;
+        m_chargeDoneLatched  = false;
         m_chargeSettleMs     = 0U;
         m_powerSnapshotValid = false;
         SetBatteryChargeEnableRaw(false, 0U);
