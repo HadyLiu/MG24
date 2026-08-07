@@ -255,11 +255,17 @@ void button_Init(void)
 
     // 注册按键语义事件回调至 LDC / IndicatorServer
     ButtonService::Instance().RegisterKeyEventHandler([](KeyEventType event) {
-        // §3.2：首次配网白呼吸 — 主键/系统键短按或主键双击后停止
+        // §3.2：任意按键立即停白呼吸，并落盘；再次上电不再白呼吸
         if ((event == KeyEventType::ShortPressCycleBrightness) ||
             (event == KeyEventType::ShortPressOpenCommissioning) ||
-            (event == KeyEventType::DoublePressCycleColor))
+            (event == KeyEventType::DoublePressCycleColor) ||
+            (event == KeyEventType::LongPressClearNetLighting) ||
+            (event == KeyEventType::LongPressClearNet) ||
+            (event == KeyEventType::LongPressStopNet))
         {
+            LightDecisionCenter::Instance().MarkFirstCommissionBreathDismissed();
+            MatterBridge::Instance().SetFirstCommissionPending(
+                LightDecisionCenter::Instance().ShouldShowFirstCommissionBreath());
             IndicatorServer::Instance().OnFirstCommissionBreathStop();
         }
 
@@ -316,7 +322,7 @@ void Matter_Init(void)
         []() { return LightDecisionCenter::Instance().GetCurrentBrightness() > 0U; });
 
     MatterBridge::Instance().SetFirstCommissionPending(
-        !LightDecisionCenter::Instance().HasCompletedFirstCommission());
+        LightDecisionCenter::Instance().ShouldShowFirstCommissionBreath());
 
     MatterBridge::Instance().RegisterCommissioningUiCallback(
         [](bool windowOpenedForFirstPair, bool commissioningDone) {
@@ -327,7 +333,8 @@ void Matter_Init(void)
                 return;
             }
 
-            if (windowOpenedForFirstPair)
+            if (windowOpenedForFirstPair &&
+                LightDecisionCenter::Instance().ShouldShowFirstCommissionBreath())
             {
                 IndicatorServer::Instance().OnFirstCommissionBreathStart();
             }

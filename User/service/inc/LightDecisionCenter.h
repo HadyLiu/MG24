@@ -147,6 +147,15 @@ class LightDecisionCenter
     void MarkFirstCommissionDone();
 
     /**
+     * @brief §3.2：是否还应播放首次配网白呼吸
+     * @note 已配网成功，或任意按键已Dismiss 后均为 false（含再次上电）
+     */
+    bool ShouldShowFirstCommissionBreath() const;
+
+    /** @brief §3.2：任意按键后持久化Dismiss，再次上电不再白呼吸 */
+    void MarkFirstCommissionBreathDismissed();
+
+    /**
      * @brief 回读当前逻辑 WRGB
      * @param outChannels 输出缓冲
      * @param count       缓冲元素个数（最大拷贝 4）
@@ -185,7 +194,7 @@ class LightDecisionCenter
         uint16_t        wrgb[4];
         uint8_t         brightness;
         LightEffectOpId op_id;
-        uint8_t         reserved; /**< bit0..3 开机灯效；bit4=已完成首次配网 */
+        uint8_t         reserved; /**< bit0..3 开机灯效；bit4=已配网；bit5=首次白呼吸已Dismiss */
     } __attribute__((packed));
 
     /** @brief Normal 场景：单步灯效下发至调度器 */
@@ -320,7 +329,8 @@ class LightDecisionCenter
     static constexpr uint8_t  kBootEffectMask                 = 0x0FU;
     static constexpr uint8_t  kBootEffectNone                 = 0U;
     static constexpr uint8_t  kBootEffectFactoryResetDone     = 1U; /**< reserved 低 4 位：复位后开机播快闪+淡入 */
-    static constexpr uint8_t  kFirstCommissionDoneFlag        = 0x10U; /**< reserved bit4：已非首次配网 */
+    static constexpr uint8_t  kFirstCommissionDoneFlag           = 0x10U; /**< reserved bit4：已非首次配网 */
+    static constexpr uint8_t  kFirstCommissionBreathDismissedFlag = 0x20U; /**< reserved bit5：首次白呼吸已停 */
     static constexpr uint16_t kTransitionMs                   = LightDimmingSpec::kFadeOutMs;
     static constexpr uint8_t  kDefaultBrightness              = 255U;
     static constexpr uint8_t  kFactoryResetWarnBrightness     = 166U; /**< ≈65%，仅复位后开机快闪用 */

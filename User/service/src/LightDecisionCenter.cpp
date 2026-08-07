@@ -656,9 +656,33 @@ void LightDecisionCenter::MarkFirstCommissionDone()
         return;
     }
 
-    m_userTargetParam.reserved = static_cast<uint8_t>(m_userTargetParam.reserved | kFirstCommissionDoneFlag);
+    m_userTargetParam.reserved = static_cast<uint8_t>(
+        m_userTargetParam.reserved | kFirstCommissionDoneFlag | kFirstCommissionBreathDismissedFlag);
     SafeSaveToStorage();
     LOG_LIGHT_DC("First commission marked done");
+}
+
+bool LightDecisionCenter::ShouldShowFirstCommissionBreath() const
+{
+    if (HasCompletedFirstCommission())
+    {
+        return false;
+    }
+
+    return (m_userTargetParam.reserved & kFirstCommissionBreathDismissedFlag) == 0U;
+}
+
+void LightDecisionCenter::MarkFirstCommissionBreathDismissed()
+{
+    if ((m_userTargetParam.reserved & kFirstCommissionBreathDismissedFlag) != 0U)
+    {
+        return;
+    }
+
+    m_userTargetParam.reserved =
+        static_cast<uint8_t>(m_userTargetParam.reserved | kFirstCommissionBreathDismissedFlag);
+    SafeSaveToStorage();
+    LOG_LIGHT_DC("First commission breath dismissed");
 }
 
 /**

@@ -47,7 +47,10 @@ class IndicatorServer
     /** @brief 首次出厂配网：系统 LED 白呼吸开始（§3.2） */
     void OnFirstCommissionBreathStart();
 
-    /** @brief 配网成功或用户按键后：停止白呼吸，恢复充电白通道（§3.2） */
+    /**
+     * @brief 配网成功或任意按键后：停止白呼吸（§3.2）
+     * @note 持久化 Dismiss 由 LDC 负责；本函数仅本会话熄灭并抑制重启
+     */
     void OnFirstCommissionBreathStop();
 
     /** @brief 熄灭全部指示灯并复位仲裁状态 */

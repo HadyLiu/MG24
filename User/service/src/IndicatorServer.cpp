@@ -304,6 +304,7 @@ void IndicatorServer::OnFirstCommissionBreathStart()
 
 /**
  * @brief 配网成功或任意按键后：停止白呼吸（§3.2）
+ * @note 再次上电不再呼吸由 LDC reserved bit5 保证；此处仅本会话停灯
  */
 void IndicatorServer::OnFirstCommissionBreathStop()
 {
