@@ -93,7 +93,7 @@ void BspLedWrgb::ApplyDutyRaw(uint16_t w, uint16_t r, uint16_t g, uint16_t b)
     whitePwm_.PwmSetDuty(w);
 
     /* 硬件设计 b 和 r 交换 */
-    rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_101_1MA);
+    rgb_.SetAllGain(HalSpiSm15135e::CurrentGain::Gain_70_8MA);
     rgb_.SetRgbwyDuty(sm_b, sm_g, sm_r, 0, 0);
     rgb_.SendFrame();
 }
