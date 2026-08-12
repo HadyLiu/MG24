@@ -67,6 +67,10 @@ jobs:
             exit 1
           fi
 
+      # 镜像内用户 hadyliu 固定 UID 1000；GHA 工作区属 runner，需对齐才能写 build/
+      - name: Allow container user to write workspace
+        run: sudo chown -R 1000:1000 "${{ github.workspace }}"
+
       - name: Build firmware (docker run build)
         run: |
           docker run --rm \
@@ -74,6 +78,10 @@ jobs:
             -w /workspace \
             "${{ steps.image.outputs.ref }}" \
             build
+
+      - name: Restore workspace ownership for runner
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4

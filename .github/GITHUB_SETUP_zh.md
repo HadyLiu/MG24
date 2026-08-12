@@ -66,7 +66,8 @@ docker push ghcr.io/barryjim/li-bat-matterlight:sdk-2025.12.2
 2. 等待 Job 成功
 3. 打开该 run → **Artifacts** → 下载 `firmware-<sha>`（内含 `.s37` / `.gbl`）
 
-若失败提示找不到镜像：回到第 2 步。
+若失败提示找不到镜像：回到第 2 步。  
+若失败 `Permission denied` 创建 `build/`：确认 workflow 含「Allow container user to write workspace」（镜像用户 UID 1000）。
 
 ---
 

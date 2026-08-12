@@ -62,6 +62,9 @@ jobs:
       - name: Pull firmware build image
         run: docker pull "${{ steps.image.outputs.ref }}"
 
+      - name: Allow container user to write workspace
+        run: sudo chown -R 1000:1000 "${{ github.workspace }}"
+
       - name: Build firmware
         run: |
           docker run --rm \
@@ -69,6 +72,10 @@ jobs:
             -w /workspace \
             "${{ steps.image.outputs.ref }}" \
             build
+
+      - name: Restore workspace ownership for runner
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
 
       - name: Pack release assets
         id: pack
@@ -112,11 +119,13 @@ jobs:
             echo
             echo "### Artifacts"
             echo
-            ls -1 dist/ | sed 's/^/- /'
+            find dist -maxdepth 1 -type f -printf '- %f\n' | sort
             echo
             echo "请在 Release 正文补充：变更摘要、已知问题、测试报告链接。"
           } > "${notes_file}"
-          gh release create "${tag}" dist/* \
+          # 避免 dist/* 在无匹配时把字面量传给 gh
+          mapfile -t assets < <(find dist -maxdepth 1 -type f | sort)
+          gh release create "${tag}" "${assets[@]}" \
             --title "Firmware ${tag}" \
             --notes-file "${notes_file}" \
             --verify-tag
