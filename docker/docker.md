@@ -2,7 +2,7 @@
 
 Build and run the Li-Bat MatterLight (EFR32MG24) firmware compile environment with Docker.
 
-Chinese version: [docker_ZN.md](./docker_ZN.md)
+Chinese version: [docker_zh.md](./docker_zh.md)
 
 ## Overview
 
@@ -28,11 +28,12 @@ Studio-exported CMake files hard-code paths under `/home/hadyliu/.silabs/...`. T
 
 ```
 docker/
-├── Dockerfile         # Image definition
-├── entrypoint.sh      # Container entry: path sync + build
-├── build-image.sh     # One-shot image build helper
-├── docker.md          # This document (English)
-└── docker_ZN.md       # Chinese document
+├── Dockerfile                # Image definition (network-only full install)
+├── install-slt-packages.sh   # slt install + hash symlink (used by Dockerfile)
+├── entrypoint.sh             # Container entry: path sync + build/generate
+├── build-image.sh            # One-shot image build helper
+├── docker.md                 # This document (English)
+└── docker_zh.md              # Chinese document
 ```
 
 ## Toolchain / SDK Versions (baked into full image)
@@ -43,7 +44,7 @@ docker/
 | ninja | 1.12.1 |
 | commander | 1.23.1 |
 | gcc-arm-none-eabi | 12.2.rel1 |
-| simplicity-sdk | 2025.12.2 |
+| simplicity-sdk | 2025.12.3 (resolvable with matter 2.8.1; symlinked to Studio hash) |
 | matter_extension | 2.8.1 |
 | slc-cli | 6.0.17 |
 | java21 | 21.0.5 (required by SLC) |
@@ -52,9 +53,11 @@ docker/
 
 ## Build the Image
 
-### Option A — Full image (SDK inside the image)
+### Option A — Full image (SDK inside image; no host `~/.silabs` mount)
 
-Downloads Silicon Labs packages via `slt`. First build can take a long time and produce a large image.
+Downloads toolchain / SiSDK / Matter via `slt` over the network only.
+**Does not require** a host Simplicity Studio install.
+First build typically takes 20–40 minutes (network dependent); image ~9GB.
 
 ```bash
 # From repository root
@@ -63,6 +66,9 @@ Downloads Silicon Labs packages via `slt`. First build can take a long time and 
 # Equivalent
 docker build -f docker/Dockerfile -t li-bat-matterlight:sdk-2025.12.2 .
 ```
+
+> Tag keeps `sdk-2025.12.2` (Studio hard-coded Conan hashes). The image installs
+> `simplicity-sdk/2025.12.3` + `matter_extension/2.8.1` and symlinks the expected hashes.
 
 ### Option B — Slim image (mount host `~/.silabs`)
 
@@ -83,7 +89,7 @@ docker build -f docker/Dockerfile \
 |-----------|---------|-------------|
 | `INSTALL_SLT_PACKAGES` | `1` | `1` = install SDK/toolchain via slt; `0` = slim |
 | `BUILD_UID` / `BUILD_GID` | `1000` | Match host UID/GID if needed for volume writes |
-| `SIMPLICITY_SDK_VERSION` | `2025.12.2` | SiSDK version |
+| `SIMPLICITY_SDK_VERSION` | `2025.12.3` | SiSDK version (must resolve with Matter) |
 | `MATTER_EXTENSION_VERSION` | `2.8.1` | Matter extension version |
 | `CMAKE_VERSION` | `3.30.2` | CMake version |
 | `GCC_ARM_VERSION` | `12.2.rel1` | Arm GNU toolchain version |

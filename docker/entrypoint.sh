@@ -65,6 +65,26 @@ SyncHardcodedPackagePaths()
     EnsureExpectedPackageLink "matter_extension" "${EXPECTED_MATTER_HASH}"
 }
 
+# 清理与当前挂载路径不一致的 CMakeCache（宿主绝对路径 vs /workspace）
+ClearStaleCmakeBuildDir()
+{
+    local build_dir="$1"
+    local expected_home="$2"
+    local cache_file="${build_dir}/CMakeCache.txt"
+
+    if [ ! -f "${cache_file}" ]; then
+        return 0
+    fi
+
+    if grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=${expected_home}" \
+        "${cache_file}" 2>/dev/null; then
+        return 0
+    fi
+
+    echo "Stale CMakeCache in ${build_dir} (path mismatch). Cleaning..."
+    rm -rf "${build_dir}"
+}
+
 # 解析 cmake 可执行文件：优先硬编码路径，其次 slt / PATH
 ResolveCmakeBin()
 {
@@ -113,6 +133,15 @@ BuildProject()
     echo "Using cmake: ${cmake_bin}"
 
     cd "${CMAKE_DIR}"
+
+    # 宿主机与容器挂载路径不同时，旧 CMakeCache 会报 source 路径不匹配
+    ClearStaleCmakeBuildDir "${CMAKE_DIR}/build" "${CMAKE_DIR}"
+    ClearStaleCmakeBuildDir \
+        "${PROJECT_ROOT}/MatterLightOverThread/cmake_gcc/build" \
+        "${PROJECT_ROOT}/MatterLightOverThread/cmake_gcc"
+    ClearStaleCmakeBuildDir \
+        "${PROJECT_ROOT}/Matter-Bootloader/cmake_gcc/build" \
+        "${PROJECT_ROOT}/Matter-Bootloader/cmake_gcc"
 
     if [ -e "build" ] && [ ! -d "build" ]; then
         echo "Warning: 'build' exists but is not a directory. Removing it..."

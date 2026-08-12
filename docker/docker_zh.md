@@ -28,11 +28,12 @@ Simplicity Studio 导出的 CMake 工程硬编码了 `/home/hadyliu/.silabs/...`
 
 ```
 docker/
-├── Dockerfile         # 镜像定义
-├── entrypoint.sh      # 容器入口：路径对齐 + 编译
-├── build-image.sh     # 一键构建镜像
-├── docker.md          # 英文说明
-└── docker_ZN.md       # 本文件（中文说明）
+├── Dockerfile                # 镜像定义（完整镜像仅靠网络安装）
+├── install-slt-packages.sh   # slt 安装 + 硬编码 hash 软链（Dockerfile 调用）
+├── entrypoint.sh             # 容器入口：路径对齐 + build/generate
+├── build-image.sh            # 一键构建镜像
+├── docker.md                 # 英文说明
+└── docker_zh.md              # 本文件（中文说明）
 ```
 
 ## 工具链 / SDK 版本（完整镜像内置）
@@ -43,7 +44,7 @@ docker/
 | ninja | 1.12.1 |
 | commander | 1.23.1 |
 | gcc-arm-none-eabi | 12.2.rel1 |
-| simplicity-sdk | 2025.12.2 |
+| simplicity-sdk | 2025.12.3（与 matter 2.8.1 在线解析一致；软链到工程硬编码 hash） |
 | matter_extension | 2.8.1 |
 | slc-cli | 6.0.17 |
 | java21 | 21.0.5（SLC 运行必需） |
@@ -52,9 +53,10 @@ docker/
 
 ## 构建镜像
 
-### 方式 A — 完整镜像（SDK 打进镜像）
+### 方式 A — 完整镜像（SDK 打进镜像，无需挂载宿主 `~/.silabs`）
 
-通过 `slt` 下载 Silicon Labs 相关包。首次构建耗时较长，镜像体积也较大。
+仅通过网络用 `slt` 下载工具链 / SiSDK / Matter。**不依赖**宿主机 Simplicity Studio。
+首次构建约 20–40 分钟（视网络而定），镜像约 9GB。
 
 ```bash
 # 在仓库根目录执行
@@ -63,6 +65,9 @@ docker/
 # 等价命令
 docker build -f docker/Dockerfile -t li-bat-matterlight:sdk-2025.12.2 .
 ```
+
+> 标签名保留 `sdk-2025.12.2`（与 Studio 工程硬编码 hash 对齐）；镜像内实际安装的是
+> `simplicity-sdk/2025.12.3` + `matter_extension/2.8.1`，并对硬编码目录做软链。
 
 ### 方式 B — 精简镜像（挂载宿主机 `~/.silabs`）
 
@@ -83,7 +88,7 @@ docker build -f docker/Dockerfile \
 |----------|--------|------|
 | `INSTALL_SLT_PACKAGES` | `1` | `1`：经 slt 安装 SDK/工具链；`0`：精简镜像 |
 | `BUILD_UID` / `BUILD_GID` | `1000` | 可按需与宿主机 UID/GID 对齐，避免挂载写权限问题 |
-| `SIMPLICITY_SDK_VERSION` | `2025.12.2` | SiSDK 版本 |
+| `SIMPLICITY_SDK_VERSION` | `2025.12.3` | SiSDK 版本（须与 Matter 可一起解析） |
 | `MATTER_EXTENSION_VERSION` | `2.8.1` | Matter 扩展版本 |
 | `CMAKE_VERSION` | `3.30.2` | CMake 版本 |
 | `GCC_ARM_VERSION` | `12.2.rel1` | Arm GNU 工具链版本 |

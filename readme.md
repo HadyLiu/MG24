@@ -119,6 +119,8 @@ If you re-run **Generate** in Simplicity Studio:
 |----------|-------------|
 | [develop.md](./develop.md) | Dev guide: `.slcp`, pins, scripts / Docker |
 | [develop_zh.md](./develop_zh.md) | 开发指南（中文） |
+| [.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md) | CI/CD todo list (vs NonFuncReq) |
+| [.github/NonFuncReq_zh.md](./github/NonFuncReq_zh.md) | Non-functional / DevOps requirements |
 | [Doc/设计方案.md](./Doc/设计方案.md) | Functional requirements |
 | [Doc/修改.md](./Doc/修改.md) | Factory-reset lighting / NVM behavior |
 | [Doc/工厂复位后配网问题.md](./Doc/工厂复位后配网问题.md) | Post-reset commissioning / SRP notes |

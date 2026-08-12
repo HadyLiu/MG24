@@ -119,6 +119,8 @@ docker run --rm -v "$PWD":/workspace -w /workspace \
 |------|------|
 | [develop_zh.md](./develop_zh.md) | 开发指南：`.slcp`、引脚、脚本 / Docker |
 | [develop.md](./develop.md) | Development guide (English) |
+| [.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md) | CI/CD 待办（对照 NonFuncReq） |
+| [.github/NonFuncReq_zh.md](./.github/NonFuncReq_zh.md) | 非功能 / DevOps 规范 |
 | [Doc/设计方案.md](./Doc/设计方案.md) | 功能需求规格 |
 | [Doc/修改.md](./Doc/修改.md) | 工厂复位灯效 / NVM 行为 |
 | [Doc/工厂复位后配网问题.md](./Doc/工厂复位后配网问题.md) | 复位后配网 / SRP 说明 |
