@@ -1,12 +1,17 @@
-# Docker Publish — 将完整固件编译镜像推到 GHCR
+# Docker Publish — 在 GitHub Actions 上执行 Dockerfile，推送到 GHCR
 #
-# CI Firmware 依赖此镜像。首次请手动 Run workflow（约 30～60+ 分钟），
-# 或本机已有镜像时推送（见 .github/GITHUB_SETUP_zh.md）。
+# 推荐：不要本机 docker push。打开 Actions → Docker Publish → Run workflow
+# 预计 30～90+ 分钟（下载 SiSDK），成功后 CI Firmware 才能 pull 镜像。
 
 name: Docker Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      reason:
+        description: '备注（可选）'
+        required: false
+        default: 'manual build via Dockerfile on GitHub'
   push:
     branches:
       - main
@@ -54,6 +59,7 @@ jobs:
           owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
           echo "image=ghcr.io/${owner}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
           echo "full=ghcr.io/${owner}/${IMAGE_NAME}:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Will build and push: ghcr.io/${owner}/${IMAGE_NAME}:${IMAGE_TAG}"
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -65,7 +71,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build Dockerfile and push to GHCR
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -76,5 +82,15 @@ jobs:
             ${{ steps.meta.outputs.image }}:latest
           build-args: |
             INSTALL_SLT_PACKAGES=1
-          # 不缓存巨型 SDK 层到 GHA cache（体积过大）
           provenance: false
+
+      - name: Summary
+        run: |
+          {
+            echo "## Docker image published"
+            echo
+            echo "- Image: \`${{ steps.meta.outputs.full }}\`"
+            echo "- Also tagged: \`${{ steps.meta.outputs.image }}:latest\`"
+            echo
+            echo "Next: Actions → **CI Firmware** → Run workflow"
+          } >> "$GITHUB_STEP_SUMMARY"

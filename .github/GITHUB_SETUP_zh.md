@@ -31,37 +31,32 @@
 
 ---
 
-## 2. 首次准备：把编译镜像放到 GHCR（二选一）
+## 2. 首次准备：在 GitHub 上用 Dockerfile 编镜像（推荐，不必本机 push）
 
-完整镜像约 **9GB**，CI **不能**挂载你电脑的 `~/.silabs`，必须先有 GHCR 镜像。
+CI **不能**用你电脑上的镜像，必须先有 GHCR 上的包。
 
-### 方式 A — 本机推送（推荐，你已有本地镜像时最快）
+1. 打开仓库 **Actions**
+2. 左侧点 **Docker Publish**
+3. 右侧 **Run workflow** → 分支选 `main` → **Run workflow**
+4. 等待 **30～90+ 分钟**（网络下载 SiSDK，日志里会有 `slt install`）
+5. 成功后打开 Summary，应看到  
+   `ghcr.io/barryjim/li-bat-matterlight:sdk-2025.12.2`
+6. （建议）`https://github.com/barryjim?tab=packages` → 该包 → **Public**
+
+然后再跑 **CI Firmware**。
+
+> 改 `docker/Dockerfile` 并 push 到 `main` 时，也会自动触发 Docker Publish。
+
+### 备选：本机推送（一般不用）
+
+仅当你明确要跳过 Actions 构建时：
 
 ```bash
-# 登录（Token 需含 write:packages）
-# GitHub → Settings → Developer settings → Personal access tokens
-# Classic: 勾选 write:packages, read:packages, repo
 echo YOUR_PAT | docker login ghcr.io -u barryjim --password-stdin
-
 docker tag li-bat-matterlight:sdk-2025.12.2 \
   ghcr.io/barryjim/li-bat-matterlight:sdk-2025.12.2
-
 docker push ghcr.io/barryjim/li-bat-matterlight:sdk-2025.12.2
 ```
-
-### 方式 B — 用 Actions 构建推送
-
-1. 打开 **Actions** 页
-2. 左侧选 **Docker Publish**
-3. **Run workflow** → 选 `main` → Run
-4. 等待 30～90 分钟（网络下载 SiSDK）
-
-### 包可见性（重要）
-
-1. 打开 `https://github.com/barryjim?tab=packages`
-2. 点开 `li-bat-matterlight`
-3. **Package settings → Change visibility → Public**  
-   （私有包时，其他 fork / 外部协作者拉不到；同仓库 Actions 用 `GITHUB_TOKEN` 一般可读）
 
 ---
 
