@@ -125,6 +125,8 @@ If you re-run **Generate** in Simplicity Studio:
 |----------|-------------|
 | [develop.md](./Srcipt/develop.md) | Dev guide: `.slcp`, pins, scripts / Docker |
 | [develop_zh.md](./Srcipt/develop_zh.md) | 开发指南（中文） |
+| [.github/QA_PLAN_zh.md](./.github/QA_PLAN_zh.md) | NonFuncReq QA plan |
+| [.github/ReleaseNotes_TEMPLATE_zh.md](./.github/ReleaseNotes_TEMPLATE_zh.md) | Release / test report template |
 | [.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md) | GitHub Actions / GHCR setup (ZH) |
 | [.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md) | CI/CD todo list (vs NonFuncReq) |
 | [.github/NonFuncReq_zh.md](./.github/NonFuncReq_zh.md) | Non-functional / DevOps requirements |

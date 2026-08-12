@@ -1,7 +1,6 @@
 # Docker Publish — 在 GitHub Actions 上执行 Dockerfile，推送到 GHCR
 #
-# 推荐：不要本机 docker push。打开 Actions → Docker Publish → Run workflow
-# 预计 30～90+ 分钟（下载 SiSDK），成功后 CI Firmware 才能 pull 镜像。
+# 仅手动：完整镜像约 9GB，不宜每次提交都编。改 docker/ 后请手动 Run。
 
 name: Docker Publish
 
@@ -12,15 +11,6 @@ on:
         description: '备注（可选）'
         required: false
         default: 'manual build via Dockerfile on GitHub'
-  push:
-    branches:
-      - main
-    paths:
-      - docker/Dockerfile
-      - docker/install-slt-packages.sh
-      - docker/entrypoint.sh
-      - docker/build-image.sh
-      - .github/workflows/docker-publish.yml
 
 concurrency:
   group: docker-publish-${{ github.ref }}
@@ -92,5 +82,5 @@ jobs:
             echo "- Image: \`${{ steps.meta.outputs.full }}\`"
             echo "- Also tagged: \`${{ steps.meta.outputs.image }}:latest\`"
             echo
-            echo "Next: Actions → **CI Firmware** → Run workflow"
+            echo "Next: push/PR 将自动跑 CI Firmware（需本镜像已存在）"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,6 @@
 # CI Firmware — 固件编译
-# 触发：PR、push 到 main/develop、手动。
-# 依赖：GHCR 上已有完整编译镜像（先跑 Docker Publish，或本机推送）。
+# 触发：每次 push / PR（main、develop）+ 手动。
+# 依赖：GHCR 上已有完整编译镜像（先跑 Docker Publish）。
 
 name: CI Firmware
 

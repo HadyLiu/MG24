@@ -1,0 +1,52 @@
+# QA — host 单元测试 + cppcheck（User/）
+# 触发：每次 push / PR（main、develop）+ 手动。
+
+name: QA
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run host unit tests
+        run: |
+          chmod +x qa/host/run_host_tests.sh
+          ./qa/host/run_host_tests.sh
+
+  cppcheck-user:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      # 起步只卡 error；warning/style 本地可加 --enable=warning,style 清债
+      - name: cppcheck User/
+        run: |
+          cppcheck \
+            --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --inline-suppr \
+            -I User/hal/inc \
+            -I User/bsp/inc \
+            -I User/middlewares/inc \
+            -I User/service/inc \
+            User/

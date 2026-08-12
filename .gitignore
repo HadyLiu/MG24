@@ -36,6 +36,9 @@ core.[0-9]*
 .DS_Store
 Thumbs.db
 
+# --- Host 单测产物 ---
+qa/host/build/
+
 # 保留空目录
 !artifact/
 !artifact/.gitkeep

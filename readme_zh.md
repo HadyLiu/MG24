@@ -106,14 +106,14 @@ docker run --rm -v "$PWD":/workspace -w /workspace \
 
 ### CI 本地复现
 
-与 GitHub Actions 同路径（lint + Docker 编译）：
-
 ```bash
-./Srcipt/CiLocal.sh
+./Srcipt/CiLocal.sh              # lint + qa + docker build
+./Srcipt/CiLocal.sh --qa-only    # host 单测（+ 可选 cppcheck）
+./Srcipt/CiLocal.sh --lint-only
 ```
 
-GitHub 配置与操作步骤见：[.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md)  
-CI/CD 待办见：[.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md)
+GitHub 配置见：[.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md)  
+QA 方案见：[.github/QA_PLAN_zh.md](./.github/QA_PLAN_zh.md)
 
 ## Studio 重新 Generate 注意
 
@@ -129,6 +129,8 @@ CI/CD 待办见：[.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md)
 |------|------|
 | [develop_zh.md](./Srcipt/develop_zh.md) | 开发指南：`.slcp`、引脚、脚本 / Docker |
 | [develop.md](./Srcipt/develop.md) | Development guide (English) |
+| [.github/QA_PLAN_zh.md](./.github/QA_PLAN_zh.md) | NonFuncReq QA 落地方案 |
+| [.github/ReleaseNotes_TEMPLATE_zh.md](./.github/ReleaseNotes_TEMPLATE_zh.md) | 发版 / 测试报告模板 |
 | [.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md) | GitHub Actions / GHCR 操作步骤 |
 | [.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md) | CI/CD 待办（对照 NonFuncReq） |
 | [.github/NonFuncReq_zh.md](./.github/NonFuncReq_zh.md) | 非功能 / DevOps 规范 |

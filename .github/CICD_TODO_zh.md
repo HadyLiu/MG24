@@ -134,7 +134,7 @@ GitHub（主干 + 短分支）
 
 - [x] **B1** 约定版本号与 Tag：`vX.Y.Z`（见 GITHUB_SETUP）
 - [x] **B2** `.github/workflows/release-firmware.yml`
-- [ ] **B3** 发布交付清单模板（Release Notes 必填项）— 可选补 `Doc/ReleaseNotes_TEMPLATE_zh.md`
+- [x] **B3** 发布交付清单模板：`.github/ReleaseNotes_TEMPLATE_zh.md`
 - [ ] **B4**（可选）SemVer bump 自动化
 
 **验收：** 打 Tag 后自动出 GitHub Release 与完整产物包。
@@ -149,12 +149,14 @@ GitHub（主干 + 短分支）
 
 ### 阶段 D — 质量与合规加固
 
-- [ ] **D1** `User/` 单元测试骨架 + CI job
-- [ ] **D2** C++ 静态分析（clang-tidy / cppcheck）进 PR
-- [ ] **D3** Branch protection：必过 CI + 至少 1 人 Review
+- [x] **D1** `qa/host/` 单元测试骨架 + `qa.yml`
+- [x] **D2** cppcheck（`User/`）进 `qa.yml`；clang-tidy 可选后续
+- [ ] **D3** Branch protection：Require PR + ≥1 Review（网页配置）
 - [ ] **D4** Inter IKEA 仓库镜像同步流程
 - [ ] **D5** Docker 镜像独立仓库 + GHCR；本仓只 `pull` + `run`
 - [ ] **D6**（可选）Self-hosted runner + IaC
+- [x] **D7** QA 方案文档：`.github/QA_PLAN_zh.md`（借模板 + NonFuncReq 对照）
+- [x] **D8** PR 模板：`.github/PULL_REQUEST_TEMPLATE.md`
 
 ---
 
@@ -165,11 +167,18 @@ GitHub（主干 + 短分支）
   workflows/
     ci-firmware.yml
     lint.yml
+    qa.yml
     docker-publish.yml
     release-firmware.yml
+  PULL_REQUEST_TEMPLATE.md
+  ReleaseNotes_TEMPLATE_zh.md
+  QA_PLAN_zh.md
   GITHUB_SETUP_zh.md
   CICD_TODO_zh.md
   NonFuncReq_zh.md
+qa/host/
+  test_light_dimming_spec.cpp
+  run_host_tests.sh
 Srcipt/
   CiLocal.sh
 ```

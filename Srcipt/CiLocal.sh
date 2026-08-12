@@ -1,8 +1,9 @@
 #!/bin/bash
-# 本地一键复现 CI：lint（若已安装工具）+ Docker 固件编译
+# 本地一键复现 CI：lint + QA + Docker 固件编译
 # 用法（仓库根目录）:
 #   ./Srcipt/CiLocal.sh
 #   ./Srcipt/CiLocal.sh --lint-only
+#   ./Srcipt/CiLocal.sh --qa-only
 #   ./Srcipt/CiLocal.sh --build-only
 #   IMAGE=li-bat-matterlight:slim ./Srcipt/CiLocal.sh --build-only
 set -euo pipefail
@@ -13,24 +14,30 @@ cd "${repo_root}"
 
 IMAGE="${IMAGE:-li-bat-matterlight:sdk-2025.12.2}"
 DO_LINT=1
+DO_QA=1
 DO_BUILD=1
 
 for arg in "$@"; do
     case "${arg}" in
         --lint-only)
+            DO_QA=0
+            DO_BUILD=0
+            ;;
+        --qa-only)
+            DO_LINT=0
             DO_BUILD=0
             ;;
         --build-only)
             DO_LINT=0
+            DO_QA=0
             ;;
         -h|--help)
             cat <<'EOF'
-Usage: ./Srcipt/CiLocal.sh [--lint-only|--build-only]
+Usage: ./Srcipt/CiLocal.sh [--lint-only|--qa-only|--build-only]
 
 Env:
   IMAGE   Docker image (default: li-bat-matterlight:sdk-2025.12.2)
-          slim 示例: IMAGE=li-bat-matterlight:slim ./Srcipt/CiLocal.sh --build-only
-                    （需自行 -v "$HOME/.silabs":...，见下方）
+          slim: IMAGE=li-bat-matterlight:slim ./Srcipt/CiLocal.sh --build-only
 EOF
             exit 0
             ;;
@@ -44,19 +51,27 @@ done
 RunLint()
 {
     echo "==== Lint (local) ===="
-    # 与 .github/workflows/lint.yml 保持同一文件列表（遗留 Compile.sh 等暂不纳入）
     local scripts=(
         docker/entrypoint.sh
         docker/build-image.sh
         docker/install-slt-packages.sh
         Srcipt/CiLocal.sh
+        qa/host/run_host_tests.sh
     )
 
     if command -v shellcheck >/dev/null 2>&1; then
         shellcheck --severity=warning "${scripts[@]}"
         echo "shellcheck OK"
     else
-        echo "WARN: shellcheck not installed (skip). Install: sudo apt install shellcheck"
+        echo "WARN: shellcheck not installed (skip)."
+    fi
+
+    if command -v yamllint >/dev/null 2>&1; then
+        yamllint -d '{extends: default, rules: {line-length: {max: 120}, document-start: disable}}' \
+            .github/workflows/
+        echo "yamllint OK"
+    else
+        echo "WARN: yamllint not installed (skip)."
     fi
 
     if command -v actionlint >/dev/null 2>&1; then
@@ -64,7 +79,28 @@ RunLint()
         echo "actionlint OK"
     else
         echo "WARN: actionlint not installed (skip)."
-        echo "  https://github.com/rhysd/actionlint#installation"
+    fi
+}
+
+RunQa()
+{
+    echo "==== QA (host tests / cppcheck) ===="
+    chmod +x qa/host/run_host_tests.sh
+    ./qa/host/run_host_tests.sh
+
+    if command -v cppcheck >/dev/null 2>&1; then
+        cppcheck \
+            --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --inline-suppr \
+            -I User/hal/inc \
+            -I User/bsp/inc \
+            -I User/middlewares/inc \
+            -I User/service/inc \
+            User/
+        echo "cppcheck OK"
+    else
+        echo "WARN: cppcheck not installed (skip). Install: sudo apt install cppcheck"
     fi
 }
 
@@ -79,11 +115,9 @@ RunBuild()
     if ! docker image inspect "${IMAGE}" >/dev/null 2>&1; then
         echo "ERROR: image not found locally: ${IMAGE}"
         echo "Build: ./docker/build-image.sh"
-        echo "Or pull: docker pull ghcr.io/<owner>/li-bat-matterlight:sdk-2025.12.2"
         exit 1
     fi
 
-    # slim 镜像需挂载宿主 SDK；完整镜像不需要
     extra_mounts=()
     if [[ "${IMAGE}" == *":slim"* ]]; then
         if [ ! -d "${HOME}/.silabs" ]; then
@@ -106,6 +140,10 @@ RunBuild()
 
 if [ "${DO_LINT}" -eq 1 ]; then
     RunLint
+fi
+
+if [ "${DO_QA}" -eq 1 ]; then
+    RunQa
 fi
 
 if [ "${DO_BUILD}" -eq 1 ]; then

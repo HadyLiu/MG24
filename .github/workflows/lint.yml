@@ -1,4 +1,5 @@
-# Lint — Shell / Workflow YAML
+# Lint — Shell / Workflow YAML（借自 rs-hs-lint：shellcheck + actionlint + yamllint）
+# 触发：每次 push / PR（main、develop）+ 手动。
 
 name: Lint
 
@@ -33,10 +34,25 @@ jobs:
             docker/build-image.sh
             docker/install-slt-packages.sh
             Srcipt/CiLocal.sh
+            qa/host/run_host_tests.sh
           )
           echo "Checking:"
           printf '  %s\n' "${scripts[@]}"
           shellcheck --severity=warning "${scripts[@]}"
+
+  yamllint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: YAML lint workflows
+        run: |
+          pip install --user yamllint
+          # 仅校验本仓 workflow，避免 Doc/demo 模板噪声
+          ~/.local/bin/yamllint -d '{extends: default, rules: {line-length: {max: 120}, document-start: disable}}' \
+            .github/workflows/
 
   actionlint:
     runs-on: ubuntu-latest
@@ -45,7 +61,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 官方推荐：下载二进制（仓库无 floating @v1 Action 标签）
       - name: Download actionlint
         id: get_actionlint
         run: bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
