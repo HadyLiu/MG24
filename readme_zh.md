@@ -59,7 +59,6 @@ APP（entry.cpp）
                     └── HAL     GPIO、PWM、IADC、SPI(SM15135E)、NVM、EXTI
 ```
 
-嵌入式 C++ 编码约定见 `.cursorrules`（Allman 风格、运行期禁用堆、硬件单入口读取、显式状态机等）。
 
 ## 宿主机编译环境
 
@@ -105,6 +104,17 @@ docker run --rm -v "$PWD":/workspace -w /workspace \
   li-bat-matterlight:sdk-2025.12.2
 ```
 
+### CI 本地复现
+
+与 GitHub Actions 同路径（lint + Docker 编译）：
+
+```bash
+./Srcipt/CiLocal.sh
+```
+
+GitHub 配置与操作步骤见：[.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md)  
+CI/CD 待办见：[.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md)
+
 ## Studio 重新 Generate 注意
 
 在 Simplicity Studio 中重新 **Generate** 时：
@@ -117,8 +127,9 @@ docker run --rm -v "$PWD":/workspace -w /workspace \
 
 | 文档 | 说明 |
 |------|------|
-| [develop_zh.md](./develop_zh.md) | 开发指南：`.slcp`、引脚、脚本 / Docker |
-| [develop.md](./develop.md) | Development guide (English) |
+| [develop_zh.md](./Srcipt/develop_zh.md) | 开发指南：`.slcp`、引脚、脚本 / Docker |
+| [develop.md](./Srcipt/develop.md) | Development guide (English) |
+| [.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md) | GitHub Actions / GHCR 操作步骤 |
 | [.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md) | CI/CD 待办（对照 NonFuncReq） |
 | [.github/NonFuncReq_zh.md](./.github/NonFuncReq_zh.md) | 非功能 / DevOps 规范 |
 | [Doc/设计方案.md](./Doc/设计方案.md) | 功能需求规格 |

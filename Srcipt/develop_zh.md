@@ -279,6 +279,17 @@ INSTALL_SLT_PACKAGES=0 IMAGE_TAG=li-bat-matterlight:slim ./docker/build-image.sh
 ./Srcipt/Compile.sh
 ```
 
+### E. 本地复现 CI（lint + Docker build）
+
+```bash
+./Srcipt/CiLocal.sh
+# 或
+./Srcipt/CiLocal.sh --build-only
+```
+
+GitHub 上启用 Actions / 推 GHCR / 打 Tag 发布：见
+[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md)。
+
 ---
 
 ## 7. 新代码放哪里
@@ -291,4 +302,3 @@ INSTALL_SLT_PACKAGES=0 IMAGE_TAG=li-bat-matterlight:slim ./docker/build-image.sh
 | Service | `User/service/` | 按键/灯光/电源/指示灯策略 |
 | Entry | `User/entry.cpp` | 组装服务与回调 |
 
-编码约定见 `.cursorrules`：Allman 大括号、运行期禁用堆、硬件单入口读取、显式状态机。

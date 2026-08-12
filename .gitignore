@@ -1,7 +1,45 @@
+# --- 文档 / IDE（按原仓库约定）---
 Doc
-Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake/build
-Matter-Bootloader/cmake_gcc/build
-MatterLightOverThread/cmake_gcc/build
-core.[0-9]*
 .cursor/p*
 .cursor*
+
+# --- CMake 编译目录 ---
+Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake/build/
+Matter-Bootloader/cmake_gcc/build/
+MatterLightOverThread/cmake_gcc/build/
+**/cmake_gcc/build/
+**/build/
+
+# --- 固件产物（勿再提交；由 CI Artifact / Release 提供）---
+artifact/
+Matter-Bootloader/artifact/
+MatterLightOverThread/artifact/
+*.s37
+*.gbl
+*.out
+*.hex
+*.bin
+*.map
+*.axf
+*.elf
+
+# --- 崩溃核转储 ---
+core.[0-9]*
+
+# --- 常见杂项 ---
+*.tar
+*.tar.gz
+*.zip
+*.o
+*.a
+*.d
+.DS_Store
+Thumbs.db
+
+# 保留空目录
+!artifact/
+!artifact/.gitkeep
+!Matter-Bootloader/artifact/
+!Matter-Bootloader/artifact/.gitkeep
+!MatterLightOverThread/artifact/
+!MatterLightOverThread/artifact/.gitkeep

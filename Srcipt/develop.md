@@ -279,6 +279,15 @@ Edit config/*_config.h and/or BspIoConfig.h → build → hardware test
 ./Srcipt/Compile.sh
 ```
 
+### E. Reproduce CI locally
+
+```bash
+./Srcipt/CiLocal.sh
+```
+
+GitHub Actions / GHCR setup (Chinese):
+[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md).
+
 ---
 
 ## 7. Where to Put New Code
@@ -291,4 +300,3 @@ Edit config/*_config.h and/or BspIoConfig.h → build → hardware test
 | Service | `User/service/` | Button/light/power/indicator policy |
 | Entry | `User/entry.cpp` | Wire services / callbacks |
 
-Follow `.cursorrules`: Allman braces, no heap in runtime loops, single hardware fetch entry, explicit state machines.

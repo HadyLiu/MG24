@@ -14,7 +14,7 @@
  * │ §5 主逻辑     显式状态机 + Settle/会话计时 + 充放电策略       │
  * └──────────────────────────────────────────────────────────────┘
  *
- * @details 单入口收拢（.cursorrules）
+ * @details
  * - FetchPowerMonitorSnapshotRaw() 是唯一 BSP 读入口。
  * - 电池模式：只读 USB + 放电且 settle 结束后的电压。
  * - USB 模式：读温度/电压/充电态/充电芯片。
@@ -40,31 +40,25 @@ static BspTimer s_pollTimer;
  * @brief 定时器到期桥接，转发至 PowerPoll
  * @note 静态成员实现，禁止 Init 内写 Lambda
  */
-void PowerServer::PollTimerBridgeImpl(uint16_t elapsedMs)
-{
-    PowerServer::Instance().PowerPoll(elapsedMs);
+void PowerServer::PollTimerBridgeImpl(uint16_t elapsedMs) {
+  PowerServer::Instance().PowerPoll(elapsedMs);
 }
 
 /** @brief USB 拔插中断桥接，转发至 OnUsbConnectionChangedRaw */
-void PowerServer::UsbNotifyBridgeImpl(UsbConnectionStatusEnum usbStatus)
-{
-    PowerServer::Instance().OnUsbConnectionChangedRaw(usbStatus);
+void PowerServer::UsbNotifyBridgeImpl(UsbConnectionStatusEnum usbStatus) {
+  PowerServer::Instance().OnUsbConnectionChangedRaw(usbStatus);
 }
 
 /**
  * @brief 启动或停止电源轮询定时器
  * @param enable true=启动, false=停止
  */
-void PowerServer::StartPollTimerRaw(bool enable)
-{
-    if (enable)
-    {
-        s_pollTimer.TurnOnOff(true);
-    }
-    else if (s_pollTimer.IsRunning())
-    {
-        s_pollTimer.TurnOnOff(false);
-    }
+void PowerServer::StartPollTimerRaw(bool enable) {
+  if (enable) {
+    s_pollTimer.TurnOnOff(true);
+  } else if (s_pollTimer.IsRunning()) {
+    s_pollTimer.TurnOnOff(false);
+  }
 }
 
 /**
@@ -72,22 +66,20 @@ void PowerServer::StartPollTimerRaw(bool enable)
  * @note UsbChargeManage / BatteryDischarging 需轮询；
  *       注解16 拔 USB 后 BatteryIdle 若仍在电压重检也需保活定时器。
  */
-void PowerServer::SyncPollTimerFromRunStateRaw()
-{
-    const bool needTimer =
-        (m_runState == PowerRunState::UsbChargeManage) ||
-        (m_runState == PowerRunState::BatteryDischarging) ||
-        m_batteryVoltPollEnabled;
+void PowerServer::SyncPollTimerFromRunStateRaw() {
+  const bool needTimer = (m_runState == PowerRunState::UsbChargeManage) ||
+                         (m_runState == PowerRunState::BatteryDischarging) ||
+                         m_batteryVoltPollEnabled;
 
-    if (needTimer == m_pollTimerEnabled)
-    {
-        return;
-    }
+  if (needTimer == m_pollTimerEnabled) {
+    return;
+  }
 
-    m_pollTimerEnabled = needTimer;
-    StartPollTimerRaw(m_pollTimerEnabled);
-    LOG_BAT("Poll timer %s, runState=%u voltPoll=%u", m_pollTimerEnabled ? "on" : "off",
-            static_cast<uint8_t>(m_runState), m_batteryVoltPollEnabled ? 1U : 0U);
+  m_pollTimerEnabled = needTimer;
+  StartPollTimerRaw(m_pollTimerEnabled);
+  LOG_BAT("Poll timer %s, runState=%u voltPoll=%u",
+          m_pollTimerEnabled ? "on" : "off", static_cast<uint8_t>(m_runState),
+          m_batteryVoltPollEnabled ? 1U : 0U);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -96,97 +88,90 @@ void PowerServer::SyncPollTimerFromRunStateRaw()
 
 /**
  * @brief 【唯一硬件读取入口】按供电模式按需收拢 BSP 数据
- * @note 电池模式：USB 由 EXTI 维护（Fetch 仅 GPIO 漏沿同步）+ 放电且 settle 结束后读电压。
+ * @note 电池模式：USB 由 EXTI 维护（Fetch 仅 GPIO 漏沿同步）+ 放电且 settle
+ * 结束后读电压。
  * @note USB 模式：温度/电压/充电使能/充电芯片状态全读。
  * @note assert(!m_fetchInProgress) 防重入。
  */
-void PowerServer::FetchPowerMonitorSnapshotRaw()
-{
-    assert(!m_fetchInProgress);
-    m_fetchInProgress = true;
+void PowerServer::FetchPowerMonitorSnapshotRaw() {
+  assert(!m_fetchInProgress);
+  m_fetchInProgress = true;
 
-    BspPowerMonitor& monitor = BspPowerMonitor::Instance();
-    /* USB：EXTI 主路径；此处 GPIO 同步防漏沿，不再做 ADC */
-    monitor.PollUsbStatusRaw();
+  BspPowerMonitor &monitor = BspPowerMonitor::Instance();
+  /* USB：EXTI 主路径；此处 GPIO 同步防漏沿，不再做 ADC */
+  monitor.PollUsbStatusRaw();
 
-    PowerMonitorSnapshot snapshot{};
-    snapshot.usbStatus = monitor.GetUsbStatus();
-    m_supplyMode =
-        (snapshot.usbStatus == UsbConnectionStatusEnum::UsbConnected) ? SupplyMode::UsbPowered : SupplyMode::Battery;
+  PowerMonitorSnapshot snapshot{};
+  snapshot.usbStatus = monitor.GetUsbStatus();
+  m_supplyMode = (snapshot.usbStatus == UsbConnectionStatusEnum::UsbConnected)
+                     ? SupplyMode::UsbPowered
+                     : SupplyMode::Battery;
 
-    if (m_supplyMode == SupplyMode::UsbPowered)
-    {
-        snapshot.tempStatus    = monitor.GetBatteryTempStatus();
-        snapshot.voltStatus    = monitor.GetBatteryVoltStatus();
-        snapshot.chargeEnabled = monitor.IsChargeEnabled();
-        /* 充满关充后仍须读 STAT，否则误判 Idle 并重新开充、白呼吸不停 */
-        snapshot.chipStatus = monitor.GetChargeStatus();
+  if (m_supplyMode == SupplyMode::UsbPowered) {
+    snapshot.tempStatus = monitor.GetBatteryTempStatus();
+    snapshot.voltStatus = monitor.GetBatteryVoltStatus();
+    snapshot.chargeEnabled = monitor.IsChargeEnabled();
+    /* 充满关充后仍须读 STAT，否则误判 Idle 并重新开充、白呼吸不停 */
+    snapshot.chipStatus = monitor.GetChargeStatus();
+  } else {
+    // 电池模式：不读 NTC/充电芯片，避免多余 ADC 与充电通路操作
+    snapshot.tempStatus = BatteryTempStatusEnum::TEMP_NORMAL;
+    snapshot.chargeEnabled = false;
+    snapshot.chipStatus = ChargeChipStatusEnum::CHARGE_INIT;
+
+    if (m_batteryVoltPollEnabled && (m_batterySettleMs == 0U)) {
+      snapshot.voltStatus = monitor.GetBatteryVoltStatus();
+    } else {
+      snapshot.voltStatus = BatteryVoltStatusEnum::VOLT_NORMAL;
     }
-    else
-    {
-        // 电池模式：不读 NTC/充电芯片，避免多余 ADC 与充电通路操作
-        snapshot.tempStatus    = BatteryTempStatusEnum::TEMP_NORMAL;
-        snapshot.chargeEnabled = false;
-        snapshot.chipStatus    = ChargeChipStatusEnum::CHARGE_INIT;
+  }
 
-        if (m_batteryVoltPollEnabled && (m_batterySettleMs == 0U))
-        {
-            snapshot.voltStatus = monitor.GetBatteryVoltStatus();
-        }
-        else
-        {
-            snapshot.voltStatus = BatteryVoltStatusEnum::VOLT_NORMAL;
-        }
-    }
-
-    m_powerSnapshot      = snapshot;
-    m_powerSnapshotValid = true;
-    m_fetchInProgress    = false;
-    LOG_POWER("Fetch snapshot: usb=%u, temp=%u, volt=%u, chip=%u, chargeEn=%d",
-              static_cast<uint8_t>(snapshot.usbStatus), static_cast<uint8_t>(snapshot.tempStatus),
-              static_cast<uint8_t>(snapshot.voltStatus), static_cast<uint8_t>(snapshot.chipStatus),
-              snapshot.chargeEnabled);
+  m_powerSnapshot = snapshot;
+  m_powerSnapshotValid = true;
+  m_fetchInProgress = false;
+  LOG_POWER("Fetch snapshot: usb=%u, temp=%u, volt=%u, chip=%u, chargeEn=%d",
+            static_cast<uint8_t>(snapshot.usbStatus),
+            static_cast<uint8_t>(snapshot.tempStatus),
+            static_cast<uint8_t>(snapshot.voltStatus),
+            static_cast<uint8_t>(snapshot.chipStatus), snapshot.chargeEnabled);
 }
 
 /**
  * @brief 获取本轮已收拢的电源监测快照（只读）
  * @note 必须先 Fetch；assert 保护未初始化与 Fetch 重入
  */
-const PowerServer::PowerMonitorSnapshot& PowerServer::GetPowerSnapshotRaw() const
-{
-    assert(m_powerSnapshotValid);
-    assert(!m_fetchInProgress);
-    return m_powerSnapshot;
+const PowerServer::PowerMonitorSnapshot &
+PowerServer::GetPowerSnapshotRaw() const {
+  assert(m_powerSnapshotValid);
+  assert(!m_fetchInProgress);
+  return m_powerSnapshot;
 }
 
 /**
  * @brief 判断当前时刻充电芯片状态是否可信
  * @note USB 供电且开充 settle 结束后可读；关充后仍读 STAT 以识别充满（§6.3）
  */
-bool PowerServer::IsChargeChipReadableNowRaw(const PowerMonitorSnapshot& snapshot) const
-{
-    (void)snapshot;
-    if (m_supplyMode != SupplyMode::UsbPowered)
-    {
-        return false;
-    }
+bool PowerServer::IsChargeChipReadableNowRaw(
+    const PowerMonitorSnapshot &snapshot) const {
+  (void)snapshot;
+  if (m_supplyMode != SupplyMode::UsbPowered) {
+    return false;
+  }
 
-    return m_chargeSettleMs == 0U;
+  return m_chargeSettleMs == 0U;
 }
 
 /** @brief 控制电池对外放电通路 */
-void PowerServer::SetBatteryOutEnableRaw(bool enable)
-{
-    BspPowerMonitor::Instance().SetBatteryOutEnable(enable);
+void PowerServer::SetBatteryOutEnableRaw(bool enable) {
+  BspPowerMonitor::Instance().SetBatteryOutEnable(enable);
 }
 
 /**
  * @brief 控制充电使能与快慢充档位
  * @param fastCharge 1=快充(灯灭), 0=慢充(灯亮)
  */
-void PowerServer::SetBatteryChargeEnableRaw(bool enable, uint8_t fastCharge)
-{
-    BspPowerMonitor::Instance().SetBatteryChargeEnable(enable, fastCharge);
+void PowerServer::SetBatteryChargeEnableRaw(bool enable, uint8_t fastCharge) {
+  BspPowerMonitor::Instance().SetBatteryChargeEnable(enable, fastCharge);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -194,60 +179,54 @@ void PowerServer::SetBatteryChargeEnableRaw(bool enable, uint8_t fastCharge)
 /////////////////////////////////////////////////////////////////
 
 /** @brief 注册电池电量等级变化回调 */
-void PowerServer::RegisterBatteryVoltHandler(BatteryVoltHandler handler)
-{
-    m_batteryVoltHandler = handler;
+void PowerServer::RegisterBatteryVoltHandler(BatteryVoltHandler handler) {
+  m_batteryVoltHandler = handler;
 
-    /* 接线晚于 Init：USB 供电时补清临界锁（若此前已报 CriticalEmpty） */
-    if (handler != nullptr)
-    {
-        ClearCriticalVoltLockForUsbRaw();
-    }
+  /* 接线晚于 Init：USB 供电时补清临界锁（若此前已报 CriticalEmpty） */
+  if (handler != nullptr) {
+    ClearCriticalVoltLockForUsbRaw();
+  }
 }
 
 /**
  * @brief 注册充电综合状态变化回调
  * @note Init 早于 entry 接线时，USB 模式下此处补发当前快照
  */
-void PowerServer::RegisterChargeStatusHandler(ChargeStatusHandler handler)
-{
-    m_chargeStatusHandler = handler;
+void PowerServer::RegisterChargeStatusHandler(ChargeStatusHandler handler) {
+  m_chargeStatusHandler = handler;
 
-    if ((handler == nullptr) || (m_supplyMode != SupplyMode::UsbPowered))
-    {
-        return;
-    }
+  if ((handler == nullptr) || (m_supplyMode != SupplyMode::UsbPowered)) {
+    return;
+  }
 
-    FetchPowerMonitorSnapshotRaw();
-    RefreshChargeSnapshotRaw();
-    handler(m_currentChargeSnapshot);
-    m_lastReportedChargeSnapshot = m_currentChargeSnapshot;
-    m_chargeSnapshotValid        = true;
+  FetchPowerMonitorSnapshotRaw();
+  RefreshChargeSnapshotRaw();
+  handler(m_currentChargeSnapshot);
+  m_lastReportedChargeSnapshot = m_currentChargeSnapshot;
+  m_chargeSnapshotValid = true;
 }
 
 /** @brief 注册供电通路就绪回调 */
-void PowerServer::RegisterLightPowerPathReadyHandler(LightPowerPathReadyHandler handler)
-{
-    m_powerPathReadyHandler = handler;
+void PowerServer::RegisterLightPowerPathReadyHandler(
+    LightPowerPathReadyHandler handler) {
+  m_powerPathReadyHandler = handler;
 }
 
-void PowerServer::RegisterUsbUnplugLightPrepareHandler(UsbUnplugLightPrepareHandler handler)
-{
-    m_usbUnplugPrepareHandler = handler;
+void PowerServer::RegisterUsbUnplugLightPrepareHandler(
+    UsbUnplugLightPrepareHandler handler) {
+  m_usbUnplugPrepareHandler = handler;
 }
 
 /////////////////////////////////////////////////////////////////
 // §4 对外 API（薄封装）
 /////////////////////////////////////////////////////////////////
 
-void PowerServer::OnLightOutputChanged(bool mainLightActive)
-{
-    OnMainLightChangedRaw(mainLightActive);
+void PowerServer::OnLightOutputChanged(bool mainLightActive) {
+  OnMainLightChangedRaw(mainLightActive);
 }
 
-void PowerServer::PowerUsbIsr(UsbConnectionStatusEnum usbStatus)
-{
-    OnUsbConnectionChangedRaw(usbStatus);
+void PowerServer::PowerUsbIsr(UsbConnectionStatusEnum usbStatus) {
+  OnUsbConnectionChangedRaw(usbStatus);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -260,518 +239,459 @@ void PowerServer::PowerUsbIsr(UsbConnectionStatusEnum usbStatus)
  * @brief 通用 Settle 倒计时递减
  * @note 独立于 GPIO，供电池电压/充电芯片防抖共用
  */
-void PowerServer::TickSettleCountdownRaw(uint16_t& counterMs, uint16_t elapsedMs)
-{
-    if (counterMs == 0U)
-    {
-        return;
-    }
+void PowerServer::TickSettleCountdownRaw(uint16_t &counterMs,
+                                         uint16_t elapsedMs) {
+  if (counterMs == 0U) {
+    return;
+  }
 
-    if (elapsedMs >= counterMs)
-    {
-        counterMs = 0U;
-        return;
-    }
+  if (elapsedMs >= counterMs) {
+    counterMs = 0U;
+    return;
+  }
 
-    counterMs = static_cast<uint16_t>(counterMs - elapsedMs);
+  counterMs = static_cast<uint16_t>(counterMs - elapsedMs);
 }
 
 /** @brief 重置 USB 充电会话计时与超时标志 */
-void PowerServer::ResetChargingSessionRaw()
-{
-    m_chargeSessionElapsedMs = 0U;
-    m_chargeSessionTimeout   = false;
+void PowerServer::ResetChargingSessionRaw() {
+  m_chargeSessionElapsedMs = 0U;
+  m_chargeSessionTimeout = false;
 }
 
 /**
  * @brief 累计 USB 充电会话时长
  * @note 满 kChargeSessionLimitMs(8h) 置超时；芯片 DONE/FAULT 时重置
  */
-void PowerServer::TickChargingSessionRaw(uint16_t elapsedMs)
-{
-    if (m_supplyMode != SupplyMode::UsbPowered)
-    {
-        ResetChargingSessionRaw();
-        return;
-    }
+void PowerServer::TickChargingSessionRaw(uint16_t elapsedMs) {
+  if (m_supplyMode != SupplyMode::UsbPowered) {
+    ResetChargingSessionRaw();
+    return;
+  }
 
-    const PowerMonitorSnapshot& snapshot = GetPowerSnapshotRaw();
+  const PowerMonitorSnapshot &snapshot = GetPowerSnapshotRaw();
 
-    if (m_chargeSessionTimeout)
-    {
-        return; // 充满不需要再增加
-    }
-    if (!snapshot.chargeEnabled || !IsChargeChipReadableNowRaw(snapshot))
-    {
-        // 充电异常 需要清除计时数据
-        m_chargeSessionElapsedMs = 0U;
-        return;
-    }
+  if (m_chargeSessionTimeout) {
+    return; // 充满不需要再增加
+  }
+  if (!snapshot.chargeEnabled || !IsChargeChipReadableNowRaw(snapshot)) {
+    // 充电异常 需要清除计时数据
+    m_chargeSessionElapsedMs = 0U;
+    return;
+  }
 
-    if (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE)
-    {
-        ResetChargingSessionRaw();
-        return;
-    }
+  if (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE) {
+    ResetChargingSessionRaw();
+    return;
+  }
 
-    if (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_FAULT)
-    {
-        return;
-    }
+  if (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_FAULT) {
+    return;
+  }
 
-    m_chargeSessionElapsedMs += static_cast<uint32_t>(elapsedMs);
-    if (m_chargeSessionElapsedMs >= kChargeSessionLimitMs)
-    {
-        m_chargeSessionTimeout = true;
-    }
-    LOG_BAT("Charge session %u s", m_chargeSessionElapsedMs / 1000);
+  m_chargeSessionElapsedMs += static_cast<uint32_t>(elapsedMs);
+  if (m_chargeSessionElapsedMs >= kChargeSessionLimitMs) {
+    m_chargeSessionTimeout = true;
+  }
+  LOG_BAT("Charge session %u s", m_chargeSessionElapsedMs / 1000);
 }
 
 // ----- §5.2 状态映射（纯函数，只读快照，无副作用）-----
 
 /** @brief BSP 电压分级 → Service 层电量等级 */
-BatteryVoltLevel PowerServer::MapVoltLevelRaw(BatteryVoltStatusEnum status)
-{
-    switch (status)
-    {
-    case BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY:
-        return BatteryVoltLevel::CriticalEmpty;
-    case BatteryVoltStatusEnum::VOLT_LOW_WARNING:
-        return BatteryVoltLevel::LowWarning;
-    case BatteryVoltStatusEnum::VOLT_NORMAL:
-    default:
-        return BatteryVoltLevel::Normal;
-    }
+BatteryVoltLevel PowerServer::MapVoltLevelRaw(BatteryVoltStatusEnum status) {
+  switch (status) {
+  case BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY:
+    return BatteryVoltLevel::CriticalEmpty;
+  case BatteryVoltStatusEnum::VOLT_LOW_WARNING:
+    return BatteryVoltLevel::LowWarning;
+  case BatteryVoltStatusEnum::VOLT_NORMAL:
+  default:
+    return BatteryVoltLevel::Normal;
+  }
 }
 
 /**
  * @brief 按优先级表仲裁充电综合状态（EvaluateChargeRaw 内部使用）
- * @note chargeDoneLatched：充满后关充，STAT 可能回落；须锁存 ChargeDone 直至拔 USB/换电池
+ * @note chargeDoneLatched：充满后关充，STAT 可能回落；须锁存 ChargeDone 直至拔
+ * USB/换电池
  */
-BatteryChargeStatus PowerServer::ResolveChargeStatusFromSnapshotRaw(const PowerMonitorSnapshot& snapshot,
-                                                                    bool chipValid, bool chargeFaultLatched,
-                                                                    bool chargeDoneLatched)
-{
-    if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
-    {
-        return BatteryChargeStatus::Nobat;
-    }
-    if (chargeFaultLatched)
-    {
-        return BatteryChargeStatus::ChargeFault;
-    }
-    if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_TOO_HIGH)
-    {
-        return BatteryChargeStatus::TempFault;
-    }
-    if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_FAULT))
-    {
-        return BatteryChargeStatus::ChargeFault;
-    }
-    if (chipValid && (snapshot.voltStatus == BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY))
-    {
-        return BatteryChargeStatus::CriticalEmpty;
-    }
-    /* §6.3：已充满锁存优先于芯片瞬时 CHARGING / chargeEnabled→Charging */
-    if (chargeDoneLatched)
-    {
-        return BatteryChargeStatus::ChargeDone;
-    }
-    if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGING))
-    {
-        return BatteryChargeStatus::Charging;
-    }
-    if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE))
-    {
-        return BatteryChargeStatus::ChargeDone;
-    }
-    if (snapshot.chargeEnabled)
-    {
-        return BatteryChargeStatus::Charging;
-    }
-    return BatteryChargeStatus::Idle;
+BatteryChargeStatus PowerServer::ResolveChargeStatusFromSnapshotRaw(
+    const PowerMonitorSnapshot &snapshot, bool chipValid,
+    bool chargeFaultLatched, bool chargeDoneLatched) {
+  if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED) {
+    return BatteryChargeStatus::Nobat;
+  }
+  if (chargeFaultLatched) {
+    return BatteryChargeStatus::ChargeFault;
+  }
+  if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_TOO_HIGH) {
+    return BatteryChargeStatus::TempFault;
+  }
+  if (chipValid &&
+      (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_FAULT)) {
+    return BatteryChargeStatus::ChargeFault;
+  }
+  if (chipValid &&
+      (snapshot.voltStatus == BatteryVoltStatusEnum::VOLT_CRITICAL_EMPTY)) {
+    return BatteryChargeStatus::CriticalEmpty;
+  }
+  /* §6.3：已充满锁存优先于芯片瞬时 CHARGING / chargeEnabled→Charging */
+  if (chargeDoneLatched) {
+    return BatteryChargeStatus::ChargeDone;
+  }
+  if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGING)) {
+    return BatteryChargeStatus::Charging;
+  }
+  if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE)) {
+    return BatteryChargeStatus::ChargeDone;
+  }
+  if (snapshot.chargeEnabled) {
+    return BatteryChargeStatus::Charging;
+  }
+  return BatteryChargeStatus::Idle;
 }
 
 /**
  * @brief §6.3：更新充满锁存
- * @note 芯片 DONE 或 8h 超时置位；无电池清除（便于换电池再充）；拔 USB 在 Clear 中清
+ * @note 芯片 DONE 或 8h 超时置位；无电池清除（便于换电池再充）；拔 USB 在 Clear
+ * 中清
  */
-void PowerServer::UpdateChargeDoneLatchRaw(const PowerMonitorSnapshot& snapshot, bool chipValid)
-{
-    if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED)
-    {
-        m_chargeDoneLatched    = false;
-        m_chargeSessionTimeout = false;
-        return;
-    }
+void PowerServer::UpdateChargeDoneLatchRaw(const PowerMonitorSnapshot &snapshot,
+                                           bool chipValid) {
+  if (snapshot.tempStatus == BatteryTempStatusEnum::TEMP_BATTERY_REMOVED) {
+    m_chargeDoneLatched = false;
+    m_chargeSessionTimeout = false;
+    return;
+  }
 
-    if (m_chargeSessionTimeout)
-    {
-        m_chargeDoneLatched = true;
-        return;
-    }
+  if (m_chargeSessionTimeout) {
+    m_chargeDoneLatched = true;
+    return;
+  }
 
-    if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE))
-    {
-        m_chargeDoneLatched = true;
-    }
+  if (chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_DONE)) {
+    m_chargeDoneLatched = true;
+  }
 }
 
 /**
  * @brief 由展示状态推导是否允许开充
  * @note 仅 Charging / LowWarning / Idle 需要保持或尝试开启充电
  */
-bool PowerServer::DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status)
-{
-    switch (status)
-    {
-    case BatteryChargeStatus::Charging:
-    case BatteryChargeStatus::Idle:
-        return true;
-    default:
-        return false;
-    }
+bool PowerServer::DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status) {
+  switch (status) {
+  case BatteryChargeStatus::Charging:
+  case BatteryChargeStatus::Idle:
+    return true;
+  default:
+    return false;
+  }
 }
 
 /**
  * @brief 充电综合评估：状态 + 是否开充，一次算出
  * @note 指示灯仲裁由 IndicatorServer 负责。
  */
-PowerServer::ChargeEvaluation PowerServer::EvaluateChargeRaw(const PowerMonitorSnapshot& snapshot) const
-{
-    ChargeEvaluation eval{};
-    eval.fastChargeFlag = m_mainLightActive ? 0U : 1U;
+PowerServer::ChargeEvaluation
+PowerServer::EvaluateChargeRaw(const PowerMonitorSnapshot &snapshot) const {
+  ChargeEvaluation eval{};
+  eval.fastChargeFlag = m_mainLightActive ? 0U : 1U;
 
-    /* 根据当前快充状态和主灯状态决定快速充电标志 */
-    const bool chipValid = IsChargeChipReadableNowRaw(snapshot);
-    /* 根据芯片有效性、故障状态和充满锁存决定充电状态 */
-    eval.status =
-        ResolveChargeStatusFromSnapshotRaw(snapshot, chipValid, m_chargeFaultLatched,
-                                           m_chargeDoneLatched || m_chargeSessionTimeout);
-    eval.allowCharge = DeriveAllowChargeFromStatusRaw(eval.status);
+  /* 根据当前快充状态和主灯状态决定快速充电标志 */
+  const bool chipValid = IsChargeChipReadableNowRaw(snapshot);
+  /* 根据芯片有效性、故障状态和充满锁存决定充电状态 */
+  eval.status = ResolveChargeStatusFromSnapshotRaw(
+      snapshot, chipValid, m_chargeFaultLatched,
+      m_chargeDoneLatched || m_chargeSessionTimeout);
+  eval.allowCharge = DeriveAllowChargeFromStatusRaw(eval.status);
 
-    LOG_BAT("EvaluateCharge: status=%u, allowCharge=%d, fastChargeFlag=%u", static_cast<uint8_t>(eval.status),
-            eval.allowCharge, eval.fastChargeFlag);
-    return eval;
+  LOG_BAT("EvaluateCharge: status=%u, allowCharge=%d, fastChargeFlag=%u",
+          static_cast<uint8_t>(eval.status), eval.allowCharge,
+          eval.fastChargeFlag);
+  return eval;
 }
 
 /** @brief 将 ChargeEvaluation 写入 m_currentChargeSnapshot */
-void PowerServer::ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval, const PowerMonitorSnapshot& snapshot,
-                                                 bool chipValid)
-{
-    m_currentChargeSnapshot.status        = eval.status;
-    m_currentChargeSnapshot.useFastCharge = (eval.fastChargeFlag != 0U);
-    m_currentChargeSnapshot.chipValid     = chipValid;
-    m_currentChargeSnapshot.chipCharging  = chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGING);
+void PowerServer::ApplyChargeSnapshotFromEvalRaw(
+    const ChargeEvaluation &eval, const PowerMonitorSnapshot &snapshot,
+    bool chipValid) {
+  m_currentChargeSnapshot.status = eval.status;
+  m_currentChargeSnapshot.useFastCharge = (eval.fastChargeFlag != 0U);
+  m_currentChargeSnapshot.chipValid = chipValid;
+  m_currentChargeSnapshot.chipCharging =
+      chipValid && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGING);
 }
 
 // ----- §5.3 状态机转换（集中入口）-----
 
 /** @brief 切换运行状态并同步轮询定时器 */
-void PowerServer::SetRunStateRaw(PowerRunState nextState)
-{
-    if (m_runState == nextState)
-    {
-        return;
-    }
+void PowerServer::SetRunStateRaw(PowerRunState nextState) {
+  if (m_runState == nextState) {
+    return;
+  }
 
-    LOG_BAT("RunState %u -> %u", static_cast<uint8_t>(m_runState), static_cast<uint8_t>(nextState));
-    m_runState = nextState;
-    SyncPollTimerFromRunStateRaw();
+  LOG_BAT("RunState %u -> %u", static_cast<uint8_t>(m_runState),
+          static_cast<uint8_t>(nextState));
+  m_runState = nextState;
+  SyncPollTimerFromRunStateRaw();
 }
 
 /** @brief 根据供电来源与主灯状态推导运行状态 */
-void PowerServer::RefreshRunStateRaw()
-{
-    if (m_supplyMode == SupplyMode::UsbPowered)
-    {
-        SetRunStateRaw(PowerRunState::UsbChargeManage);
-        return;
-    }
+void PowerServer::RefreshRunStateRaw() {
+  if (m_supplyMode == SupplyMode::UsbPowered) {
+    SetRunStateRaw(PowerRunState::UsbChargeManage);
+    return;
+  }
 
-    if (m_mainLightActive)
-    {
-        SetRunStateRaw(PowerRunState::BatteryDischarging);
-    }
-    else
-    {
-        SetRunStateRaw(PowerRunState::BatteryIdle);
-    }
+  if (m_mainLightActive) {
+    SetRunStateRaw(PowerRunState::BatteryDischarging);
+  } else {
+    SetRunStateRaw(PowerRunState::BatteryIdle);
+  }
 }
 
 /** @brief 标记 ISR 后需在 Poll 中刷新硬件策略 */
-void PowerServer::RequestSupplyApplyRaw()
-{
-    m_pendingSupplyApply = true;
-}
+void PowerServer::RequestSupplyApplyRaw() { m_pendingSupplyApply = true; }
 
 // ----- §5.4 电池放电控制 -----
 
 /** @brief 开启电池放电通路，启动电压 settle 防抖 */
-void PowerServer::EnableBatteryDischargeRaw()
-{
-    if (m_batteryOutEnabled)
-    {
-        return;
-    }
+void PowerServer::EnableBatteryDischargeRaw() {
+  if (m_batteryOutEnabled) {
+    return;
+  }
 
-    SetBatteryOutEnableRaw(true);
-    m_batteryOutEnabled = true;
-    m_batterySettleMs   = kBatterySettleMs;
-    LOG_BAT("Battery discharge enabled");
+  SetBatteryOutEnableRaw(true);
+  m_batteryOutEnabled = true;
+  m_batterySettleMs = kBatterySettleMs;
+  LOG_BAT("Battery discharge enabled");
 }
 
 /** @brief 关闭电池放电通路 */
-void PowerServer::DisableBatteryDischargeRaw()
-{
-    m_batterySettleMs = 0U;
-    if (!m_batteryOutEnabled)
-    {
-        return;
-    }
+void PowerServer::DisableBatteryDischargeRaw() {
+  m_batterySettleMs = 0U;
+  if (!m_batteryOutEnabled) {
+    return;
+  }
 
-    SetBatteryOutEnableRaw(false);
-    m_batteryOutEnabled = false;
-    LOG_BAT("Battery discharge disabled");
+  SetBatteryOutEnableRaw(false);
+  m_batteryOutEnabled = false;
+  LOG_BAT("Battery discharge disabled");
 }
 
 /** @brief 按主灯状态同步放电硬件与电压轮询许可 */
-void PowerServer::ApplyBatteryDischargeRaw()
-{
-    m_batteryVoltPollEnabled = m_mainLightActive;
+void PowerServer::ApplyBatteryDischargeRaw() {
+  m_batteryVoltPollEnabled = m_mainLightActive;
 
-    if (m_mainLightActive)
-    {
-        EnableBatteryDischargeRaw();
-    }
-    else
-    {
-        DisableBatteryDischargeRaw();
-    }
+  if (m_mainLightActive) {
+    EnableBatteryDischargeRaw();
+  } else {
+    DisableBatteryDischargeRaw();
+  }
 }
 
 // ----- §5.5 充电控制（一次评估 → 写硬件 + 更新指示灯快照）-----
 
 /** @brief 判断是否应锁存充电故障（需芯片可读） */
-bool PowerServer::ShouldLatchChargeFaultRaw(const PowerMonitorSnapshot& snapshot) const
-{
-    return IsChargeChipReadableNowRaw(snapshot) && (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_FAULT);
+bool PowerServer::ShouldLatchChargeFaultRaw(
+    const PowerMonitorSnapshot &snapshot) const {
+  return IsChargeChipReadableNowRaw(snapshot) &&
+         (snapshot.chipStatus == ChargeChipStatusEnum::CHARGE_FAULT);
 }
 
 /** @brief 根据充电使能变化更新 settle 倒计时 */
-void PowerServer::UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasChargeEnabled)
-{
-    if (allowCharge && !wasChargeEnabled)
-    {
-        m_chargeSettleMs = kChargeSettleMs;
-        return;
-    }
+void PowerServer::UpdateChargeSettleAfterDecisionRaw(bool allowCharge,
+                                                     bool wasChargeEnabled) {
+  if (allowCharge && !wasChargeEnabled) {
+    m_chargeSettleMs = kChargeSettleMs;
+    return;
+  }
 
-    if (!allowCharge)
-    {
-        m_chargeSettleMs = 0U;
-    }
+  if (!allowCharge) {
+    m_chargeSettleMs = 0U;
+  }
 }
 
 /** @brief 基于 EvaluateChargeRaw 刷新 m_currentChargeSnapshot */
-void PowerServer::RefreshChargeSnapshotRaw()
-{
-    const PowerMonitorSnapshot& snapshot  = GetPowerSnapshotRaw();
-    const bool                  chipValid = IsChargeChipReadableNowRaw(snapshot);
-    UpdateChargeDoneLatchRaw(snapshot, chipValid);
-    ApplyChargeSnapshotFromEvalRaw(EvaluateChargeRaw(snapshot), snapshot, chipValid);
+void PowerServer::RefreshChargeSnapshotRaw() {
+  const PowerMonitorSnapshot &snapshot = GetPowerSnapshotRaw();
+  const bool chipValid = IsChargeChipReadableNowRaw(snapshot);
+  UpdateChargeDoneLatchRaw(snapshot, chipValid);
+  ApplyChargeSnapshotFromEvalRaw(EvaluateChargeRaw(snapshot), snapshot,
+                                 chipValid);
 }
 
 /**
  * @brief 充电控制主流程：锁存故障 → 一次评估 → 写硬件 + 更新快照
  */
-void PowerServer::UpdateChargeControlRaw()
-{
-    const PowerMonitorSnapshot& snapshot = GetPowerSnapshotRaw();
+void PowerServer::UpdateChargeControlRaw() {
+  const PowerMonitorSnapshot &snapshot = GetPowerSnapshotRaw();
 
-    if (ShouldLatchChargeFaultRaw(snapshot))
-    {
-        //  m_chargeFaultLatched = true;
-        LOG_BAT("Charge fault latched");
-    }
+  if (ShouldLatchChargeFaultRaw(snapshot)) {
+    //  m_chargeFaultLatched = true;
+    LOG_BAT("Charge fault latched");
+  }
 
-    const bool             wasChargeEnabled = snapshot.chargeEnabled;
-    const bool             chipValid        = IsChargeChipReadableNowRaw(snapshot);
-    UpdateChargeDoneLatchRaw(snapshot, chipValid);
-    const ChargeEvaluation eval             = EvaluateChargeRaw(snapshot);
+  const bool wasChargeEnabled = snapshot.chargeEnabled;
+  const bool chipValid = IsChargeChipReadableNowRaw(snapshot);
+  UpdateChargeDoneLatchRaw(snapshot, chipValid);
+  const ChargeEvaluation eval = EvaluateChargeRaw(snapshot);
 
-    SetBatteryChargeEnableRaw(eval.allowCharge, eval.fastChargeFlag);
-    UpdateChargeSettleAfterDecisionRaw(eval.allowCharge, wasChargeEnabled);
-    ApplyChargeSnapshotFromEvalRaw(eval, snapshot, chipValid);
+  SetBatteryChargeEnableRaw(eval.allowCharge, eval.fastChargeFlag);
+  UpdateChargeSettleAfterDecisionRaw(eval.allowCharge, wasChargeEnabled);
+  ApplyChargeSnapshotFromEvalRaw(eval, snapshot, chipValid);
 }
 
 /** @brief 充电仲裁并上报指示灯变化 */
-void PowerServer::UpdateChargeControlAndNotifyRaw()
-{
-    UpdateChargeControlRaw();
-    EvaluateChargeStatusRaw();
+void PowerServer::UpdateChargeControlAndNotifyRaw() {
+  UpdateChargeControlRaw();
+  EvaluateChargeStatusRaw();
 }
 
 // ----- §5.6 指示灯与电量上报 -----
 
 /** @brief 通知 entry 供电通路就绪，可刷新主灯 PWM */
-void PowerServer::NotifyPowerPathReadyRaw()
-{
-    if (m_powerPathReadyHandler == nullptr)
-    {
-        return;
-    }
+void PowerServer::NotifyPowerPathReadyRaw() {
+  if (m_powerPathReadyHandler == nullptr) {
+    return;
+  }
 
-    const bool usbUnplugFadeIn   = m_pendingUsbUnplugFadeIn;
-    m_pendingUsbUnplugFadeIn     = false;
-    m_powerPathReadyHandler(usbUnplugFadeIn);
+  const bool usbUnplugFadeIn = m_pendingUsbUnplugFadeIn;
+  m_pendingUsbUnplugFadeIn = false;
+  m_powerPathReadyHandler(usbUnplugFadeIn);
 }
 
 /**
  * @brief 注解16：插入 USB → 解除电池死锁；USB 模式下不再判定/触发临界死锁
- * @note 每个 USB 会话只清一次；期间禁止 PollBatteryVoltRaw 向 LDC 报 CriticalEmpty。
+ * @note 每个 USB 会话只清一次；期间禁止 PollBatteryVoltRaw 向 LDC 报
+ * CriticalEmpty。
  */
-void PowerServer::ClearCriticalVoltLockForUsbRaw()
-{
-    if (m_supplyMode != SupplyMode::UsbPowered)
-    {
-        return;
-    }
+void PowerServer::ClearCriticalVoltLockForUsbRaw() {
+  if (m_supplyMode != SupplyMode::UsbPowered) {
+    return;
+  }
 
-    if (m_usbVoltDeadlockSuppressed)
-    {
-        return;
-    }
+  if (m_usbVoltDeadlockSuppressed) {
+    return;
+  }
 
-    m_usbVoltDeadlockSuppressed = true;
-    m_batteryVoltPollEnabled    = false;
-    m_forceNextVoltReport       = false;
-    m_lastReportedVoltLevel     = BatteryVoltLevel::Normal;
+  m_usbVoltDeadlockSuppressed = true;
+  m_batteryVoltPollEnabled = false;
+  m_forceNextVoltReport = false;
+  m_lastReportedVoltLevel = BatteryVoltLevel::Normal;
 
-    LOG_BAT("§16 USB in: clear lock, suppress volt-deadlock while USB");
-    if (m_batteryVoltHandler != nullptr)
-    {
-        m_batteryVoltHandler(BatteryVoltLevel::Normal);
-    }
+  LOG_BAT("§16 USB in: clear lock, suppress volt-deadlock while USB");
+  if (m_batteryVoltHandler != nullptr) {
+    m_batteryVoltHandler(BatteryVoltLevel::Normal);
+  }
 }
 
 /**
  * @brief 注解16：断开 USB → 去掉以前死锁，重新开始电池电压检测
  * @note 须在任务上下文调用（ApplySupplyMode）；先解锁再 settle 后采新值。
  */
-void PowerServer::RestartBatteryVoltDetectionRaw()
-{
-    m_usbVoltDeadlockSuppressed = false;
+void PowerServer::RestartBatteryVoltDetectionRaw() {
+  m_usbVoltDeadlockSuppressed = false;
 
-    if (m_batteryVoltHandler != nullptr)
-    {
-        m_batteryVoltHandler(BatteryVoltLevel::Normal);
-    }
-    m_lastReportedVoltLevel  = BatteryVoltLevel::Normal;
-    m_forceNextVoltReport    = true;
-    m_batteryVoltPollEnabled = true;
-    m_batterySettleMs        = kBatterySettleMs;
-    SyncPollTimerFromRunStateRaw();
+  if (m_batteryVoltHandler != nullptr) {
+    m_batteryVoltHandler(BatteryVoltLevel::Normal);
+  }
+  m_lastReportedVoltLevel = BatteryVoltLevel::Normal;
+  m_forceNextVoltReport = true;
+  m_batteryVoltPollEnabled = true;
+  m_batterySettleMs = kBatterySettleMs;
+  SyncPollTimerFromRunStateRaw();
 
-    LOG_BAT("§16 USB out: restart battery volt detect (settle=%u ms)",
-            static_cast<unsigned>(kBatterySettleMs));
+  LOG_BAT("§16 USB out: restart battery volt detect (settle=%u ms)",
+          static_cast<unsigned>(kBatterySettleMs));
 }
 
 /**
  * @brief 电池模式电量轮询与上报（只读快照）
  * @note 注解16：USB 供电期间不调用本函数判定死锁；CriticalEmpty 时硬切断放电。
  */
-void PowerServer::PollBatteryVoltRaw()
-{
-    /* 注解16：USB 模式不判断电池临界死锁 */
-    if ((m_supplyMode != SupplyMode::Battery) || m_usbVoltDeadlockSuppressed)
-    {
-        return;
+void PowerServer::PollBatteryVoltRaw() {
+  /* 注解16：USB 模式不判断电池临界死锁 */
+  if ((m_supplyMode != SupplyMode::Battery) || m_usbVoltDeadlockSuppressed) {
+    return;
+  }
+
+  const PowerMonitorSnapshot &snapshot = GetPowerSnapshotRaw();
+  const BatteryVoltLevel level = MapVoltLevelRaw(snapshot.voltStatus);
+
+  if (!m_forceNextVoltReport && (level == m_lastReportedVoltLevel)) {
+    return;
+  }
+
+  m_forceNextVoltReport = false;
+  m_lastReportedVoltLevel = level;
+  LOG_BAT("Battery level %u", static_cast<uint8_t>(level));
+
+  if (m_batteryVoltHandler != nullptr) {
+    m_batteryVoltHandler(level);
+  }
+
+  if (level != BatteryVoltLevel::CriticalEmpty) {
+    /* 灯灭且检测完成：停轮询省电（灯亮时由放电态持续轮询） */
+    if (!m_mainLightActive) {
+      m_batteryVoltPollEnabled = false;
+      SyncPollTimerFromRunStateRaw();
     }
+    return;
+  }
 
-    const PowerMonitorSnapshot& snapshot = GetPowerSnapshotRaw();
-    const BatteryVoltLevel      level    = MapVoltLevelRaw(snapshot.voltStatus);
-
-    if (!m_forceNextVoltReport && (level == m_lastReportedVoltLevel))
-    {
-        return;
-    }
-
-    m_forceNextVoltReport   = false;
-    m_lastReportedVoltLevel = level;
-    LOG_BAT("Battery level %u", static_cast<uint8_t>(level));
-
-    if (m_batteryVoltHandler != nullptr)
-    {
-        m_batteryVoltHandler(level);
-    }
-
-    if (level != BatteryVoltLevel::CriticalEmpty)
-    {
-        /* 灯灭且检测完成：停轮询省电（灯亮时由放电态持续轮询） */
-        if (!m_mainLightActive)
-        {
-            m_batteryVoltPollEnabled = false;
-            SyncPollTimerFromRunStateRaw();
-        }
-        return;
-    }
-
-    DisableBatteryDischargeRaw();
-    m_batteryVoltPollEnabled = false;
-    SetRunStateRaw(PowerRunState::BatteryIdle);
+  DisableBatteryDischargeRaw();
+  m_batteryVoltPollEnabled = false;
+  SetRunStateRaw(PowerRunState::BatteryIdle);
 }
 
 /** @brief USB 拔出或 DeInit 时熄灭充电指示灯并清快照/计时 */
-void PowerServer::ClearChargeIndicatorRaw()
-{
-    if (m_chargeSnapshotValid && (m_chargeStatusHandler != nullptr))
-    {
-        BatteryChargeSnapshot off{};
-        off.status       = BatteryChargeStatus::Idle;
-        off.chipValid    = false;
-        off.chipCharging = false;
-        m_chargeStatusHandler(off);
-    }
+void PowerServer::ClearChargeIndicatorRaw() {
+  if (m_chargeSnapshotValid && (m_chargeStatusHandler != nullptr)) {
+    BatteryChargeSnapshot off{};
+    off.status = BatteryChargeStatus::Idle;
+    off.chipValid = false;
+    off.chipCharging = false;
+    m_chargeStatusHandler(off);
+  }
 
-    m_lastReportedChargeSnapshot = {};
-    m_chargeSnapshotValid        = false;
-    m_currentChargeSnapshot      = {};
-    m_chargeFaultLatched         = false;
-    m_chargeDoneLatched          = false;
-    m_chargeSettleMs             = 0U;
-    m_powerSnapshotValid         = false;
-    ResetChargingSessionRaw();
+  m_lastReportedChargeSnapshot = {};
+  m_chargeSnapshotValid = false;
+  m_currentChargeSnapshot = {};
+  m_chargeFaultLatched = false;
+  m_chargeDoneLatched = false;
+  m_chargeSettleMs = 0U;
+  m_powerSnapshotValid = false;
+  ResetChargingSessionRaw();
 }
 
 /** @brief 比较充电快照变化，有变化时回调 entry 更新指示灯 */
-void PowerServer::EvaluateChargeStatusRaw()
-{
-    if (m_supplyMode != SupplyMode::UsbPowered)
-    {
-        return;
-    }
+void PowerServer::EvaluateChargeStatusRaw() {
+  if (m_supplyMode != SupplyMode::UsbPowered) {
+    return;
+  }
 
-    const BatteryChargeSnapshot& snapshot = m_currentChargeSnapshot;
-    const bool indicatorInputChanged      = !m_chargeSnapshotValid ||
-                                            (snapshot.status != m_lastReportedChargeSnapshot.status) ||
-                                            (snapshot.chipValid != m_lastReportedChargeSnapshot.chipValid) ||
-                                            (snapshot.chipCharging != m_lastReportedChargeSnapshot.chipCharging);
-    const bool snapshotChanged =
-        indicatorInputChanged || (snapshot.useFastCharge != m_lastReportedChargeSnapshot.useFastCharge);
+  const BatteryChargeSnapshot &snapshot = m_currentChargeSnapshot;
+  const bool indicatorInputChanged =
+      !m_chargeSnapshotValid ||
+      (snapshot.status != m_lastReportedChargeSnapshot.status) ||
+      (snapshot.chipValid != m_lastReportedChargeSnapshot.chipValid) ||
+      (snapshot.chipCharging != m_lastReportedChargeSnapshot.chipCharging);
+  const bool snapshotChanged =
+      indicatorInputChanged ||
+      (snapshot.useFastCharge != m_lastReportedChargeSnapshot.useFastCharge);
 
-    if (!snapshotChanged)
-    {
-        return;
-    }
+  if (!snapshotChanged) {
+    return;
+  }
 
-    if (indicatorInputChanged && (m_chargeStatusHandler != nullptr))
-    {
-        m_chargeStatusHandler(snapshot);
-    }
+  if (indicatorInputChanged && (m_chargeStatusHandler != nullptr)) {
+    m_chargeStatusHandler(snapshot);
+  }
 
-    m_lastReportedChargeSnapshot = snapshot;
-    m_chargeSnapshotValid        = true;
+  m_lastReportedChargeSnapshot = snapshot;
+  m_chargeSnapshotValid = true;
 }
 
 // ----- §5.7 供电模式硬件落地 -----
@@ -781,53 +701,44 @@ void PowerServer::EvaluateChargeStatusRaw()
  * @note 调用前须已 Fetch；若 USB 切换清掉了 valid，此处补 Fetch（唯一读入口）。
  *       USB：关放电+充电仲裁；电池：按灯状态放电。
  */
-void PowerServer::ApplySupplyModeHardwareRaw()
-{
-    if (!m_powerSnapshotValid)
-    {
-        FetchPowerMonitorSnapshotRaw();
+void PowerServer::ApplySupplyModeHardwareRaw() {
+  if (!m_powerSnapshotValid) {
+    FetchPowerMonitorSnapshotRaw();
+  }
+
+  if (m_supplyMode == SupplyMode::UsbPowered) {
+    DisableBatteryDischargeRaw();
+    m_batteryVoltPollEnabled = false;
+    m_forceNextVoltReport = false;
+    ClearCriticalVoltLockForUsbRaw();
+    UpdateChargeControlAndNotifyRaw();
+    NotifyPowerPathReadyRaw();
+    return;
+  }
+
+  /* 注解16：先切放电硬件，再清死锁并重启电压检测（避免 Disable 清掉 settle） */
+  const bool usbUnplugRestore = m_pendingUsbUnplugFadeIn;
+
+  if (usbUnplugRestore) {
+    m_usbUnplugTransitionActive = true;
+    if (m_usbUnplugPrepareHandler != nullptr) {
+      m_usbUnplugPrepareHandler();
     }
+  }
 
-    if (m_supplyMode == SupplyMode::UsbPowered)
-    {
-        DisableBatteryDischargeRaw();
-        m_batteryVoltPollEnabled = false;
-        m_forceNextVoltReport    = false;
-        ClearCriticalVoltLockForUsbRaw();
-        UpdateChargeControlAndNotifyRaw();
-        NotifyPowerPathReadyRaw();
-        return;
-    }
+  if (usbUnplugRestore || m_mainLightActive) {
+    EnableBatteryDischargeRaw();
+  } else {
+    DisableBatteryDischargeRaw();
+  }
 
-    /* 注解16：先切放电硬件，再清死锁并重启电压检测（避免 Disable 清掉 settle） */
-    const bool usbUnplugRestore = m_pendingUsbUnplugFadeIn;
+  RestartBatteryVoltDetectionRaw();
 
-    if (usbUnplugRestore)
-    {
-        m_usbUnplugTransitionActive = true;
-        if (m_usbUnplugPrepareHandler != nullptr)
-        {
-            m_usbUnplugPrepareHandler();
-        }
-    }
+  if (usbUnplugRestore || m_mainLightActive) {
+    NotifyPowerPathReadyRaw();
+  }
 
-    if (usbUnplugRestore || m_mainLightActive)
-    {
-        EnableBatteryDischargeRaw();
-    }
-    else
-    {
-        DisableBatteryDischargeRaw();
-    }
-
-    RestartBatteryVoltDetectionRaw();
-
-    if (usbUnplugRestore || m_mainLightActive)
-    {
-        NotifyPowerPathReadyRaw();
-    }
-
-    m_usbUnplugTransitionActive = false;
+  m_usbUnplugTransitionActive = false;
 }
 
 // ----- §5.8 事件响应 -----
@@ -836,136 +747,119 @@ void PowerServer::ApplySupplyModeHardwareRaw()
  * @brief 主灯输出变化事件处理
  * @note 先 Fetch 再决策；电池模式刷新放电，USB 模式刷新快慢充
  */
-void PowerServer::OnMainLightChangedRaw(bool mainLightActive)
-{
-    if (m_mainLightActive == mainLightActive)
-    {
-        return;
+void PowerServer::OnMainLightChangedRaw(bool mainLightActive) {
+  if (m_mainLightActive == mainLightActive) {
+    return;
+  }
+
+  m_mainLightActive = mainLightActive;
+  LOG_BAT("Main light active %u", static_cast<uint8_t>(mainLightActive));
+
+  if (m_usbUnplugTransitionActive) {
+    return;
+  }
+
+  FetchPowerMonitorSnapshotRaw();
+  RefreshRunStateRaw();
+
+  if (m_supplyMode == SupplyMode::Battery) {
+    ApplyBatteryDischargeRaw();
+    if (mainLightActive) {
+      NotifyPowerPathReadyRaw();
     }
+    return;
+  }
 
-    m_mainLightActive = mainLightActive;
-    LOG_BAT("Main light active %u", static_cast<uint8_t>(mainLightActive));
-
-    if (m_usbUnplugTransitionActive)
-    {
-        return;
-    }
-
-    FetchPowerMonitorSnapshotRaw();
-    RefreshRunStateRaw();
-
-    if (m_supplyMode == SupplyMode::Battery)
-    {
-        ApplyBatteryDischargeRaw();
-        if (mainLightActive)
-        {
-            NotifyPowerPathReadyRaw();
-        }
-        return;
-    }
-
-    UpdateChargeControlAndNotifyRaw();
+  UpdateChargeControlAndNotifyRaw();
 }
 
 /**
  * @brief USB 拔插 ISR 处理
  * @note ISR 不读硬件、不打日志、不碰 SPI；置 pending，完整策略在 Poll 落地。
  */
-void PowerServer::OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus)
-{
-    if (usbStatus == UsbConnectionStatusEnum::UsbConnected)
-    {
-        m_supplyMode         = SupplyMode::UsbPowered;
-        m_chargeFaultLatched = false;
-        m_chargeDoneLatched  = false;
-        m_chargeSettleMs     = kChargeSettleMs;
-        m_powerSnapshotValid = false;
-        DisableBatteryDischargeRaw();
-        LowPowerCoordinator::Instance().OnUsbPowerActivity(true, false);
-    }
-    else
-    {
-        m_supplyMode         = SupplyMode::Battery;
-        m_chargeFaultLatched = false;
-        m_chargeDoneLatched  = false;
-        m_chargeSettleMs     = 0U;
-        m_powerSnapshotValid = false;
-        SetBatteryChargeEnableRaw(false, 0U);
-        ClearChargeIndicatorRaw();
-        /* 注解10：灯亮时拔 USB → 切电池供电后 200ms 淡入 */
-        m_pendingUsbUnplugFadeIn = m_mainLightActive;
-        LowPowerCoordinator::Instance().OnUsbPowerActivity(false, false);
-    }
+void PowerServer::OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus) {
+  if (usbStatus == UsbConnectionStatusEnum::UsbConnected) {
+    m_supplyMode = SupplyMode::UsbPowered;
+    m_chargeFaultLatched = false;
+    m_chargeDoneLatched = false;
+    m_chargeSettleMs = kChargeSettleMs;
+    m_powerSnapshotValid = false;
+    DisableBatteryDischargeRaw();
+    LowPowerCoordinator::Instance().OnUsbPowerActivity(true, false);
+  } else {
+    m_supplyMode = SupplyMode::Battery;
+    m_chargeFaultLatched = false;
+    m_chargeDoneLatched = false;
+    m_chargeSettleMs = 0U;
+    m_powerSnapshotValid = false;
+    SetBatteryChargeEnableRaw(false, 0U);
+    ClearChargeIndicatorRaw();
+    /* 注解10：灯亮时拔 USB → 切电池供电后 200ms 淡入 */
+    m_pendingUsbUnplugFadeIn = m_mainLightActive;
+    LowPowerCoordinator::Instance().OnUsbPowerActivity(false, false);
+  }
 
-    RefreshRunStateRaw();
-    RequestSupplyApplyRaw();
+  RefreshRunStateRaw();
+  RequestSupplyApplyRaw();
 }
 
 // ----- §5.9 生命周期 -----
 
 /** @brief 电源服务初始化 */
-void PowerServer::Init()
-{
-    BspPowerMonitor::Instance().RegisterUsbNotifyCallback(UsbNotifyBridgeImpl);
-    s_pollTimer.Init(PollTimerBridgeImpl, kPollIntervalMs, nullptr);
+void PowerServer::Init() {
+  BspPowerMonitor::Instance().RegisterUsbNotifyCallback(UsbNotifyBridgeImpl);
+  s_pollTimer.Init(PollTimerBridgeImpl, kPollIntervalMs, nullptr);
 
-    FetchPowerMonitorSnapshotRaw();
-    /* Init 阶段按当前 USB 状态同步策略；OnUsb 会清 valid / 置 pending */
-    OnUsbConnectionChangedRaw(BspPowerMonitor::Instance().GetUsbStatus());
-    m_pendingSupplyApply = false;
-    m_mainLightActive    = LightEffectEngine::Instance().IsAnyChannelActive();
-    RefreshRunStateRaw();
-    /* Apply 内若 valid 被清会再 Fetch，避免 GetPowerSnapshotRaw assert */
-    ApplySupplyModeHardwareRaw();
-    SyncPollTimerFromRunStateRaw();
+  FetchPowerMonitorSnapshotRaw();
+  /* Init 阶段按当前 USB 状态同步策略；OnUsb 会清 valid / 置 pending */
+  OnUsbConnectionChangedRaw(BspPowerMonitor::Instance().GetUsbStatus());
+  m_pendingSupplyApply = false;
+  m_mainLightActive = LightEffectEngine::Instance().IsAnyChannelActive();
+  RefreshRunStateRaw();
+  /* Apply 内若 valid 被清会再 Fetch，避免 GetPowerSnapshotRaw assert */
+  ApplySupplyModeHardwareRaw();
+  SyncPollTimerFromRunStateRaw();
 }
 
 /** @brief 电源服务去初始化，确保最安全断电状态 */
-void PowerServer::DeInit()
-{
-    StartPollTimerRaw(false);
-    m_pollTimerEnabled = false;
-    ClearChargeIndicatorRaw();
-    SetBatteryChargeEnableRaw(false, 0U);
-    DisableBatteryDischargeRaw();
-    SetRunStateRaw(PowerRunState::BatteryIdle);
+void PowerServer::DeInit() {
+  StartPollTimerRaw(false);
+  m_pollTimerEnabled = false;
+  ClearChargeIndicatorRaw();
+  SetBatteryChargeEnableRaw(false, 0U);
+  DisableBatteryDischargeRaw();
+  SetRunStateRaw(PowerRunState::BatteryIdle);
 }
 
 // ----- §5.10 各状态 Tick + Poll 入口 -----
 
 /** @brief BatteryIdle 态 Tick：注解16 拔 USB 后仍可 settle+轮询一次电压 */
-void PowerServer::TickBatteryIdleRaw(uint16_t elapsedMs)
-{
-    if (!m_batteryVoltPollEnabled)
-    {
-        return;
-    }
+void PowerServer::TickBatteryIdleRaw(uint16_t elapsedMs) {
+  if (!m_batteryVoltPollEnabled) {
+    return;
+  }
 
-    TickSettleCountdownRaw(m_batterySettleMs, elapsedMs);
-    if (m_batterySettleMs == 0U)
-    {
-        PollBatteryVoltRaw();
-    }
+  TickSettleCountdownRaw(m_batterySettleMs, elapsedMs);
+  if (m_batterySettleMs == 0U) {
+    PollBatteryVoltRaw();
+  }
 }
 
 /** @brief BatteryDischarging 态 Tick：轮询电压（settle 已在 PowerPoll 递减） */
-void PowerServer::TickBatteryDischargingRaw(uint16_t elapsedMs)
-{
-    (void)elapsedMs;
+void PowerServer::TickBatteryDischargingRaw(uint16_t elapsedMs) {
+  (void)elapsedMs;
 
-    if (m_batteryVoltPollEnabled && (m_batterySettleMs == 0U))
-    {
-        PollBatteryVoltRaw();
-    }
+  if (m_batteryVoltPollEnabled && (m_batterySettleMs == 0U)) {
+    PollBatteryVoltRaw();
+  }
 }
 
 /** @brief UsbChargeManage 态 Tick：会话计时 → 充电仲裁 → 上报 */
-void PowerServer::TickUsbChargeManageRaw(uint16_t elapsedMs)
-{
-    TickChargingSessionRaw(elapsedMs);
-    /* 注解16：USB 会话内仅补清一次死锁，不做电池临界判定 */
-    ClearCriticalVoltLockForUsbRaw();
-    UpdateChargeControlAndNotifyRaw();
+void PowerServer::TickUsbChargeManageRaw(uint16_t elapsedMs) {
+  TickChargingSessionRaw(elapsedMs);
+  /* 注解16：USB 会话内仅补清一次死锁，不做电池临界判定 */
+  ClearCriticalVoltLockForUsbRaw();
+  UpdateChargeControlAndNotifyRaw();
 }
 
 /**
@@ -973,43 +867,38 @@ void PowerServer::TickUsbChargeManageRaw(uint16_t elapsedMs)
  * @param elapsedMs 本轮流逝时间(ms)
  * @note ① settle 倒计时 ② Fetch 按需读硬件 ③ 落地 ISR 策略 ④ switch 分发
  */
-void PowerServer::PowerPoll(uint16_t elapsedMs)
-{
-    // settle 先于 Fetch，保证电压/充电芯片可读性判断与采样同一轮一致
-    if (m_runState == PowerRunState::BatteryDischarging)
-    {
-        TickSettleCountdownRaw(m_batterySettleMs, elapsedMs);
-    }
-    else if (m_runState == PowerRunState::UsbChargeManage)
-    {
-        TickSettleCountdownRaw(m_chargeSettleMs, elapsedMs);
-    }
+void PowerServer::PowerPoll(uint16_t elapsedMs) {
+  // settle 先于 Fetch，保证电压/充电芯片可读性判断与采样同一轮一致
+  if (m_runState == PowerRunState::BatteryDischarging) {
+    TickSettleCountdownRaw(m_batterySettleMs, elapsedMs);
+  } else if (m_runState == PowerRunState::UsbChargeManage) {
+    TickSettleCountdownRaw(m_chargeSettleMs, elapsedMs);
+  }
 
-    FetchPowerMonitorSnapshotRaw();
+  FetchPowerMonitorSnapshotRaw();
 
-    /* USB EXTI 后：在 Poll 上下文更新低功耗保持位（避免 ISR 内 Resume SPI） */
-    LowPowerCoordinator::Instance().OnUsbPowerActivity(m_supplyMode == SupplyMode::UsbPowered);
+  /* USB EXTI 后：在 Poll 上下文更新低功耗保持位（避免 ISR 内 Resume SPI） */
+  LowPowerCoordinator::Instance().OnUsbPowerActivity(m_supplyMode ==
+                                                     SupplyMode::UsbPowered);
 
-    // ISR 切换供电来源后，统一刷新硬件策略
-    if (m_pendingSupplyApply)
-    {
-        m_pendingSupplyApply = false;
-        ApplySupplyModeHardwareRaw();
-    }
+  // ISR 切换供电来源后，统一刷新硬件策略
+  if (m_pendingSupplyApply) {
+    m_pendingSupplyApply = false;
+    ApplySupplyModeHardwareRaw();
+  }
 
-    switch (m_runState)
-    {
-    case PowerRunState::BatteryIdle:
-        TickBatteryIdleRaw(elapsedMs);
-        break;
-    case PowerRunState::BatteryDischarging:
-        TickBatteryDischargingRaw(elapsedMs);
-        break;
-    case PowerRunState::UsbChargeManage:
-        TickUsbChargeManageRaw(elapsedMs);
-        break;
-    default:
-        assert(false);
-        break;
-    }
+  switch (m_runState) {
+  case PowerRunState::BatteryIdle:
+    TickBatteryIdleRaw(elapsedMs);
+    break;
+  case PowerRunState::BatteryDischarging:
+    TickBatteryDischargingRaw(elapsedMs);
+    break;
+  case PowerRunState::UsbChargeManage:
+    TickUsbChargeManageRaw(elapsedMs);
+    break;
+  default:
+    assert(false);
+    break;
+  }
 }

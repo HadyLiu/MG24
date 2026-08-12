@@ -59,8 +59,6 @@ APP (entry.cpp)
                     └── HAL     GPIO, PWM, IADC, SPI(SM15135E), NVM, EXTI
 ```
 
-Coding conventions for embedded C++ are defined in `.cursorrules` (Allman style, no heap in hot paths, single-entry hardware fetch, explicit state machines).
-
 ## Prerequisites (Host Build)
 
 - Linux x86_64 recommended
@@ -105,6 +103,14 @@ docker run --rm -v "$PWD":/workspace -w /workspace \
   li-bat-matterlight:sdk-2025.12.2
 ```
 
+### Reproduce CI locally
+
+```bash
+./Srcipt/CiLocal.sh
+```
+
+GitHub setup (ZH): [.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md)
+
 ## Studio Regenerate Notes
 
 If you re-run **Generate** in Simplicity Studio:
@@ -117,10 +123,11 @@ If you re-run **Generate** in Simplicity Studio:
 
 | Document | Description |
 |----------|-------------|
-| [develop.md](./develop.md) | Dev guide: `.slcp`, pins, scripts / Docker |
-| [develop_zh.md](./develop_zh.md) | 开发指南（中文） |
+| [develop.md](./Srcipt/develop.md) | Dev guide: `.slcp`, pins, scripts / Docker |
+| [develop_zh.md](./Srcipt/develop_zh.md) | 开发指南（中文） |
+| [.github/GITHUB_SETUP_zh.md](./.github/GITHUB_SETUP_zh.md) | GitHub Actions / GHCR setup (ZH) |
 | [.github/CICD_TODO_zh.md](./.github/CICD_TODO_zh.md) | CI/CD todo list (vs NonFuncReq) |
-| [.github/NonFuncReq_zh.md](./github/NonFuncReq_zh.md) | Non-functional / DevOps requirements |
+| [.github/NonFuncReq_zh.md](./.github/NonFuncReq_zh.md) | Non-functional / DevOps requirements |
 | [Doc/设计方案.md](./Doc/设计方案.md) | Functional requirements |
 | [Doc/修改.md](./Doc/修改.md) | Factory-reset lighting / NVM behavior |
 | [Doc/工厂复位后配网问题.md](./Doc/工厂复位后配网问题.md) | Post-reset commissioning / SRP notes |
