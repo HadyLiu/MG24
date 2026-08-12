@@ -57,6 +57,7 @@ RunLint()
         docker/install-slt-packages.sh
         Srcipt/CiLocal.sh
         qa/host/run_host_tests.sh
+        qa/cppcheck/run_cppcheck.sh
     )
 
     if command -v shellcheck >/dev/null 2>&1; then
@@ -67,8 +68,7 @@ RunLint()
     fi
 
     if command -v yamllint >/dev/null 2>&1; then
-        yamllint -d '{extends: default, rules: {line-length: {max: 120}, document-start: disable}}' \
-            .github/workflows/
+        yamllint -c .github/yamllint.yml .github/workflows/
         echo "yamllint OK"
     else
         echo "WARN: yamllint not installed (skip)."
@@ -89,16 +89,8 @@ RunQa()
     ./qa/host/run_host_tests.sh
 
     if command -v cppcheck >/dev/null 2>&1; then
-        cppcheck \
-            --error-exitcode=1 \
-            --suppress=missingIncludeSystem \
-            --inline-suppr \
-            -I User/hal/inc \
-            -I User/bsp/inc \
-            -I User/middlewares/inc \
-            -I User/service/inc \
-            User/
-        echo "cppcheck OK"
+        chmod +x qa/cppcheck/run_cppcheck.sh
+        ./qa/cppcheck/run_cppcheck.sh
     else
         echo "WARN: cppcheck not installed (skip). Install: sudo apt install cppcheck"
     fi

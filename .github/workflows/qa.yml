@@ -38,15 +38,7 @@ jobs:
       - name: Install cppcheck
         run: sudo apt-get update && sudo apt-get install -y cppcheck
 
-      # 起步只卡 error；warning/style 本地可加 --enable=warning,style 清债
       - name: cppcheck User/
         run: |
-          cppcheck \
-            --error-exitcode=1 \
-            --suppress=missingIncludeSystem \
-            --inline-suppr \
-            -I User/hal/inc \
-            -I User/bsp/inc \
-            -I User/middlewares/inc \
-            -I User/service/inc \
-            User/
+          chmod +x qa/cppcheck/run_cppcheck.sh
+          ./qa/cppcheck/run_cppcheck.sh

@@ -35,6 +35,7 @@ jobs:
             docker/install-slt-packages.sh
             Srcipt/CiLocal.sh
             qa/host/run_host_tests.sh
+            qa/cppcheck/run_cppcheck.sh
           )
           echo "Checking:"
           printf '  %s\n' "${scripts[@]}"
@@ -50,9 +51,7 @@ jobs:
       - name: YAML lint workflows
         run: |
           pip install --user yamllint
-          # 仅校验本仓 workflow，避免 Doc/demo 模板噪声
-          ~/.local/bin/yamllint -d '{extends: default, rules: {line-length: {max: 120}, document-start: disable}}' \
-            .github/workflows/
+          ~/.local/bin/yamllint -c .github/yamllint.yml .github/workflows/
 
   actionlint:
     runs-on: ubuntu-latest
@@ -63,7 +62,11 @@ jobs:
 
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash \
+            -o /tmp/download-actionlint.bash
+          bash /tmp/download-actionlint.bash 1.7.12
         shell: bash
 
       - name: Check workflow files

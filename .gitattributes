@@ -1,3 +1,5 @@
 # Shell scripts must use LF so Docker shebang works on all hosts
 docker/*.sh text eol=lf
 *.sh text eol=lf
+.github/workflows/*.yml text eol=lf
+.github/yamllint.yml text eol=lf
