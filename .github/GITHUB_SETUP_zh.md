@@ -1,7 +1,7 @@
 # GitHub 操作说明（CI/CD）
 
 仓库：`https://github.com/barryjim/KAJEN_T`  
-对应文档：[`CICD_TODO_zh.md`](./CICD_TODO_zh.md)、[`QA_PLAN_zh.md`](./QA_PLAN_zh.md)、[`docker/docker_zh.md`](../docker/docker_zh.md)
+对应文档：[`CICD_TODO_zh.md`](./CICD_TODO_zh.md)、[`QA_PLAN_zh.md`](./QA_PLAN_zh.md)、[`docker/docker_zh.md`](../docker/docker_zh.md)、[豪庭 MG301 CI 总结](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)
 
 ## 0. 总览
 

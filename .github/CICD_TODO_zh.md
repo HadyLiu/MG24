@@ -1,7 +1,8 @@
 # CI/CD 待办清单（DevOps）
 
 依据：[`NonFuncReq_zh.md`](./NonFuncReq_zh.md)（目标规范）  
-参考：[`../Doc/demo/rs-hs-cicd-templates`](../Doc/demo/rs-hs-cicd-templates/)（宜家通用模板，**不可整包照搬**）  
+参考 1：[`../Doc/demo/rs-hs-cicd-templates`](../Doc/demo/rs-hs-cicd-templates/)（宜家通用模板，**不可整包照搬**）  
+参考 2：[`../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)（豪庭 MG301 **固件** CI，借产物/质量报告，不借 clone SDK）  
 GitHub 操作步骤：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 
 本仓库现状：固件构建工具已 Docker 化（`docker/` + `Srcipt/`）。  
@@ -15,7 +16,7 @@ GitHub 操作步骤：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 | 原则 | 说明 |
 |------|------|
 | 规范优先 | 以 `NonFuncReq_zh.md` 的 DevOps / QA 条款为验收标准 |
-| 模板参考 | `rs-hs-cicd-templates` 只借 **lint / Release / 上传 / 合规** 模式，不拷 Node/Go 构建 |
+| 模板参考 | 通用仓只借 **lint / Release / 上传**；MG301 固件仓只借 **产物形态 / 质量报告进 Release**，不拷 Node/Go，也不改成 CI 现场 clone SDK |
 | 流水线要薄 | workflow 每步 1～几行；复杂逻辑进 Docker / Bash（本地 = CI） |
 | 固件自建 | Matter / SiSDK / ARM GCC 构建必须本仓库自写，模板库没有 |
 
@@ -116,6 +117,27 @@ GitHub（主干 + 短分支）
 
 无 `inter-ikea` 权限：本仓已仿写精简版 lint / release，不阻塞阶段 A。
 
+### 4.1 对豪庭 MG301 固件 CI 的用法
+
+详细对照见 [`CICD_总结.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)。源码说明书：同目录 [`Read.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/Read.md)、[`Unit_test.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/Unit_test.md)。
+
+| 可借鉴 | 本仓用法 |
+|--------|----------|
+| 薄 YAML + 厚脚本 | 已用 Docker / `Srcipt/`；保持 |
+| debug / dev / release | 阶段 B6：Tag 发 release，日常可只编一种 |
+| App + BL 合体 + Matter OTA | 阶段 B5：对齐交付物，不只 `.s37`/`.gbl` |
+| 版本双轨（hex + 字符串） | 已有 `sl_matter_config.h`（`17` / `"1.1.7"`）；Tag 必须与宏一致 |
+| cppcheck/lint 报告进 Release | 阶段 D9 |
+| 组件旁 `test/` + CI 自动发现 | 阶段 D10；host 测即可，不上 cmocka |
+| `update_version.sh` 升版对包 | 阶段 C，等 OTA API |
+
+| 不要照搬 | 原因 |
+|----------|------|
+| CI 每次 clone SiSDK / Matter | 本仓已 Docker + GHCR |
+| Google clang-format / cpplint 风格 | 与本仓 Allman 冲突 |
+| 打开 MG301 的 UnitTest Job | demo 缺 `homebrew_static`，会挂 |
+| MG301 VID/PID、板卡、kt_components | 产品不同 |
+
 ---
 
 ## 5. 分阶段任务清单
@@ -135,7 +157,9 @@ GitHub（主干 + 短分支）
 - [x] **B1** 约定版本号与 Tag：`vX.Y.Z`（见 GITHUB_SETUP）
 - [x] **B2** `.github/workflows/release-firmware.yml`
 - [x] **B3** 发布交付清单模板：`.github/ReleaseNotes_TEMPLATE_zh.md`
-- [ ] **B4**（可选）SemVer bump 自动化
+- [ ] **B4** SemVer bump：Tag `vX.Y.Z` 与 `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION*` 单一来源
+- [ ] **B5** 产物清单对齐豪庭：App `.s37`、BL+App、Matter `.ota`（或 `.gbl` 按宜家格式）、`SHA256SUMS.txt`
+- [ ] **B6**（可选）dev / release 两套；Tag 只发 release（关调试、正式 bootloader）
 
 **验收：** 打 Tag 后自动出 GitHub Release 与完整产物包。
 
@@ -157,6 +181,8 @@ GitHub（主干 + 短分支）
 - [ ] **D6**（可选）Self-hosted runner + IaC
 - [x] **D7** QA 方案文档：`.github/QA_PLAN_zh.md`（借模板 + NonFuncReq 对照）
 - [x] **D8** PR 模板：`.github/PULL_REQUEST_TEMPLATE.md`
+- [ ] **D9** cppcheck（及日后 C lint）报告打 tar，随 Release 挂上
+- [ ] **D10** `User/` 模块旁 `test/` 目录约定；CI 自动发现（host 测，不搬 cmocka）
 
 ---
 
@@ -193,8 +219,9 @@ Srcipt/
 | 2 | 手动跑 Lint / CI Firmware | 确认 Artifacts |
 | 3 | Branch protection（D3） | 保护主干 |
 | 4 | Tag 发布（B） | 正式交付物 |
-| 5 | C* OTA | 依赖宜家 API |
-| 6 | D* 其余质量项 | 长期 |
+| 5 | B5 产物清单（OTA / BL 合体） | 对齐宜家/豪庭交付 |
+| 6 | C* OTA | 依赖宜家 API |
+| 7 | D9 / D10 质量报告与组件单测 | 长期 |
 
 ---
 
@@ -218,6 +245,7 @@ Srcipt/
 | [NonFuncReq_zh.md](./NonFuncReq_zh.md) | 非功能 / DevOps 原文 |
 | [../docker/docker_zh.md](../docker/docker_zh.md) | Docker 镜像构建与 `generate`/`build` |
 | [../Srcipt/develop_zh.md](../Srcipt/develop_zh.md) | 开发：`.slcp`、引脚、脚本 |
+| [../Doc/demo/.../CICD_总结.md](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md) | 豪庭 MG301 固件 CI 对照与借鉴 |
 
 ---
 

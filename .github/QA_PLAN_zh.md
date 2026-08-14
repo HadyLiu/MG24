@@ -2,7 +2,8 @@
 
 依据：[`NonFuncReq_zh.md`](./NonFuncReq_zh.md)「质量保证」段  
 借用：[`Doc/demo/rs-hs-cicd-templates/.github`](../Doc/demo/rs-hs-cicd-templates/.github)
-（**只借模式，不整包照搬**；无 Matter/固件构建）
+（**只借模式，不整包照搬**；无 Matter/固件构建）  
+固件 CI 对照：[`Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)
 
 GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 
@@ -29,6 +30,8 @@ GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 | `rs-hs-release-service` 的 Release Notes 思路 | → `.github/ReleaseNotes_TEMPLATE_zh.md` |
 | Node/Go CI、Phrase、Splunk、S3、compliance NPM | **不借用** |
 | 整库 `.github/workflows` 复制 | **禁止** |
+| 豪庭组件旁 `test/` + 自动发现 | → 阶段 D10：扩 `qa/host/`，不上 cmocka |
+| 豪庭 cppcheck 报告进 Release | → 阶段 D9 |
 
 ---
 

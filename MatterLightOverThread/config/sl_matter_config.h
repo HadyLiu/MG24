@@ -40,14 +40,14 @@
 // <o CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION> Device software version
 // <i> Default: 1
 // <i> Must be incremented for each OTA firmware update
-#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION 1
+#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION 17
 
-// <s.128 CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING> Device software version string
-// <i> Human-readable software version string
-#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING "1"
+// <s.128 CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING> Device software
+// version string <i> Human-readable software version string
+#define CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING "1.1.7"
 
-// <o CHIP_DEVICE_CONFIG_DEFAULT_DEVICE_HARDWARE_VERSION> Device hardware version
-// <i> Default: 1
+// <o CHIP_DEVICE_CONFIG_DEFAULT_DEVICE_HARDWARE_VERSION> Device hardware
+// version <i> Default: 1
 #define CHIP_DEVICE_CONFIG_DEFAULT_DEVICE_HARDWARE_VERSION 1
 
 // <q SL_MATTER_CLI_ARG_PARSER> Enable CLI Argument Parser
@@ -58,17 +58,17 @@
 #define SL_MATTER_CLI_ARG_PARSER 1
 #endif
 
-// <q SL_MATTER_DEBUG_WATCHDOG_ENABLE> Enable a Watchdog with debug features for MG devices
-// <i> Default: 0
-// <i> Enables a Watchdog with debug features for only MG devices
-// <i> To enable for SiWG devices, directly add the sl_wdt_manager component to the project
+// <q SL_MATTER_DEBUG_WATCHDOG_ENABLE> Enable a Watchdog with debug features for
+// MG devices <i> Default: 0 <i> Enables a Watchdog with debug features for only
+// MG devices <i> To enable for SiWG devices, directly add the sl_wdt_manager
+// component to the project
 #ifndef SL_MATTER_DEBUG_WATCHDOG_ENABLE
 #define SL_MATTER_DEBUG_WATCHDOG_ENABLE 0
 #endif
 
-// <o CHIP_DEVICE_CONFIG_MAX_DISCOVERED_IP_ADDRESSES> Define the default number of ip addresses to discover
-// <i> Default: 5
-// <i> Maximum number of IP addresses that can be discovered during device commissioning
+// <o CHIP_DEVICE_CONFIG_MAX_DISCOVERED_IP_ADDRESSES> Define the default number
+// of ip addresses to discover <i> Default: 5 <i> Maximum number of IP addresses
+// that can be discovered during device commissioning
 #define CHIP_DEVICE_CONFIG_MAX_DISCOVERED_IP_ADDRESSES 5
 
 // <o KVS_MAX_ENTRIES> Maximum amount of KVS Entries
@@ -80,8 +80,8 @@
 // <i> Default: 0
 #define CHIP_CONFIG_SYNCHRONOUS_REPORTS_ENABLED 0
 
-// <o SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS> Delay before the deferred attribute are stored in nvm
-// <i> Default: 2000
+// <o SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS> Delay before the deferred
+// attribute are stored in nvm <i> Default: 2000
 #ifndef SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS
 #define SL_MATTER_DEFERRED_ATTRIBUTE_STORE_DELAY_MS 2000
 #endif
@@ -89,4 +89,3 @@
 // <<< end of configuration section >>>
 
 #endif // SL_MATTER_CONFIG_H
-
