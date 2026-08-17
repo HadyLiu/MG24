@@ -128,13 +128,13 @@ GitHub（主干 + 短分支）
 | App + BL 合体 + Matter OTA | 阶段 B5：对齐交付物，不只 `.s37`/`.gbl` |
 | 版本双轨（hex + 字符串） | 已有 `sl_matter_config.h`（`17` / `"1.1.7"`）；Tag 必须与宏一致 |
 | cppcheck/lint 报告进 Release | 阶段 D9 |
+| Google clang-format / cpplint | **已落地**：`User/`；CI `--check` + cpplint 进 `code_quality_report` |
 | 组件旁 `test/` + CI 自动发现 | 阶段 D10；host 测即可，不上 cmocka |
 | `update_version.sh` 升版对包 | 阶段 C，等 OTA API |
 
 | 不要照搬 | 原因 |
 |----------|------|
 | CI 每次 clone SiSDK / Matter | 本仓已 Docker + GHCR |
-| Google clang-format / cpplint 风格 | 与本仓 Allman 冲突 |
 | 打开 MG301 的 UnitTest Job | demo 缺 `homebrew_static`，会挂 |
 | MG301 VID/PID、板卡、kt_components | 产品不同 |
 
@@ -181,7 +181,8 @@ GitHub（主干 + 短分支）
 - [ ] **D6**（可选）Self-hosted runner + IaC
 - [x] **D7** QA 方案文档：`.github/QA_PLAN_zh.md`（借模板 + NonFuncReq 对照）
 - [x] **D8** PR 模板：`.github/PULL_REQUEST_TEMPLATE.md`
-- [x] **D9** cppcheck XML 打 tar，随 Release 挂上（`code_quality_report.tar.gz`）
+- [x] **D9** 豪庭式质量报告：cppcheck XML + `cppcheck-htmlreport` HTML、gcovr 覆盖率；
+      `code_quality_report.tar.gz` / `unit_test_report.tar.gz` 随 QA Artifact 与 Release 挂上
 - [x] **D10** `User/**/test/*.cpp` 自动发现（host 测，不搬 cmocka）
 
 ---
@@ -204,8 +205,18 @@ GitHub（主干 + 短分支）
   NonFuncReq_zh.md
 qa/host/
   run_host_tests.sh
+  setup.sh
 qa/cppcheck/
   run_cppcheck.sh
+  setup.sh
+qa/cpplint/
+  run_cpplint.sh
+  setup.sh
+qa/format/
+  run_clang_format.sh
+qa/PackQualityReports.sh
+.clang-format
+CPPLINT.cfg
 User/middlewares/test/
   test_light_dimming_spec.cpp
 Srcipt/

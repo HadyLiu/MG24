@@ -22,7 +22,7 @@
 /** @name 日志总开关
  *  @{ */
 #ifndef APP_LOG_ENABLED
-#define APP_LOG_ENABLED 1 ///< 1=启用全部分类日志；0=全部移除
+#define APP_LOG_ENABLED 1  ///< 1=启用全部分类日志；0=全部移除
 #endif
 #if defined(LI_BAT_BUILD_RELEASE) && (LI_BAT_BUILD_RELEASE)
 #undef APP_LOG_ENABLED
@@ -33,42 +33,42 @@
 /** @name 各业务分类开关（1=启用，0=编译期移除）
  *  @{ */
 #ifndef APP_LOG_CAT_LIGHT
-#define APP_LOG_CAT_LIGHT 1 ///< LightEngine 灯光引擎
+#define APP_LOG_CAT_LIGHT 1  ///< LightEngine 灯光引擎
 #endif
 #ifndef APP_LOG_CAT_BTN
-#define APP_LOG_CAT_BTN 1 ///< 按键输入 / 按键策略
+#define APP_LOG_CAT_BTN 1  ///< 按键输入 / 按键策略
 #endif
 #ifndef APP_LOG_CAT_BAT
-#define APP_LOG_CAT_BAT 0 ///< 电池 / 电源监控策略
+#define APP_LOG_CAT_BAT 0  ///< 电池 / 电源监控策略
 #endif
 #ifndef APP_LOG_CAT_COMMISSION
-#define APP_LOG_CAT_COMMISSION 1 ///< Matter 配网
+#define APP_LOG_CAT_COMMISSION 1  ///< Matter 配网
 #endif
 #ifndef APP_LOG_CAT_FACTORY
-#define APP_LOG_CAT_FACTORY 1 ///< 恢复出厂 / 软复位
+#define APP_LOG_CAT_FACTORY 1  ///< 恢复出厂 / 软复位
 #endif
 #ifndef APP_LOG_CAT_IDENTIFY
-#define APP_LOG_CAT_IDENTIFY 1 ///< 设备识别 Identify
+#define APP_LOG_CAT_IDENTIFY 1  ///< 设备识别 Identify
 #endif
 #ifndef APP_LOG_CAT_MATTER
-#define APP_LOG_CAT_MATTER 1 ///< Matter 桥接 / 属性上下行
+#define APP_LOG_CAT_MATTER 1  ///< Matter 桥接 / 属性上下行
 #endif
 #ifndef APP_LOG_CAT_INDIC
-#define APP_LOG_CAT_INDIC 1 ///< 指示灯（红灯 / 白呼吸）
+#define APP_LOG_CAT_INDIC 1  ///< 指示灯（红灯 / 白呼吸）
 #endif
 #ifndef APP_LOG_CAT_APP
-#define APP_LOG_CAT_APP 1 ///< 应用编排层
+#define APP_LOG_CAT_APP 1  ///< 应用编排层
 #endif
 #ifndef APP_LOG_ENTRY_APP
-#define APP_LOG_ENTRY_APP 1 ///< 应用编排层
+#define APP_LOG_ENTRY_APP 1  ///< 应用编排层
 #endif
 
 #ifndef LOG_LIGHT_DC_APP
-#define LOG_LIGHT_DC_APP 1 ///< 主灯决策中心
+#define LOG_LIGHT_DC_APP 1  ///< 主灯决策中心
 #endif
 
 #ifndef APP_LOG_CAT_POWER
-#define APP_LOG_CAT_POWER 0 ///< 电源
+#define APP_LOG_CAT_POWER 0  ///< 电源
 #endif
 /** @} */
 ///< 底层日志实现接口，基于 UART 输出
@@ -81,12 +81,10 @@
  * @param ... 可变参数，与 fmt 对应
  */
 #if APP_LOG_ENABLED
-#define APP_LOG_IMPL(en, fmt, ...)                                             \
-  BspUartLog::DebugLog(en, "[%s:%d] " fmt,                                     \
-                       __builtin_strrchr(__FILE__, '/')                        \
-                           ? __builtin_strrchr(__FILE__, '/') + 1              \
-                           : __FILE__,                                         \
-                       __LINE__, ##__VA_ARGS__)
+#define APP_LOG_IMPL(en, fmt, ...)                                                                                   \
+  BspUartLog::DebugLog(en, "[%s:%d] " fmt,                                                                           \
+                       __builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__, __LINE__, \
+                       ##__VA_ARGS__)
 
 #else
 #define APP_LOG_IMPL(en, fmt, ...) ((void)0)
@@ -109,20 +107,16 @@
 #define LOG_POWER(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_POWER, fmt, ##__VA_ARGS__)
 /** @def LOG_COMMISSION
  *  @brief Matter 配网分类日志 */
-#define LOG_COMMISSION(fmt, ...)                                               \
-  APP_LOG_IMPL(APP_LOG_CAT_COMMISSION, fmt, ##__VA_ARGS__)
+#define LOG_COMMISSION(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_COMMISSION, fmt, ##__VA_ARGS__)
 /** @def LOG_FACTORY
  *  @brief 恢复出厂/软复位分类日志 */
-#define LOG_FACTORY(fmt, ...)                                                  \
-  APP_LOG_IMPL(APP_LOG_CAT_FACTORY, fmt, ##__VA_ARGS__)
+#define LOG_FACTORY(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_FACTORY, fmt, ##__VA_ARGS__)
 /** @def LOG_IDENTIFY
  *  @brief Identify 分类日志 */
-#define LOG_IDENTIFY(fmt, ...)                                                 \
-  APP_LOG_IMPL(APP_LOG_CAT_IDENTIFY, fmt, ##__VA_ARGS__)
+#define LOG_IDENTIFY(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_IDENTIFY, fmt, ##__VA_ARGS__)
 /** @def LOG_MATTER
  *  @brief Matter 桥接/属性上下行分类日志 */
-#define LOG_MATTER(fmt, ...)                                                   \
-  APP_LOG_IMPL(APP_LOG_CAT_MATTER, fmt, ##__VA_ARGS__)
+#define LOG_MATTER(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_MATTER, fmt, ##__VA_ARGS__)
 /** @def LOG_INDIC
  *  @brief 指示灯分类日志 */
 #define LOG_INDIC(fmt, ...) APP_LOG_IMPL(APP_LOG_CAT_INDIC, fmt, ##__VA_ARGS__)
@@ -132,5 +126,4 @@
 /** @} */
 #define LOG_ENTRY(fmt, ...) APP_LOG_IMPL(APP_LOG_ENTRY_APP, fmt, ##__VA_ARGS__)
 
-#define LOG_LIGHT_DC(fmt, ...)                                                 \
-  APP_LOG_IMPL(LOG_LIGHT_DC_APP, fmt, ##__VA_ARGS__)
+#define LOG_LIGHT_DC(fmt, ...) APP_LOG_IMPL(LOG_LIGHT_DC_APP, fmt, ##__VA_ARGS__)

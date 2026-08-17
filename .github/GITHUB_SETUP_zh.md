@@ -8,9 +8,9 @@
 | Workflow | 作用 | 何时跑 |
 |----------|------|--------|
 | **Lint** | shellcheck + yamllint + actionlint | **每次** push/PR（`main`/`develop`） |
-| **QA** | host 单测 + cppcheck | **每次** push/PR |
+| **QA** | host 单测 + Google clang-format/cpplint + cppcheck-htmlreport；Artifact：`unit_test_report` / `code_quality_report` | **每次** push/PR |
 | **CI Firmware** | 编固件 → Artifact | **每次** push/PR |
-| **Release Firmware** | 对 Tag → 编固件 → `pack` 带版本产物 + cppcheck → GitHub Release | **仅 `v*` Tag** |
+| **Release Firmware** | Tag → 编固件 → pack + 豪庭式质量 tar → GitHub Release | **仅 `v*` Tag** |
 | **Docker Publish** | Dockerfile → GHCR | **仅手动**（镜像太大） |
 
 ```text

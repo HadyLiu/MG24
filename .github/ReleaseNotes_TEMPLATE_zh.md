@@ -24,6 +24,7 @@
 - [ ] `Li-Bat_MatterLight-vX.Y.Z-release-app-only.ota`
 - [ ] `VERSION.txt` / `SHA256SUMS.txt`
 - [ ] `code_quality_report.tar.gz`
+- [ ] `unit_test_report.tar.gz`
 
 ## 软件侧验证（可无板）
 

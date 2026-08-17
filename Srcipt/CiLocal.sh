@@ -63,7 +63,13 @@ RunLint()
         Srcipt/UpdateFirmwareVersion.sh
         Srcipt/PublishOta.sh
         qa/host/run_host_tests.sh
+        qa/host/setup.sh
         qa/cppcheck/run_cppcheck.sh
+        qa/cppcheck/setup.sh
+        qa/cpplint/run_cpplint.sh
+        qa/cpplint/setup.sh
+        qa/format/run_clang_format.sh
+        qa/PackQualityReports.sh
     )
 
     if command -v shellcheck >/dev/null 2>&1; then
@@ -90,16 +96,39 @@ RunLint()
 
 RunQa()
 {
-    echo "==== QA (host tests / cppcheck) ===="
-    chmod +x qa/host/run_host_tests.sh
+    echo "==== QA (host tests / Google style / cppcheck) ===="
+    chmod +x qa/host/run_host_tests.sh qa/host/setup.sh
+    chmod +x qa/cppcheck/run_cppcheck.sh qa/cppcheck/setup.sh
+    chmod +x qa/cpplint/run_cpplint.sh qa/cpplint/setup.sh
+    chmod +x qa/format/run_clang_format.sh qa/PackQualityReports.sh
+
+    if command -v clang-format >/dev/null 2>&1; then
+        ./qa/format/run_clang_format.sh --check
+    else
+        echo "WARN: clang-format not installed (skip). Install: sudo apt install clang-format"
+    fi
+
+    ./qa/host/setup.sh || echo "WARN: qa/host/setup.sh failed (gcovr optional locally)"
+    export PATH="${HOME}/.local/bin:${PATH}"
     ./qa/host/run_host_tests.sh
 
+    ./qa/cpplint/run_cpplint.sh
+
     if command -v cppcheck >/dev/null 2>&1; then
-        chmod +x qa/cppcheck/run_cppcheck.sh
         ./qa/cppcheck/run_cppcheck.sh
+        ./qa/PackQualityReports.sh qa
     else
         echo "WARN: cppcheck not installed (skip). Install: sudo apt install cppcheck"
+        ./qa/PackQualityReports.sh --unit-only qa
     fi
+
+    echo "QA reports:"
+    echo "  qa/host/report/index.html"
+    echo "  qa/host/report/coverage/coverage.html"
+    echo "  qa/cppcheck/report/index.html"
+    echo "  qa/cpplint/report/cpplint_report.xml"
+    echo "  qa/unit_test_report.tar.gz"
+    echo "  qa/code_quality_report.tar.gz"
 }
 
 RunBuild()

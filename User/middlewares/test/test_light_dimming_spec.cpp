@@ -10,37 +10,34 @@
 
 static int g_failures = 0;
 
-static void ExpectTrue(bool cond, const char* expr)
-{
-    if (!cond)
-    {
-        std::fprintf(stderr, "FAIL: %s\n", expr);
-        g_failures++;
-    }
+static void ExpectTrue(bool cond, const char* expr) {
+  if (!cond) {
+    std::fprintf(stderr, "FAIL: %s\n", expr);
+    g_failures++;
+  }
 }
 
-int main()
-{
-    using namespace LightDimmingSpec;
+int main() {
+  using LightDimmingSpec::ClampPhysicalBrightness;
+  using LightDimmingSpec::kMinPhysicalBrightness255;
+  using LightDimmingSpec::kMinPhysicalDutyScale255;
+  using LightDimmingSpec::MapBrightnessToDutyScale;
+  using LightDimmingSpec::MatterLevelToDriverBrightness;
 
-    ExpectTrue(MatterLevelToDriverBrightness(0) == 0U, "level 0 -> 0");
-    ExpectTrue(MatterLevelToDriverBrightness(254) == 255U, "level 254 -> 255");
-    ExpectTrue(ClampPhysicalBrightness(0) == 0U, "clamp 0");
-    ExpectTrue(ClampPhysicalBrightness(1) == kMinPhysicalBrightness255,
-               "clamp 1 -> min");
-    ExpectTrue(ClampPhysicalBrightness(255) == 255U, "clamp 255");
-    ExpectTrue(MapBrightnessToDutyScale(0) == 0U, "duty 0");
-    ExpectTrue(MapBrightnessToDutyScale(255) == 255U, "duty 255");
-    ExpectTrue(MapBrightnessToDutyScale(kMinPhysicalBrightness255) ==
-                   kMinPhysicalDutyScale255,
-               "duty at min bri");
+  ExpectTrue(MatterLevelToDriverBrightness(0) == 0U, "level 0 -> 0");
+  ExpectTrue(MatterLevelToDriverBrightness(254) == 255U, "level 254 -> 255");
+  ExpectTrue(ClampPhysicalBrightness(0) == 0U, "clamp 0");
+  ExpectTrue(ClampPhysicalBrightness(1) == kMinPhysicalBrightness255, "clamp 1 -> min");
+  ExpectTrue(ClampPhysicalBrightness(255) == 255U, "clamp 255");
+  ExpectTrue(MapBrightnessToDutyScale(0) == 0U, "duty 0");
+  ExpectTrue(MapBrightnessToDutyScale(255) == 255U, "duty 255");
+  ExpectTrue(MapBrightnessToDutyScale(kMinPhysicalBrightness255) == kMinPhysicalDutyScale255, "duty at min bri");
 
-    if (g_failures != 0)
-    {
-        std::fprintf(stderr, "%d assertion(s) failed\n", g_failures);
-        return EXIT_FAILURE;
-    }
+  if (g_failures != 0) {
+    std::fprintf(stderr, "%d assertion(s) failed\n", g_failures);
+    return EXIT_FAILURE;
+  }
 
-    std::puts("LightDimmingSpec host tests OK");
-    return EXIT_SUCCESS;
+  std::puts("LightDimmingSpec host tests OK");
+  return EXIT_SUCCESS;
 }

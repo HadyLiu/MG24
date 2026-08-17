@@ -53,23 +53,19 @@ const uint16_t cubic_bezier05_1_089_1_80bytes_buff[80] = {
  * @param factor 预计算表输出的缩放因子 (0~4096)
  * @return 当前时刻的插值结果
  */
-uint32_t LightEffectProcessor::blendingOperator(uint32_t start, uint32_t end, uint32_t factor)
-{
-    uint32_t delta;
-    uint32_t mixed;
-    if (end >= start)
-    {
-        /* 正向调光演进：从暗到亮呼吸 */
-        delta = static_cast<uint32_t>(end - start);
-        mixed = (factor * delta) + (static_cast<uint32_t>(start) * kMaxFactor);
-    }
-    else
-    {
-        /* 逆向调光演进：从亮到暗呼吸 */
-        delta = static_cast<uint32_t>(start - end);
-        mixed = (static_cast<uint32_t>(start) * kMaxFactor) - (factor * delta);
-    }
-    return mixed;
+uint32_t LightEffectProcessor::blendingOperator(uint32_t start, uint32_t end, uint32_t factor) {
+  uint32_t delta;
+  uint32_t mixed;
+  if (end >= start) {
+    /* 正向调光演进：从暗到亮呼吸 */
+    delta = static_cast<uint32_t>(end - start);
+    mixed = (factor * delta) + (static_cast<uint32_t>(start) * kMaxFactor);
+  } else {
+    /* 逆向调光演进：从亮到暗呼吸 */
+    delta = static_cast<uint32_t>(start - end);
+    mixed = (static_cast<uint32_t>(start) * kMaxFactor) - (factor * delta);
+  }
+  return mixed;
 }
 
 /**
@@ -83,35 +79,27 @@ uint32_t LightEffectProcessor::blendingOperator(uint32_t start, uint32_t end, ui
  * 缓动表，保持高精度平滑曲线，避免实时计算开销。
  */
 uint32_t LightEffectProcessor::CalcBreath80BytesFactor(uint32_t start, uint32_t end, uint16_t elapsedMs,
-                                                       uint16_t totalMs)
-{
-    uint32_t factor = 0U;
+                                                       uint16_t totalMs) {
+  uint32_t factor = 0U;
 
-    // 1. 启动特效时（非高频 Tick 中断）只算一次变量除法
-    uint32_t breathStepQ16 = (320U * 65536U) / totalMs;
+  // 1. 启动特效时（非高频 Tick 中断）只算一次变量除法
+  uint32_t breathStepQ16 = (320U * 65536U) / totalMs;
 
-    // 2. 在 10ms 一次的高频 Tick 中断算子中：
-    uint32_t idx = (static_cast<uint32_t>(elapsedMs) * breathStepQ16) >> 16;
+  // 2. 在 10ms 一次的高频 Tick 中断算子中：
+  uint32_t idx = (static_cast<uint32_t>(elapsedMs) * breathStepQ16) >> 16;
 
-    if (idx < 80)
-    {
-        factor = cubic_bezier045_0_055_1_80bytes_buff[idx];
-    }
-    else if (idx < 160)
-    {
-        factor = kMaxFactor;
-    }
-    else if (idx < 240)
-    {
-        // 最大索引79
-        factor = cubic_bezier045_0_055_1_80bytes_buff[static_cast<uint8_t>(239 - idx)];
-    }
-    else
-    {
-        factor = 0U;
-    }
+  if (idx < 80) {
+    factor = cubic_bezier045_0_055_1_80bytes_buff[idx];
+  } else if (idx < 160) {
+    factor = kMaxFactor;
+  } else if (idx < 240) {
+    // 最大索引79
+    factor = cubic_bezier045_0_055_1_80bytes_buff[static_cast<uint8_t>(239 - idx)];
+  } else {
+    factor = 0U;
+  }
 
-    return blendingOperator(start, end, factor);
+  return blendingOperator(start, end, factor);
 }
 
 /**
@@ -123,26 +111,21 @@ uint32_t LightEffectProcessor::CalcBreath80BytesFactor(uint32_t start, uint32_t 
  * @return 当前时刻的插值结果
  */
 uint32_t LightEffectProcessor::GetBezier40BytesFactorFadeIn(uint32_t start, uint32_t end, uint16_t elapsedMs,
-                                                            uint16_t totalMs)
-{
-    uint32_t factor = 0U;
-    uint8_t  idx    = 0U;
-    if (elapsedMs >= totalMs)
-    {
-        idx = 39;
+                                                            uint16_t totalMs) {
+  uint32_t factor = 0U;
+  uint8_t idx = 0U;
+  if (elapsedMs >= totalMs) {
+    idx = 39;
+  } else {
+    // 计算索引
+    idx = (elapsedMs * 40) / totalMs;
+    if (idx >= 1) {
+      idx -= 1;
     }
-    else
-    {
-        // 计算索引
-        idx = (elapsedMs * 40) / totalMs;
-        if (idx >= 1)
-        {
-            idx -= 1;
-        }
-    }
-    factor = cubic_bezier011_0_05_01_40bytes_buff[idx];
-    // 映射到索引 0-39
-    return blendingOperator(start, end, factor);
+  }
+  factor = cubic_bezier011_0_05_01_40bytes_buff[idx];
+  // 映射到索引 0-39
+  return blendingOperator(start, end, factor);
 }
 
 /**
@@ -154,26 +137,21 @@ uint32_t LightEffectProcessor::GetBezier40BytesFactorFadeIn(uint32_t start, uint
  * @return 当前时刻的插值结果
  */
 uint32_t LightEffectProcessor::GetBezier80BytesFactorFadeIn(uint32_t start, uint32_t end, uint16_t elapsedMs,
-                                                            uint16_t totalMs)
-{
-    uint32_t factor = 0U;
-    uint8_t  idx    = 0U;
-    if (elapsedMs >= totalMs)
-    {
-        idx = 79;
+                                                            uint16_t totalMs) {
+  uint32_t factor = 0U;
+  uint8_t idx = 0U;
+  if (elapsedMs >= totalMs) {
+    idx = 79;
+  } else {
+    // 计算索引
+    idx = (elapsedMs * 80) / totalMs;
+    if (idx >= 1) {
+      idx -= 1;
     }
-    else
-    {
-        // 计算索引
-        idx = (elapsedMs * 80) / totalMs;
-        if (idx >= 1)
-        {
-            idx -= 1;
-        }
-    }
-    factor = cubic_bezier011_0_05_01_80bytes_buff[idx];
-    // 映射到索引 0-79
-    return blendingOperator(start, end, factor);
+  }
+  factor = cubic_bezier011_0_05_01_80bytes_buff[idx];
+  // 映射到索引 0-79
+  return blendingOperator(start, end, factor);
 }
 
 /**
@@ -187,26 +165,21 @@ uint32_t LightEffectProcessor::GetBezier80BytesFactorFadeIn(uint32_t start, uint
  * 缓动表，保持高精度平滑曲线，避免实时计算开销。
  */
 uint32_t LightEffectProcessor::GetBezier40BytesFactorFadeOut(uint32_t start, uint32_t end, uint16_t elapsedMs,
-                                                             uint16_t totalMs)
-{
-    uint32_t factor = 0U;
-    uint8_t  idx    = 0U;
-    if (elapsedMs >= totalMs)
-    {
-        idx = 39;
+                                                             uint16_t totalMs) {
+  uint32_t factor = 0U;
+  uint8_t idx = 0U;
+  if (elapsedMs >= totalMs) {
+    idx = 39;
+  } else {
+    // 计算索引
+    idx = (elapsedMs * 40) / totalMs;
+    if (idx >= 1) {
+      idx -= 1;
     }
-    else
-    {
-        // 计算索引
-        idx = (elapsedMs * 40) / totalMs;
-        if (idx >= 1)
-        {
-            idx -= 1;
-        }
-    }
-    factor = cubic_bezier05_1_089_1_40bytes_buff[idx];
-    // 映射到索引 0-39
-    return blendingOperator(start, end, factor);
+  }
+  factor = cubic_bezier05_1_089_1_40bytes_buff[idx];
+  // 映射到索引 0-39
+  return blendingOperator(start, end, factor);
 }
 /**
  * @brief 淡出曲线插值计算，使用 cubic-bezier(0.5,1,0.89,1) 预计算表
@@ -219,26 +192,21 @@ uint32_t LightEffectProcessor::GetBezier40BytesFactorFadeOut(uint32_t start, uin
  * 缓动表，保持高精度平滑曲线，避免实时计算开销。
  */
 uint32_t LightEffectProcessor::GetBezier80BytesFactorFadeOut(uint32_t start, uint32_t end, uint16_t elapsedMs,
-                                                             uint16_t totalMs)
-{
-    uint32_t factor = 0U;
-    uint8_t  idx    = 0U;
-    if (elapsedMs >= totalMs)
-    {
-        idx = 79;
+                                                             uint16_t totalMs) {
+  uint32_t factor = 0U;
+  uint8_t idx = 0U;
+  if (elapsedMs >= totalMs) {
+    idx = 79;
+  } else {
+    // 计算索引
+    idx = (elapsedMs * 80) / totalMs;
+    if (idx >= 1) {
+      idx -= 1;
     }
-    else
-    {
-        // 计算索引
-        idx = (elapsedMs * 80) / totalMs;
-        if (idx >= 1)
-        {
-            idx -= 1;
-        }
-    }
-    factor = cubic_bezier05_1_089_1_80bytes_buff[idx];
-    // 映射到索引 0-79
-    return blendingOperator(start, end, factor);
+  }
+  factor = cubic_bezier05_1_089_1_80bytes_buff[idx];
+  // 映射到索引 0-79
+  return blendingOperator(start, end, factor);
 }
 
 /**
@@ -249,13 +217,12 @@ uint32_t LightEffectProcessor::GetBezier80BytesFactorFadeOut(uint32_t start, uin
  * @param totalMs   总的过渡时间
  * @return 当前时刻的插值结果
  */
-uint32_t LightEffectProcessor::GetLerp(uint32_t start, uint32_t end, uint16_t elapsedMs, uint16_t totalMs)
-{
-    uint32_t factor = 0U;
+uint32_t LightEffectProcessor::GetLerp(uint32_t start, uint32_t end, uint16_t elapsedMs, uint16_t totalMs) {
+  uint32_t factor = 0U;
 
-    factor = (elapsedMs * kMaxFactor) / totalMs;
+  factor = (elapsedMs * kMaxFactor) / totalMs;
 
-    return blendingOperator(start, end, factor);
+  return blendingOperator(start, end, factor);
 }
 
 /**
@@ -266,19 +233,15 @@ uint32_t LightEffectProcessor::GetLerp(uint32_t start, uint32_t end, uint16_t el
  * @param elapsedMs 已经过去的时间
  * @param totalMs   总的闪烁周期时间
  */
-uint32_t LightEffectProcessor::GetBlink(uint32_t start, uint32_t end, uint16_t elapsedMs, uint16_t totalMs)
-{
-    uint32_t factor = 0U;
-    if (elapsedMs < (totalMs >> 1))
-    {
-        factor = kMaxFactor;
-    }
-    else
-    {
-        factor = 0;
-    }
+uint32_t LightEffectProcessor::GetBlink(uint32_t start, uint32_t end, uint16_t elapsedMs, uint16_t totalMs) {
+  uint32_t factor = 0U;
+  if (elapsedMs < (totalMs >> 1)) {
+    factor = kMaxFactor;
+  } else {
+    factor = 0;
+  }
 
-    return blendingOperator(0, end, factor);
+  return blendingOperator(0, end, factor);
 }
 
 /**
@@ -288,7 +251,6 @@ uint32_t LightEffectProcessor::GetBlink(uint32_t start, uint32_t end, uint16_t e
  * @param elapsedMs 已经过去的时间
  * @param totalMs   总的保持时间
  */
-uint32_t LightEffectProcessor::GetKeep(uint32_t start, uint32_t end, uint16_t elapsedMs, uint16_t totalMs)
-{
-    return blendingOperator(start, end, kMaxFactor);
+uint32_t LightEffectProcessor::GetKeep(uint32_t start, uint32_t end, uint16_t elapsedMs, uint16_t totalMs) {
+  return blendingOperator(start, end, kMaxFactor);
 }

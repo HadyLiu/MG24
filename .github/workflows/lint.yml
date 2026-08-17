@@ -40,7 +40,13 @@ jobs:
             Srcipt/UpdateFirmwareVersion.sh
             Srcipt/PublishOta.sh
             qa/host/run_host_tests.sh
+            qa/host/setup.sh
             qa/cppcheck/run_cppcheck.sh
+            qa/cppcheck/setup.sh
+            qa/cpplint/run_cpplint.sh
+            qa/cpplint/setup.sh
+            qa/format/run_clang_format.sh
+            qa/PackQualityReports.sh
           )
           echo "Checking:"
           printf '  %s\n' "${scripts[@]}"

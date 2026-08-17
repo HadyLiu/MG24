@@ -1,0 +1,11 @@
+# Google C++ 风格（对齐豪庭 MG301：120 列）
+BasedOnStyle: Google
+ColumnLimit: 120
+SortIncludes: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+IndentWidth: 2
+TabWidth: 8
+UseTab: Never
+PointerAlignment: Left
+BreakBeforeBraces: Attach

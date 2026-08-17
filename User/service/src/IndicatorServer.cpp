@@ -36,289 +36,255 @@ static constexpr IndicatorEffectEngine::BlinkSequenceStep kNetConfigIndicatorSte
 };
 
 /** @brief 红灯覆盖时序自然播完 → 恢复红通道背景 */
-void OnRedOverrideSequenceFinishedBridge()
-{
-    IndicatorServer::Instance().OnRedOverrideSequenceFinishedRaw();
+void OnRedOverrideSequenceFinishedBridge() {
+  IndicatorServer::Instance().OnRedOverrideSequenceFinishedRaw();
 }
 
-} // namespace
+}  // namespace
 
 /**
  * @brief 初始化 BSP 与灯效引擎，注册红灯时序结束回调
  */
-void IndicatorServer::Init()
-{
-    m_chargeInput             = BatteryChargeSnapshot{};
-    m_chargeInputValid        = false;
-    m_chargeEffects           = ChargeIndicatorEffect::Off;
-    m_redOverrideActive                = false;
-    m_redOverrideLoopForever           = false;
-    m_firstCommissionBreathActive      = false;
-    m_firstCommissionBreathSuppressed  = false;
+void IndicatorServer::Init() {
+  m_chargeInput = BatteryChargeSnapshot{};
+  m_chargeInputValid = false;
+  m_chargeEffects = ChargeIndicatorEffect::Off;
+  m_redOverrideActive = false;
+  m_redOverrideLoopForever = false;
+  m_firstCommissionBreathActive = false;
+  m_firstCommissionBreathSuppressed = false;
 
-    BspLedIndicatorRed::Instance().Init();
-    BspLedIndicatorWhite::Instance().Init();
-    IndicatorEffectEngine::Instance().Init();
-    IndicatorEffectEngine::Instance().RegisterRedBlinkSequenceFinishedCallback(OnRedOverrideSequenceFinishedBridge);
+  BspLedIndicatorRed::Instance().Init();
+  BspLedIndicatorWhite::Instance().Init();
+  IndicatorEffectEngine::Instance().Init();
+  IndicatorEffectEngine::Instance().RegisterRedBlinkSequenceFinishedCallback(OnRedOverrideSequenceFinishedBridge);
 
-    LOG_BAT("[IndicatorServer] init");
+  LOG_BAT("[IndicatorServer] init");
 }
 
 /**
  * @brief 查询当前充电侧背景灯效
  */
-ChargeIndicatorEffect IndicatorServer::GetAppliedEffects() const
-{
-    return m_chargeEffects;
+ChargeIndicatorEffect IndicatorServer::GetAppliedEffects() const {
+  return m_chargeEffects;
 }
 
 /**
  * @brief 由充电快照推导背景灯效
  * @note §6.3：仅 Charging 白呼吸；ChargeDone 必须熄灭（不看 chipCharging 瞬时脚）
  */
-ChargeIndicatorEffect IndicatorServer::ArbitrateChargeEffectsRaw(const BatteryChargeSnapshot& snapshot) const
-{
-    uint8_t effects = 0U;
+ChargeIndicatorEffect IndicatorServer::ArbitrateChargeEffectsRaw(const BatteryChargeSnapshot& snapshot) const {
+  uint8_t effects = 0U;
 
-    switch (snapshot.status)
-    {
+  switch (snapshot.status) {
     case BatteryChargeStatus::Nobat:
     case BatteryChargeStatus::ChargeFault:
     case BatteryChargeStatus::TempFault:
-        // §6.3：充电异常持续红快闪；临界电量不占背景红闪（仅开灯尝试时×2，见 §6.2）
-        effects |= static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink);
-        break;
+      // §6.3：充电异常持续红快闪；临界电量不占背景红闪（仅开灯尝试时×2，见 §6.2）
+      effects |= static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink);
+      break;
     case BatteryChargeStatus::ChargeDone:
-        // §6.3：充满电系统 LED 熄灭
-        break;
+      // §6.3：充满电系统 LED 熄灭
+      break;
     case BatteryChargeStatus::Charging:
-        effects |= static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath);
-        break;
+      effects |= static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath);
+      break;
     default:
-        break;
-    }
+      break;
+  }
 
-    if (effects == 0U)
-    {
-        return ChargeIndicatorEffect::Off;
-    }
+  if (effects == 0U) {
+    return ChargeIndicatorEffect::Off;
+  }
 
-    return static_cast<ChargeIndicatorEffect>(effects);
+  return static_cast<ChargeIndicatorEffect>(effects);
 }
 
 /**
  * @brief 聚合背景灯效（当前仅充电侧）
  */
-ChargeIndicatorEffect IndicatorServer::ArbitrateBackgroundEffectsRaw() const
-{
-    if (!m_chargeInputValid)
-    {
-        return ChargeIndicatorEffect::Off;
-    }
+ChargeIndicatorEffect IndicatorServer::ArbitrateBackgroundEffectsRaw() const {
+  if (!m_chargeInputValid) {
+    return ChargeIndicatorEffect::Off;
+  }
 
-    return m_chargeEffects;
+  return m_chargeEffects;
 }
 
 /**
  * @brief 下发白通道：充电呼吸或首次配网呼吸（任一需要即开）
  */
-void IndicatorServer::ApplyWhiteChannelRaw()
-{
-    const uint8_t bgBits = static_cast<uint8_t>(ArbitrateBackgroundEffectsRaw());
-    const bool chargeBreath =
-        (bgBits & static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath)) != 0U;
-    const bool enableBreath = chargeBreath || m_firstCommissionBreathActive;
+void IndicatorServer::ApplyWhiteChannelRaw() {
+  const uint8_t bgBits = static_cast<uint8_t>(ArbitrateBackgroundEffectsRaw());
+  const bool chargeBreath = (bgBits & static_cast<uint8_t>(ChargeIndicatorEffect::WhiteBreath)) != 0U;
+  const bool enableBreath = chargeBreath || m_firstCommissionBreathActive;
 
-    auto& engine = IndicatorEffectEngine::Instance();
-    if (enableBreath)
-    {
-        engine.StartWhiteBreath(kDefaultWhiteBreathBrightness);
-    }
-    else
-    {
-        engine.StopWhite();
-    }
+  auto& engine = IndicatorEffectEngine::Instance();
+  if (enableBreath) {
+    engine.StartWhiteBreath(kDefaultWhiteBreathBrightness);
+  } else {
+    engine.StopWhite();
+  }
 }
 
 /**
  * @brief 下发红通道背景（红灯未被覆盖时）
  */
-void IndicatorServer::ApplyRedBackgroundRaw(bool enableBlink)
-{
-    if (m_redOverrideActive)
-    {
-        return;
-    }
+void IndicatorServer::ApplyRedBackgroundRaw(bool enableBlink) {
+  if (m_redOverrideActive) {
+    return;
+  }
 
-    auto& engine = IndicatorEffectEngine::Instance();
-    if (enableBlink)
-    {
-        engine.StartRedBlink();
-    }
-    else
-    {
-        engine.StopRed();
-    }
+  auto& engine = IndicatorEffectEngine::Instance();
+  if (enableBlink) {
+    engine.StartRedBlink();
+  } else {
+    engine.StopRed();
+  }
 }
 
 /**
  * @brief 启动红灯覆盖时序，白通道按充电/首次配网刷新
  */
 void IndicatorServer::StartRedOverrideSequenceRaw(const IndicatorEffectEngine::BlinkSequenceStep* steps, uint8_t count,
-                                                  bool loopForever)
-{
-    if ((steps == nullptr) || (count == 0U))
-    {
-        return;
-    }
+                                                  bool loopForever) {
+  if ((steps == nullptr) || (count == 0U)) {
+    return;
+  }
 
-    m_redOverrideActive      = true;
-    m_redOverrideLoopForever = loopForever;
+  m_redOverrideActive = true;
+  m_redOverrideLoopForever = loopForever;
 
-    auto& engine = IndicatorEffectEngine::Instance();
-    engine.StopRed();
-    engine.StartRedBlinkSequence(steps, count, loopForever);
+  auto& engine = IndicatorEffectEngine::Instance();
+  engine.StopRed();
+  engine.StartRedBlinkSequence(steps, count, loopForever);
 
-    ApplyWhiteChannelRaw();
+  ApplyWhiteChannelRaw();
 
-    LOG_BAT("IndicatorServer red override start, steps=%u loop=%u", count, loopForever ? 1U : 0U);
+  LOG_BAT("IndicatorServer red override start, steps=%u loop=%u", count, loopForever ? 1U : 0U);
 }
 
 /**
  * @brief 红灯覆盖结束，恢复充电侧红闪背景
  */
-void IndicatorServer::ResumeRedBackgroundRaw()
-{
-    m_redOverrideActive      = false;
-    m_redOverrideLoopForever = false;
+void IndicatorServer::ResumeRedBackgroundRaw() {
+  m_redOverrideActive = false;
+  m_redOverrideLoopForever = false;
 
-    const uint8_t bgBits = static_cast<uint8_t>(ArbitrateBackgroundEffectsRaw());
-    ApplyRedBackgroundRaw((bgBits & static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink)) != 0U);
+  const uint8_t bgBits = static_cast<uint8_t>(ArbitrateBackgroundEffectsRaw());
+  ApplyRedBackgroundRaw((bgBits & static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink)) != 0U);
 
-    LOG_BAT("IndicatorServer red override end, resume red bg=0x%02X", bgBits);
+  LOG_BAT("IndicatorServer red override end, resume red bg=0x%02X", bgBits);
 }
 
 /**
  * @brief 红灯一次性覆盖时序自然播完
  */
-void IndicatorServer::OnRedOverrideSequenceFinishedRaw()
-{
-    if (!m_redOverrideActive || m_redOverrideLoopForever)
-    {
-        return;
-    }
+void IndicatorServer::OnRedOverrideSequenceFinishedRaw() {
+  if (!m_redOverrideActive || m_redOverrideLoopForever) {
+    return;
+  }
 
-    ResumeRedBackgroundRaw();
+  ResumeRedBackgroundRaw();
 }
 
 /**
  * @brief 充电输入变化：白通道始终刷新，红通道仅在无覆盖时刷新
  */
-void IndicatorServer::RefreshFromChargeInputRaw()
-{
-    m_chargeEffects = ArbitrateChargeEffectsRaw(m_chargeInput);
-    const uint8_t bgBits = static_cast<uint8_t>(m_chargeEffects);
+void IndicatorServer::RefreshFromChargeInputRaw() {
+  m_chargeEffects = ArbitrateChargeEffectsRaw(m_chargeInput);
+  const uint8_t bgBits = static_cast<uint8_t>(m_chargeEffects);
 
-    ApplyWhiteChannelRaw();
-    ApplyRedBackgroundRaw((bgBits & static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink)) != 0U);
+  ApplyWhiteChannelRaw();
+  ApplyRedBackgroundRaw((bgBits & static_cast<uint8_t>(ChargeIndicatorEffect::RedBlink)) != 0U);
 }
 
 /**
  * @brief 消费 PowerServer 充电快照
  */
-void IndicatorServer::OnChargeSnapshot(const BatteryChargeSnapshot& snapshot)
-{
-    m_chargeInput      = snapshot;
-    m_chargeInputValid = true;
-    RefreshFromChargeInputRaw();
+void IndicatorServer::OnChargeSnapshot(const BatteryChargeSnapshot& snapshot) {
+  m_chargeInput = snapshot;
+  m_chargeInputValid = true;
+  RefreshFromChargeInputRaw();
 
-    LOG_BAT("IndicatorServer charge status=%u effects=0x%02X", static_cast<uint8_t>(snapshot.status),
-            static_cast<uint8_t>(m_chargeEffects));
+  LOG_BAT("IndicatorServer charge status=%u effects=0x%02X", static_cast<uint8_t>(snapshot.status),
+          static_cast<uint8_t>(m_chargeEffects));
 }
 
 /**
  * @brief 低电量警告：仅开灯边沿时红灯快闪×2（PRD §6.1）
  */
-void IndicatorServer::OnBatteryLowWarn()
-{
-    LOG_BAT("IndicatorServer battery low warn");
-    StartRedOverrideSequenceRaw(kBatteryLowWarnSteps,
-                                static_cast<uint8_t>(sizeof(kBatteryLowWarnSteps) / sizeof(kBatteryLowWarnSteps[0])),
-                                false);
+void IndicatorServer::OnBatteryLowWarn() {
+  LOG_BAT("IndicatorServer battery low warn");
+  StartRedOverrideSequenceRaw(kBatteryLowWarnSteps,
+                              static_cast<uint8_t>(sizeof(kBatteryLowWarnSteps) / sizeof(kBatteryLowWarnSteps[0])),
+                              false);
 }
 
 /**
  * @brief 配网重置：红灯一次性时序
  */
-void IndicatorServer::OnNetConfigIndicatorStart()
-{
-    LOG_BAT("IndicatorServer net-config indicator start");
-    StartRedOverrideSequenceRaw(
-        kNetConfigIndicatorSteps,
-        static_cast<uint8_t>(sizeof(kNetConfigIndicatorSteps) / sizeof(kNetConfigIndicatorSteps[0])), false);
+void IndicatorServer::OnNetConfigIndicatorStart() {
+  LOG_BAT("IndicatorServer net-config indicator start");
+  StartRedOverrideSequenceRaw(
+      kNetConfigIndicatorSteps,
+      static_cast<uint8_t>(sizeof(kNetConfigIndicatorSteps) / sizeof(kNetConfigIndicatorSteps[0])), false);
 }
 
 /**
  * @brief 配网结束：仅停止红灯覆盖
  */
-void IndicatorServer::OnNetConfigIndicatorStop()
-{
-    if (!m_redOverrideActive)
-    {
-        return;
-    }
+void IndicatorServer::OnNetConfigIndicatorStop() {
+  if (!m_redOverrideActive) {
+    return;
+  }
 
-    LOG_BAT("IndicatorServer net-config indicator stop");
-    IndicatorEffectEngine::Instance().StopRed();
-    ResumeRedBackgroundRaw();
+  LOG_BAT("IndicatorServer net-config indicator stop");
+  IndicatorEffectEngine::Instance().StopRed();
+  ResumeRedBackgroundRaw();
 }
 
 /**
  * @brief 首次出厂配网：系统 LED 白呼吸（§3.2）
  */
-void IndicatorServer::OnFirstCommissionBreathStart()
-{
-    if (m_firstCommissionBreathSuppressed || m_firstCommissionBreathActive)
-    {
-        return;
-    }
+void IndicatorServer::OnFirstCommissionBreathStart() {
+  if (m_firstCommissionBreathSuppressed || m_firstCommissionBreathActive) {
+    return;
+  }
 
-    m_firstCommissionBreathActive = true;
-    ApplyWhiteChannelRaw();
-    LOG_BAT("IndicatorServer first-commission white breath start");
+  m_firstCommissionBreathActive = true;
+  ApplyWhiteChannelRaw();
+  LOG_BAT("IndicatorServer first-commission white breath start");
 }
 
 /**
  * @brief 配网成功或任意按键后：停止白呼吸（§3.2）
  * @note 再次上电不再呼吸由 LDC reserved bit5 保证；此处仅本会话停灯
  */
-void IndicatorServer::OnFirstCommissionBreathStop()
-{
-    m_firstCommissionBreathSuppressed = true;
+void IndicatorServer::OnFirstCommissionBreathStop() {
+  m_firstCommissionBreathSuppressed = true;
 
-    if (!m_firstCommissionBreathActive)
-    {
-        return;
-    }
+  if (!m_firstCommissionBreathActive) {
+    return;
+  }
 
-    m_firstCommissionBreathActive = false;
-    ApplyWhiteChannelRaw();
-    LOG_BAT("IndicatorServer first-commission white breath stop");
+  m_firstCommissionBreathActive = false;
+  ApplyWhiteChannelRaw();
+  LOG_BAT("IndicatorServer first-commission white breath stop");
 }
 
 /**
  * @brief 熄灭全部指示灯
  */
-void IndicatorServer::StopAll()
-{
-    m_chargeInputValid                 = false;
-    m_chargeEffects                    = ChargeIndicatorEffect::Off;
-    m_chargeInput                      = BatteryChargeSnapshot{};
-    m_redOverrideActive                = false;
-    m_redOverrideLoopForever           = false;
-    m_firstCommissionBreathActive      = false;
-    m_firstCommissionBreathSuppressed  = false;
+void IndicatorServer::StopAll() {
+  m_chargeInputValid = false;
+  m_chargeEffects = ChargeIndicatorEffect::Off;
+  m_chargeInput = BatteryChargeSnapshot{};
+  m_redOverrideActive = false;
+  m_redOverrideLoopForever = false;
+  m_firstCommissionBreathActive = false;
+  m_firstCommissionBreathSuppressed = false;
 
-    IndicatorEffectEngine::Instance().Stop();
-    LOG_BAT("IndicatorServer stop all");
+  IndicatorEffectEngine::Instance().Stop();
+  LOG_BAT("IndicatorServer stop all");
 }

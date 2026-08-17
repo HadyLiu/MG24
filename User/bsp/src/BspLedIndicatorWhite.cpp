@@ -1,8 +1,7 @@
 #include "BspLedIndicatorWhite.h"
 #include "sl_pwm_instances.h"
 
-BspLedIndicatorWhite::BspLedIndicatorWhite() : IndicWhitePwm_()
-{
+BspLedIndicatorWhite::BspLedIndicatorWhite() : IndicWhitePwm_() {
 }
 
 /**
@@ -10,9 +9,8 @@ BspLedIndicatorWhite::BspLedIndicatorWhite() : IndicWhitePwm_()
  * @return 无
  * @note 使用 sl_pwm_Indic_led0（PA03），勿与主灯 sl_pwm_w_led0（PD01）混用。
  */
-void BspLedIndicatorWhite::Init()
-{
-    IndicWhitePwm_.Init(&sl_pwm_Indic_led0);
+void BspLedIndicatorWhite::Init() {
+  IndicWhitePwm_.Init(&sl_pwm_Indic_led0);
 }
 
 /**
@@ -21,7 +19,6 @@ void BspLedIndicatorWhite::Init()
  * @return 无
  * @note 自动限幅；Series 2 使用 compare/top 比例换算
  */
-void BspLedIndicatorWhite::IndicatorWhiteSetDuty(uint16_t duty)
-{
-    IndicWhitePwm_.PwmSetDuty(duty);
+void BspLedIndicatorWhite::IndicatorWhiteSetDuty(uint16_t duty) {
+  IndicWhitePwm_.PwmSetDuty(duty);
 }

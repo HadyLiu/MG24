@@ -5,7 +5,7 @@
     "editor.formatOnSave": true,
     // 核心变更：使用 file: 后接绝对路径的语法，直接调用该文件
     // 这样既不用复制那一长串参数，也能精准指定到你隐藏的文件夹
-    "C_Cpp.clang_format_style": "file:${workspaceFolder}/.vscode/.format/.clang-format",
+    "C_Cpp.clang_format_style": "file:${workspaceFolder}/.clang-format",
     // 兜底策略设为 none，确保如果路径解析失败也不会用默认的 LLVM 覆盖你的规则
     "C_Cpp.clang_format_fallbackStyle": "none",
     // 显式指定使用 VS Code 内置的 clang-format

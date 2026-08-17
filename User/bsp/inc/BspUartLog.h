@@ -10,8 +10,7 @@
 #pragma once
 #include <stdarg.h>
 
-class BspUartLog
-{
-  public:
-    static void DebugLog(bool en, const char* fmt, ...);
+class BspUartLog {
+ public:
+  static void DebugLog(bool en, const char* fmt, ...);
 };

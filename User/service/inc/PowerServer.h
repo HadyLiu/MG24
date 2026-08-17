@@ -26,215 +26,209 @@
  * @brief 电源管理单例服务
  * @note 上游：entry 注册回调并注入主灯状态；下游：BspPowerMonitor 硬件控制。
  */
-class PowerServer
-{
-  public:
-    /** @brief 电池电压等级变化回调（→ entry → LightDecisionCenter） */
-    using BatteryVoltHandler = void (*)(BatteryVoltLevel level);
+class PowerServer {
+ public:
+  /** @brief 电池电压等级变化回调（→ entry → LightDecisionCenter） */
+  using BatteryVoltHandler = void (*)(BatteryVoltLevel level);
 
-    /**
-     * @brief 充电综合状态变化回调（→ IndicatorServer 仲裁指示灯）
-     * @note PowerServer 仅上报充电快照，灯效仲裁由 IndicatorServer 负责。
-     */
-    using ChargeStatusHandler = void (*)(const BatteryChargeSnapshot& snapshot);
+  /**
+   * @brief 充电综合状态变化回调（→ IndicatorServer 仲裁指示灯）
+   * @note PowerServer 仅上报充电快照，灯效仲裁由 IndicatorServer 负责。
+   */
+  using ChargeStatusHandler = void (*)(const BatteryChargeSnapshot& snapshot);
 
-    /** @brief 供电通路就绪回调（→ entry 刷新主灯 PWM） */
-    using LightPowerPathReadyHandler = void (*)(bool usbUnplugToBatteryFadeIn);
+  /** @brief 供电通路就绪回调（→ entry 刷新主灯 PWM） */
+  using LightPowerPathReadyHandler = void (*)(bool usbUnplugToBatteryFadeIn);
 
-    static PowerServer& Instance()
-    {
-        static PowerServer instance;
-        return instance;
-    }
+  static PowerServer& Instance() {
+    static PowerServer instance;
+    return instance;
+  }
 
-    /** @brief 初始化：注册回调、首次 Fetch、推导状态机、按需启停定时器 */
-    void Init();
+  /** @brief 初始化：注册回调、首次 Fetch、推导状态机、按需启停定时器 */
+  void Init();
 
-    /** @brief 去初始化：停定时器，关充电/放电，熄灭充电指示灯 */
-    void DeInit();
+  /** @brief 去初始化：停定时器，关充电/放电，熄灭充电指示灯 */
+  void DeInit();
 
-    /** @brief 注册电池电量等级变化回调 */
-    void RegisterBatteryVoltHandler(BatteryVoltHandler handler);
+  /** @brief 注册电池电量等级变化回调 */
+  void RegisterBatteryVoltHandler(BatteryVoltHandler handler);
 
-    /** @brief 注册充电指示灯状态回调（USB 模式下补发当前快照） */
-    void RegisterChargeStatusHandler(ChargeStatusHandler handler);
+  /** @brief 注册充电指示灯状态回调（USB 模式下补发当前快照） */
+  void RegisterChargeStatusHandler(ChargeStatusHandler handler);
 
-    /** @brief 注册供电通路就绪回调 */
-    void RegisterLightPowerPathReadyHandler(LightPowerPathReadyHandler handler);
+  /** @brief 注册供电通路就绪回调 */
+  void RegisterLightPowerPathReadyHandler(LightPowerPathReadyHandler handler);
 
-    /** @brief 注册拔 USB 切电池前的主灯熄灭准备（注解10，须先于 BAT_EN） */
-    using UsbUnplugLightPrepareHandler = void (*)(void);
-    void RegisterUsbUnplugLightPrepareHandler(UsbUnplugLightPrepareHandler handler);
+  /** @brief 注册拔 USB 切电池前的主灯熄灭准备（注解10，须先于 BAT_EN） */
+  using UsbUnplugLightPrepareHandler = void (*)(void);
+  void RegisterUsbUnplugLightPrepareHandler(UsbUnplugLightPrepareHandler handler);
 
-    /**
-     * @brief 主灯物理输出状态变化通知
-     * @param mainLightActive true=有通道输出, false=全灭
-     */
-    void OnLightOutputChanged(bool mainLightActive);
+  /**
+   * @brief 主灯物理输出状态变化通知
+   * @param mainLightActive true=有通道输出, false=全灭
+   */
+  void OnLightOutputChanged(bool mainLightActive);
 
-    /**
-     * @brief USB 拔插中断入口（薄封装）
-     * @param usbStatus BSP 上报的 USB 连接状态
-     */
-    void PowerUsbIsr(UsbConnectionStatusEnum usbStatus);
+  /**
+   * @brief USB 拔插中断入口（薄封装）
+   * @param usbStatus BSP 上报的 USB 连接状态
+   */
+  void PowerUsbIsr(UsbConnectionStatusEnum usbStatus);
 
-  private:
-    /** @brief 供电来源（由 USB 是否接入决定） */
-    enum class SupplyMode : uint8_t
-    {
-        Battery = 0, /**< 电池供电 */
-        UsbPowered   /**< USB 供电，不对外放电 */
-    };
+ private:
+  /** @brief 供电来源（由 USB 是否接入决定） */
+  enum class SupplyMode : uint8_t {
+    Battery = 0, /**< 电池供电 */
+    UsbPowered   /**< USB 供电，不对外放电 */
+  };
 
-    /**
-     * @brief 运行状态机（PowerPoll 唯一 switch 分发入口）
-     * @note 禁止直接赋值 m_runState，须经 SetRunStateRaw。
-     */
-    enum class PowerRunState : uint8_t
-    {
-        BatteryIdle = 0,    /**< 电池 + 灯灭：关放电，停轮询 */
-        BatteryDischarging, /**< 电池 + 灯亮：开放电，轮询电压 */
-        UsbChargeManage     /**< USB：充电仲裁 + 指示灯上报 */
-    };
+  /**
+   * @brief 运行状态机（PowerPoll 唯一 switch 分发入口）
+   * @note 禁止直接赋值 m_runState，须经 SetRunStateRaw。
+   */
+  enum class PowerRunState : uint8_t {
+    BatteryIdle = 0,    /**< 电池 + 灯灭：关放电，停轮询 */
+    BatteryDischarging, /**< 电池 + 灯亮：开放电，轮询电压 */
+    UsbChargeManage     /**< USB：充电仲裁 + 指示灯上报 */
+  };
 
-    /**
-     * @brief 充电综合评估结果（状态 + 硬件使能，一次算出）
-     * @note 充电使能与综合状态同源；指示灯仲裁见 IndicatorServer。
-     */
-    struct ChargeEvaluation
-    {
-        BatteryChargeStatus status;         /**< 充电综合状态 */
-        bool                allowCharge;    /**< 是否允许开充，由 status 推导 */
-        uint8_t             fastChargeFlag; /**< 1=快充(灯灭), 0=慢充(灯亮) */
-    };
+  /**
+   * @brief 充电综合评估结果（状态 + 硬件使能，一次算出）
+   * @note 充电使能与综合状态同源；指示灯仲裁见 IndicatorServer。
+   */
+  struct ChargeEvaluation {
+    BatteryChargeStatus status; /**< 充电综合状态 */
+    bool allowCharge;           /**< 是否允许开充，由 status 推导 */
+    uint8_t fastChargeFlag;     /**< 1=快充(灯灭), 0=慢充(灯亮) */
+  };
 
-    /**
-     * @brief BSP 电源监测快照（仅 FetchPowerMonitorSnapshotRaw 写入）
-     * @note 电池模式仅填充 usbStatus/按需 voltStatus；USB 模式填充全部字段。
-     */
-    struct alignas(1) PowerMonitorSnapshot
-    {
-        UsbConnectionStatusEnum usbStatus{UsbConnectionStatusEnum::UsbNotConnected};
-        BatteryTempStatusEnum   tempStatus{BatteryTempStatusEnum::TEMP_NORMAL};
-        BatteryVoltStatusEnum   voltStatus{BatteryVoltStatusEnum::VOLT_NORMAL};
-        ChargeChipStatusEnum    chipStatus{ChargeChipStatusEnum::CHARGE_INIT};
-        bool                    chargeEnabled{false};
-    };
+  /**
+   * @brief BSP 电源监测快照（仅 FetchPowerMonitorSnapshotRaw 写入）
+   * @note 电池模式仅填充 usbStatus/按需 voltStatus；USB 模式填充全部字段。
+   */
+  struct alignas(1) PowerMonitorSnapshot {
+    UsbConnectionStatusEnum usbStatus{UsbConnectionStatusEnum::UsbNotConnected};
+    BatteryTempStatusEnum tempStatus{BatteryTempStatusEnum::TEMP_NORMAL};
+    BatteryVoltStatusEnum voltStatus{BatteryVoltStatusEnum::VOLT_NORMAL};
+    ChargeChipStatusEnum chipStatus{ChargeChipStatusEnum::CHARGE_INIT};
+    bool chargeEnabled{false};
+  };
 
-    PowerServer()                              = default;
-    ~PowerServer()                             = default;
-    PowerServer(const PowerServer&)            = delete;
-    PowerServer& operator=(const PowerServer&) = delete;
+  PowerServer() = default;
+  ~PowerServer() = default;
+  PowerServer(const PowerServer&) = delete;
+  PowerServer& operator=(const PowerServer&) = delete;
 
-    // ---- §1 定时器 ----
-    void StartPollTimerRaw(bool enable);
-    void SyncPollTimerFromRunStateRaw();
-    void PowerPoll(uint16_t elapsedMs);
+  // ---- §1 定时器 ----
+  void StartPollTimerRaw(bool enable);
+  void SyncPollTimerFromRunStateRaw();
+  void PowerPoll(uint16_t elapsedMs);
 
-    // ---- §2 BSP 桥接（读：唯一漏斗；写：独立出口）----
-    void                        FetchPowerMonitorSnapshotRaw();
-    const PowerMonitorSnapshot& GetPowerSnapshotRaw() const;
-    bool                        IsChargeChipReadableNowRaw(const PowerMonitorSnapshot& snapshot) const;
-    void                        SetBatteryOutEnableRaw(bool enable);
-    void                        SetBatteryChargeEnableRaw(bool enable, uint8_t fastCharge);
+  // ---- §2 BSP 桥接（读：唯一漏斗；写：独立出口）----
+  void FetchPowerMonitorSnapshotRaw();
+  const PowerMonitorSnapshot& GetPowerSnapshotRaw() const;
+  bool IsChargeChipReadableNowRaw(const PowerMonitorSnapshot& snapshot) const;
+  void SetBatteryOutEnableRaw(bool enable);
+  void SetBatteryChargeEnableRaw(bool enable, uint8_t fastCharge);
 
-    // ---- §5 主逻辑：状态机 ----
-    void SetRunStateRaw(PowerRunState nextState);
-    void RefreshRunStateRaw();
-    void RequestSupplyApplyRaw();
-    void ApplySupplyModeHardwareRaw();
+  // ---- §5 主逻辑：状态机 ----
+  void SetRunStateRaw(PowerRunState nextState);
+  void RefreshRunStateRaw();
+  void RequestSupplyApplyRaw();
+  void ApplySupplyModeHardwareRaw();
 
-    void        TickBatteryIdleRaw(uint16_t elapsedMs);
-    void        TickBatteryDischargingRaw(uint16_t elapsedMs);
-    void        TickUsbChargeManageRaw(uint16_t elapsedMs);
-    static void TickSettleCountdownRaw(uint16_t& counterMs, uint16_t elapsedMs);
+  void TickBatteryIdleRaw(uint16_t elapsedMs);
+  void TickBatteryDischargingRaw(uint16_t elapsedMs);
+  void TickUsbChargeManageRaw(uint16_t elapsedMs);
+  static void TickSettleCountdownRaw(uint16_t& counterMs, uint16_t elapsedMs);
 
-    void OnMainLightChangedRaw(bool mainLightActive);
-    void OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus);
+  void OnMainLightChangedRaw(bool mainLightActive);
+  void OnUsbConnectionChangedRaw(UsbConnectionStatusEnum usbStatus);
 
-    void ApplyBatteryDischargeRaw();
-    void EnableBatteryDischargeRaw();
-    void DisableBatteryDischargeRaw();
+  void ApplyBatteryDischargeRaw();
+  void EnableBatteryDischargeRaw();
+  void DisableBatteryDischargeRaw();
 
-    void PollBatteryVoltRaw();
-    /**
-     * @brief 注解16：插入 USB → 解除死锁；USB 会话内不再判定/触发电池临界死锁
-     */
-    void ClearCriticalVoltLockForUsbRaw();
+  void PollBatteryVoltRaw();
+  /**
+   * @brief 注解16：插入 USB → 解除死锁；USB 会话内不再判定/触发电池临界死锁
+   */
+  void ClearCriticalVoltLockForUsbRaw();
 
-    /**
-     * @brief 注解16：断开 USB → 去掉以前死锁，重新开始电池电压检测
-     */
-    void RestartBatteryVoltDetectionRaw();
+  /**
+   * @brief 注解16：断开 USB → 去掉以前死锁，重新开始电池电压检测
+   */
+  void RestartBatteryVoltDetectionRaw();
 
-    void NotifyPowerPathReadyRaw();
+  void NotifyPowerPathReadyRaw();
 
-    static BatteryChargeStatus ResolveChargeStatusFromSnapshotRaw(const PowerMonitorSnapshot& snapshot, bool chipValid,
-                                                                  bool chargeFaultLatched, bool chargeDoneLatched);
-    bool                       ShouldLatchChargeFaultRaw(const PowerMonitorSnapshot& snapshot) const;
-    ChargeEvaluation           EvaluateChargeRaw(const PowerMonitorSnapshot& snapshot) const;
-    static bool                DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status);
-    void ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval, const PowerMonitorSnapshot& snapshot,
-                                        bool chipValid);
-    void UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasChargeEnabled);
-    /** @brief §6.3：看到芯片 DONE / 8h 超时则锁存充满；拔 USB / 无电池则清除 */
-    void UpdateChargeDoneLatchRaw(const PowerMonitorSnapshot& snapshot, bool chipValid);
-    void RefreshChargeSnapshotRaw();
-    void UpdateChargeControlAndNotifyRaw();
+  static BatteryChargeStatus ResolveChargeStatusFromSnapshotRaw(const PowerMonitorSnapshot& snapshot, bool chipValid,
+                                                                bool chargeFaultLatched, bool chargeDoneLatched);
+  bool ShouldLatchChargeFaultRaw(const PowerMonitorSnapshot& snapshot) const;
+  ChargeEvaluation EvaluateChargeRaw(const PowerMonitorSnapshot& snapshot) const;
+  static bool DeriveAllowChargeFromStatusRaw(BatteryChargeStatus status);
+  void ApplyChargeSnapshotFromEvalRaw(const ChargeEvaluation& eval, const PowerMonitorSnapshot& snapshot,
+                                      bool chipValid);
+  void UpdateChargeSettleAfterDecisionRaw(bool allowCharge, bool wasChargeEnabled);
+  /** @brief §6.3：看到芯片 DONE / 8h 超时则锁存充满；拔 USB / 无电池则清除 */
+  void UpdateChargeDoneLatchRaw(const PowerMonitorSnapshot& snapshot, bool chipValid);
+  void RefreshChargeSnapshotRaw();
+  void UpdateChargeControlAndNotifyRaw();
 
-    static BatteryVoltLevel MapVoltLevelRaw(BatteryVoltStatusEnum status);
+  static BatteryVoltLevel MapVoltLevelRaw(BatteryVoltStatusEnum status);
 
-    void TickChargingSessionRaw(uint16_t elapsedMs);
-    void ResetChargingSessionRaw();
-    void ClearChargeIndicatorRaw();
-    void EvaluateChargeStatusRaw();
-    void UpdateChargeControlRaw();
+  void TickChargingSessionRaw(uint16_t elapsedMs);
+  void ResetChargingSessionRaw();
+  void ClearChargeIndicatorRaw();
+  void EvaluateChargeStatusRaw();
+  void UpdateChargeControlRaw();
 
-    static void PollTimerBridgeImpl(uint16_t elapsedMs);
-    static void UsbNotifyBridgeImpl(UsbConnectionStatusEnum usbStatus);
+  static void PollTimerBridgeImpl(uint16_t elapsedMs);
+  static void UsbNotifyBridgeImpl(UsbConnectionStatusEnum usbStatus);
 
-    // ---- 回调指针 ----
-    BatteryVoltHandler         m_batteryVoltHandler{nullptr};
-    ChargeStatusHandler        m_chargeStatusHandler{nullptr};
-    LightPowerPathReadyHandler   m_powerPathReadyHandler{nullptr};
-    UsbUnplugLightPrepareHandler m_usbUnplugPrepareHandler{nullptr};
+  // ---- 回调指针 ----
+  BatteryVoltHandler m_batteryVoltHandler{nullptr};
+  ChargeStatusHandler m_chargeStatusHandler{nullptr};
+  LightPowerPathReadyHandler m_powerPathReadyHandler{nullptr};
+  UsbUnplugLightPrepareHandler m_usbUnplugPrepareHandler{nullptr};
 
-    // ---- 状态机 ----
-    SupplyMode    m_supplyMode{SupplyMode::Battery};
-    PowerRunState m_runState{PowerRunState::BatteryIdle};
+  // ---- 状态机 ----
+  SupplyMode m_supplyMode{SupplyMode::Battery};
+  PowerRunState m_runState{PowerRunState::BatteryIdle};
 
-    // ---- 单入口快照（防多读冲突）----
-    PowerMonitorSnapshot m_powerSnapshot{};           /**< USB */
-    bool                 m_powerSnapshotValid{false}; /**< 快照是否有效 */
-    bool                 m_fetchInProgress{false};    /**< Fetch 重入保护 */
+  // ---- 单入口快照（防多读冲突）----
+  PowerMonitorSnapshot m_powerSnapshot{}; /**< USB */
+  bool m_powerSnapshotValid{false};       /**< 快照是否有效 */
+  bool m_fetchInProgress{false};          /**< Fetch 重入保护 */
 
-    // ---- 上报基准 ----
-    BatteryVoltLevel      m_lastReportedVoltLevel{BatteryVoltLevel::Normal};
-    BatteryChargeSnapshot m_lastReportedChargeSnapshot{};
-    BatteryChargeSnapshot m_currentChargeSnapshot{};
+  // ---- 上报基准 ----
+  BatteryVoltLevel m_lastReportedVoltLevel{BatteryVoltLevel::Normal};
+  BatteryChargeSnapshot m_lastReportedChargeSnapshot{};
+  BatteryChargeSnapshot m_currentChargeSnapshot{};
 
-    // ---- 运行标志 ----
-    bool m_pollTimerEnabled{false};
-    bool m_mainLightActive{false};
-    bool m_batteryOutEnabled{false};
-    bool m_batteryVoltPollEnabled{false};
-    bool m_forceNextVoltReport{false};   /**< 注解16：拔 USB 后强制重新上报电压等级 */
-    bool m_usbVoltDeadlockSuppressed{false}; /**< 注解16：USB 会话内已解锁且禁止再触发临界死锁 */
-    bool m_pendingSupplyApply{false};    /**< ISR 后待 Poll 刷新硬件 */
-    bool m_pendingUsbUnplugFadeIn{false};     /**< 注解10：拔 USB 后 400ms 淡入 */
-    bool m_usbUnplugTransitionActive{false};  /**< 过渡中忽略主灯灭导致的关 BAT_EN */
-    bool m_chargeSnapshotValid{false};
-    bool m_chargeSessionTimeout{false}; /**< 8h 超时视为充满 */
-    bool m_chargeDoneLatched{false};    /**< §6.3：充满锁存，防关充后误判再开充/白呼吸 */
-    bool m_chargeFaultLatched{false};   /**< 充电故障锁存 */
+  // ---- 运行标志 ----
+  bool m_pollTimerEnabled{false};
+  bool m_mainLightActive{false};
+  bool m_batteryOutEnabled{false};
+  bool m_batteryVoltPollEnabled{false};
+  bool m_forceNextVoltReport{false};       /**< 注解16：拔 USB 后强制重新上报电压等级 */
+  bool m_usbVoltDeadlockSuppressed{false}; /**< 注解16：USB 会话内已解锁且禁止再触发临界死锁 */
+  bool m_pendingSupplyApply{false};        /**< ISR 后待 Poll 刷新硬件 */
+  bool m_pendingUsbUnplugFadeIn{false};    /**< 注解10：拔 USB 后 400ms 淡入 */
+  bool m_usbUnplugTransitionActive{false}; /**< 过渡中忽略主灯灭导致的关 BAT_EN */
+  bool m_chargeSnapshotValid{false};
+  bool m_chargeSessionTimeout{false}; /**< 8h 超时视为充满 */
+  bool m_chargeDoneLatched{false};    /**< §6.3：充满锁存，防关充后误判再开充/白呼吸 */
+  bool m_chargeFaultLatched{false};   /**< 充电故障锁存 */
 
-    // ---- 计时器（与硬件控制隔离）----
-    uint32_t m_chargeSessionElapsedMs{0U};
-    uint16_t m_batterySettleMs{0U}; /**< 开放电后延迟读电压 */
-    uint16_t m_chargeSettleMs{0U};  /**< 开充后延迟读芯片 */
+  // ---- 计时器（与硬件控制隔离）----
+  uint32_t m_chargeSessionElapsedMs{0U};
+  uint16_t m_batterySettleMs{0U}; /**< 开放电后延迟读电压 */
+  uint16_t m_chargeSettleMs{0U};  /**< 开充后延迟读芯片 */
 
-    static constexpr uint16_t kPollIntervalMs       = 200U;
-    static constexpr uint16_t kBatterySettleMs      = 500U;
-    static constexpr uint16_t kChargeSettleMs       = 300U;
-    static constexpr uint32_t kChargeSessionLimitMs = 8U * 60U * 60U * 1000U;
+  static constexpr uint16_t kPollIntervalMs = 200U;
+  static constexpr uint16_t kBatterySettleMs = 500U;
+  static constexpr uint16_t kChargeSettleMs = 300U;
+  static constexpr uint32_t kChargeSessionLimitMs = 8U * 60U * 60U * 1000U;
 };

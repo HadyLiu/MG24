@@ -42,8 +42,8 @@ GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 | NonFuncReq 要求 | 落地 |
 |-----------------|------|
 | Lint 进 CI | `lint.yml`（push/PR）：shellcheck + actionlint + yamllint |
-| 静态代码分析 | `qa.yml`（push/PR）：`cppcheck` 扫描 `User/` |
-| 单元测试 | `User/**/test/*.cpp` 自动发现；起步用例 `LightDimmingSpec` |
+| 单元测试 | `User/**/test/*.cpp`；报告 `qa/host/report/` + `unit_test_report.tar.gz`（含 gcovr HTML） |
+| 静态代码分析 | `qa.yml`：Google clang-format 门禁 + cpplint + cppcheck-htmlreport |
 | 人工 Code Review | PR 模板强制自检；Settings 开「Require PR + approvals」 |
 | 每版测试报告 | `ReleaseNotes_TEMPLATE_zh.md`：发 Tag 前/后填并贴进 Release |
 | 设计描述审查材料 | 发版勾选：已对照 `Doc/设计方案.md`（本地 Doc） |

@@ -93,14 +93,23 @@ jobs:
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
 
-      - name: Attach cppcheck report
+      - name: Attach quality reports
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y cppcheck
-          chmod +x qa/cppcheck/run_cppcheck.sh
-          CPPCHECK_XML=1 ./qa/cppcheck/run_cppcheck.sh
-          tar -C qa/cppcheck -czf dist/code_quality_report.tar.gz report
+          sudo apt-get install -y cppcheck clang-format gcovr python3-pygments python3-pip
+          chmod +x qa/host/setup.sh qa/cppcheck/setup.sh qa/cpplint/setup.sh
+          chmod +x qa/host/run_host_tests.sh qa/cppcheck/run_cppcheck.sh
+          chmod +x qa/cpplint/run_cpplint.sh qa/format/run_clang_format.sh
+          chmod +x qa/PackQualityReports.sh
+          ./qa/host/setup.sh
+          ./qa/cppcheck/setup.sh
+          ./qa/cpplint/setup.sh
+          ./qa/format/run_clang_format.sh --check
+          ./qa/host/run_host_tests.sh
+          ./qa/cpplint/run_cpplint.sh
+          ./qa/cppcheck/run_cppcheck.sh
+          ./qa/PackQualityReports.sh dist
           (
             cd dist
             mapfile -t hashed < <(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt | sort)
