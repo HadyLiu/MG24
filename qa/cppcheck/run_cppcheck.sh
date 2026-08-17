@@ -33,7 +33,7 @@ include_args=(
 # 与豪庭 scripts/cppcheck/runner.sh 同类检查项
 report_args=(
     -j"$(nproc)"
-    --enable=warning,style,performance,portability
+    "--enable=warning,style,performance,portability"
     --inline-suppr
     --suppress=missingIncludeSystem
     --suppress=unknownMacro

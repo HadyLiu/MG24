@@ -35,9 +35,8 @@ RecordResult()
 {
     local name="$1"
     local status="$2"
-    local log_path="$3"
 
-    echo "${name}|${status}|${log_path}" >> "${results_file}"
+    echo "${name}|${status}" >> "${results_file}"
     if [ "${status}" = "PASS" ]; then
         pass_count=$((pass_count + 1))
     else
@@ -70,17 +69,17 @@ RunOneTest()
     } > "${log_path}" 2>&1 || status="FAIL"
 
     cat "${log_path}"
-    RecordResult "${name}" "${status}" "${log_path}"
+    RecordResult "${name}" "${status}"
 }
 
 WriteTextReport()
 {
-    local line name status
+    local name status
     {
         echo "Host unit tests"
         echo "passed=${pass_count} failed=${fail_count}"
         echo
-        while IFS='|' read -r name status _; do
+        while IFS='|' read -r name status; do
             echo "${status}  ${name}"
         done < "${results_file}"
         if [ -f "${report_dir}/coverage/coverage.txt" ]; then
@@ -99,7 +98,7 @@ WriteJunitReport()
         echo '<?xml version="1.0" encoding="UTF-8"?>'
         echo "<testsuites tests=\"${total}\" failures=\"${fail_count}\" name=\"host\">"
         echo "  <testsuite name=\"User.host\" tests=\"${total}\" failures=\"${fail_count}\">"
-        while IFS='|' read -r name status _; do
+        while IFS='|' read -r name status; do
             if [ "${status}" = "PASS" ]; then
                 echo "    <testcase name=\"${name}\" classname=\"User.host\"/>"
             else
@@ -126,7 +125,7 @@ WriteHtmlReport()
         echo "<h1>Host Unit Tests</h1>"
         echo "<p>passed=${pass_count} failed=${fail_count}</p>"
         echo '<table><tr><th>Result</th><th>Test</th><th>Log</th></tr>'
-        while IFS='|' read -r name status _; do
+        while IFS='|' read -r name status; do
             echo "<tr class=\"${status}\"><td>${status}</td>"
             echo "<td>${name}</td>"
             echo "<td><a href=\"logs/${name}.log\">logs/${name}.log</a></td></tr>"
