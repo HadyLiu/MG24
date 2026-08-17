@@ -17,9 +17,13 @@
 
 ## 产物清单
 
-- [ ] `*-full.s37`
-- [ ] `*-app-only.gbl`
-- [ ] `SHA256SUMS.txt`（Release 自动生成则可勾）
+- [ ] `Li-Bat_MatterLight-vX.Y.Z-release-full.s37`（Bootloader + App）
+- [ ] `Li-Bat_MatterLight-vX.Y.Z-release-app.s37`（仅 App，若有）
+- [ ] `Li-Bat_MatterLight-vX.Y.Z-release-bootloader.s37`（若有）
+- [ ] `Li-Bat_MatterLight-vX.Y.Z-release-app-only.gbl`
+- [ ] `Li-Bat_MatterLight-vX.Y.Z-release-app-only.ota`
+- [ ] `VERSION.txt` / `SHA256SUMS.txt`
+- [ ] `code_quality_report.tar.gz`
 
 ## 软件侧验证（可无板）
 

@@ -118,6 +118,31 @@ ResolveCmakeBin()
     exit 1
 }
 
+ResolveBuildVariant()
+{
+    local raw="${LI_BAT_BUILD_VARIANT:-dev}"
+
+    case "${raw}" in
+        release|RELEASE)
+            echo release
+            ;;
+        dev|debug|DEV|DEBUG)
+            echo dev
+            ;;
+        *)
+            echo "ERROR: LI_BAT_BUILD_VARIANT='${raw}' (use dev|release)" >&2
+            exit 1
+            ;;
+    esac
+}
+
+WriteBuildVariantStamp()
+{
+    mkdir -p "${PROJECT_ROOT}/artifact"
+    echo "$1" > "${PROJECT_ROOT}/artifact/build_variant.txt"
+    echo "Build variant: $1"
+}
+
 BuildProject()
 {
     SyncHardcodedPackagePaths
@@ -149,8 +174,19 @@ BuildProject()
     fi
     mkdir -p build
 
-    echo "Step 1: Configuring project..."
-    "${cmake_bin}" --preset project
+    local variant release_flag
+    variant="$(ResolveBuildVariant)"
+    export LI_BAT_BUILD_VARIANT="${variant}"
+    if [ "${variant}" = "release" ]; then
+        release_flag="ON"
+    else
+        release_flag="OFF"
+    fi
+
+    echo "Step 1: Configuring project (variant=${variant})..."
+    "${cmake_bin}" --preset project \
+        -DLI_BAT_BUILD_RELEASE="${release_flag}"
+    WriteBuildVariantStamp "${variant}"
 
     echo "Step 2: Building project..."
     "${cmake_bin}" \
@@ -163,6 +199,47 @@ BuildProject()
     echo "   Compile success"
     echo "========================================"
     echo "Artifacts (if postbuild ran): ${PROJECT_ROOT}/artifact/"
+}
+
+MakeScriptsExecutable()
+{
+    chmod +x "${PROJECT_ROOT}/Srcipt/ReadFirmwareVersion.sh"
+    chmod +x "${PROJECT_ROOT}/Srcipt/CheckReleaseTag.sh"
+    chmod +x "${PROJECT_ROOT}/Srcipt/PackRelease.sh"
+    chmod +x "${PROJECT_ROOT}/Srcipt/UpdateFirmwareVersion.sh"
+    chmod +x "${PROJECT_ROOT}/Srcipt/PublishOta.sh"
+}
+
+PackCurrent()
+{
+    MakeScriptsExecutable
+    "${PROJECT_ROOT}/Srcipt/PackRelease.sh"
+}
+
+# 当前版本编+打包，再 +1 编一套到 dist/test_upgrade，最后恢复宏
+BuildUpgradePair()
+{
+    local restored=0
+
+    RestoreVersion()
+    {
+        if [ "${restored}" -eq 0 ]; then
+            "${PROJECT_ROOT}/Srcipt/UpdateFirmwareVersion.sh" -d || true
+            restored=1
+        fi
+    }
+
+    MakeScriptsExecutable
+    BuildProject
+    PackCurrent
+
+    trap RestoreVersion EXIT
+    "${PROJECT_ROOT}/Srcipt/UpdateFirmwareVersion.sh" -i
+    BuildProject
+    OUT_DIR="${PROJECT_ROOT}/dist/test_upgrade" PackCurrent
+    RestoreVersion
+    trap - EXIT
+    echo "Upgrade pair at ${PROJECT_ROOT}/dist/test_upgrade"
 }
 
 # 解析 slc 可执行文件
@@ -341,6 +418,8 @@ Commands:
   generate [target]     SLC generate project files
                         target = all | app | bootloader  (default: all)
   check-slc             Verify java / slc / zap-cli are usable
+  pack                  Pack dist/ from artifact/ (versioned names + SHA256)
+  build-upgrade         Build current + version+1 pair (dist/ + dist/test_upgrade)
   shell                 Interactive bash
   help                  Show this help
   <cmd...>              Run arbitrary command
@@ -358,9 +437,17 @@ Examples:
   # 3) Compile after generate / after editing User/
   docker run --rm -v "$PWD":/workspace -w /workspace IMAGE build
 
+  # 4) Pack versioned dist/ (needs artifact/ from build; commander → .ota)
+  docker run --rm -v "$PWD":/workspace -w /workspace IMAGE pack
+
+  # 5) Release 变体（关调试日志）
+  docker run --rm -e LI_BAT_BUILD_VARIANT=release \
+    -v "$PWD":/workspace -w /workspace IMAGE build
+
 Env (optional):
   SLC_PART=efr32mg24b010f1536im40
   GENERATOR_TIMEOUT=800
+  LI_BAT_BUILD_VARIANT=dev|release   (default: dev)
 EOF
 }
 
@@ -378,6 +465,12 @@ main()
             ;;
         check-slc)
             CheckSlcTools
+            ;;
+        pack)
+            PackCurrent
+            ;;
+        build-upgrade)
+            BuildUpgradePair
             ;;
         shell)
             shift || true

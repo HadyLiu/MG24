@@ -36,8 +36,10 @@ core.[0-9]*
 .DS_Store
 Thumbs.db
 
-# --- Host 单测产物 ---
+# --- Host 单测 / 发版打包产物 ---
 qa/host/build/
+qa/cppcheck/report/
+dist/
 
 # 保留空目录
 !artifact/

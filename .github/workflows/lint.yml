@@ -34,6 +34,11 @@ jobs:
             docker/build-image.sh
             docker/install-slt-packages.sh
             Srcipt/CiLocal.sh
+            Srcipt/ReadFirmwareVersion.sh
+            Srcipt/CheckReleaseTag.sh
+            Srcipt/PackRelease.sh
+            Srcipt/UpdateFirmwareVersion.sh
+            Srcipt/PublishOta.sh
             qa/host/run_host_tests.sh
             qa/cppcheck/run_cppcheck.sh
           )

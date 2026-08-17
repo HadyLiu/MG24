@@ -78,6 +78,8 @@ target_link_libraries(MatterLightOverThread PRIVATE
     slc
 )
 
+include(${CMAKE_CURRENT_LIST_DIR}/ApplyBuildVariant.cmake)
+
 # Include managed project content if available
 include(MatterLightOverThread_project.cmake OPTIONAL RESULT_VARIABLE managed_project)
 if(managed_project)

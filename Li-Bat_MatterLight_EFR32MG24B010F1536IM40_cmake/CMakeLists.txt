@@ -6,10 +6,20 @@ project(Li-Bat_MatterLight_EFR32MG24B010F1536IM40)
 
 include(ExternalProject)
 
+if(NOT DEFINED LI_BAT_BUILD_RELEASE)
+    if(DEFINED ENV{LI_BAT_BUILD_VARIANT}
+        AND "$ENV{LI_BAT_BUILD_VARIANT}" STREQUAL "release")
+        set(LI_BAT_BUILD_RELEASE ON)
+    else()
+        set(LI_BAT_BUILD_RELEASE OFF)
+    endif()
+endif()
+message(STATUS "LI_BAT_BUILD_RELEASE=${LI_BAT_BUILD_RELEASE}")
+
 ExternalProject_Add(MatterLightOverThread
   SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../MatterLightOverThread/cmake_gcc
   BINARY_DIR ${CMAKE_CURRENT_LIST_DIR}/../MatterLightOverThread/cmake_gcc/build
-  CMAKE_ARGS --preset project
+  CMAKE_ARGS --preset project -DLI_BAT_BUILD_RELEASE=${LI_BAT_BUILD_RELEASE}
   BUILD_COMMAND ${CMAKE_COMMAND} --build . --config $<CONFIG>
   INSTALL_COMMAND ""
   BUILD_ALWAYS true

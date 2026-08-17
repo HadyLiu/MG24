@@ -2,7 +2,7 @@
 
 依据：[`NonFuncReq_zh.md`](./NonFuncReq_zh.md)（目标规范）  
 参考 1：[`../Doc/demo/rs-hs-cicd-templates`](../Doc/demo/rs-hs-cicd-templates/)（宜家通用模板，**不可整包照搬**）  
-参考 2：[`../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)（豪庭 MG301 **固件** CI，借产物/质量报告，不借 clone SDK）  
+参考 2：[`../Doc/CICD_总结.md`](../Doc/CICD_总结.md)（豪庭 MG301 **固件** CI 对照；借产物/质量报告，不借 clone SDK）  
 GitHub 操作步骤：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 
 本仓库现状：固件构建工具已 Docker 化（`docker/` + `Srcipt/`）。  
@@ -119,7 +119,7 @@ GitHub（主干 + 短分支）
 
 ### 4.1 对豪庭 MG301 固件 CI 的用法
 
-详细对照见 [`CICD_总结.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)。源码说明书：同目录 [`Read.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/Read.md)、[`Unit_test.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/Unit_test.md)。
+详细对照见 [`../Doc/CICD_总结.md`](../Doc/CICD_总结.md)。源码说明书：[`Read.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/Read.md)、[`Unit_test.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/Unit_test.md)。
 
 | 可借鉴 | 本仓用法 |
 |--------|----------|
@@ -157,19 +157,19 @@ GitHub（主干 + 短分支）
 - [x] **B1** 约定版本号与 Tag：`vX.Y.Z`（见 GITHUB_SETUP）
 - [x] **B2** `.github/workflows/release-firmware.yml`
 - [x] **B3** 发布交付清单模板：`.github/ReleaseNotes_TEMPLATE_zh.md`
-- [ ] **B4** SemVer bump：Tag `vX.Y.Z` 与 `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION*` 单一来源
-- [ ] **B5** 产物清单对齐豪庭：App `.s37`、BL+App、Matter `.ota`（或 `.gbl` 按宜家格式）、`SHA256SUMS.txt`
-- [ ] **B6**（可选）dev / release 两套；Tag 只发 release（关调试、正式 bootloader）
+- [x] **B4** Tag `vX.Y.Z` 必须等于 `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING`（`Srcipt/CheckReleaseTag.sh`）
+- [x] **B5** 产物清单：`Srcipt/PackRelease.sh` → App / BL+App / `.gbl` / 可选 `.ota` / `SHA256SUMS.txt` / `VERSION.txt`
+- [x] **B6** dev / release：`LI_BAT_BUILD_VARIANT`；CI=dev，Tag=release（关 APP/Matter 调试日志与 CLI）
 
 **验收：** 打 Tag 后自动出 GitHub Release 与完整产物包。
 
 ### 阶段 C — IKEA OTA 对接
 
 - [ ] **C1** 向宜家索取 OTA API / 凭证 / 产物格式要求
-- [ ] **C2** 编写 `scripts/publish-ota.sh`（或独立工具仓）
-- [ ] **C3** 配置 GitHub Secrets（OTA URL、Token 等）
-- [ ] **C4** Release workflow 末尾一行调用 publish 脚本
-- [ ] **C5** 失败重试与审计日志约定
+- [x] **C2** `Srcipt/PublishOta.sh` 骨架（无 Secrets 则跳过；有 URL 无协议则失败）
+- [ ] **C3** 配置 GitHub Secrets（`IKEA_OTA_URL`、`IKEA_OTA_TOKEN`）
+- [x] **C4** Release workflow 调用 publish 脚本
+- [ ] **C5** 失败重试与审计日志约定（等 API）
 
 ### 阶段 D — 质量与合规加固
 
@@ -181,8 +181,8 @@ GitHub（主干 + 短分支）
 - [ ] **D6**（可选）Self-hosted runner + IaC
 - [x] **D7** QA 方案文档：`.github/QA_PLAN_zh.md`（借模板 + NonFuncReq 对照）
 - [x] **D8** PR 模板：`.github/PULL_REQUEST_TEMPLATE.md`
-- [ ] **D9** cppcheck（及日后 C lint）报告打 tar，随 Release 挂上
-- [ ] **D10** `User/` 模块旁 `test/` 目录约定；CI 自动发现（host 测，不搬 cmocka）
+- [x] **D9** cppcheck XML 打 tar，随 Release 挂上（`code_quality_report.tar.gz`）
+- [x] **D10** `User/**/test/*.cpp` 自动发现（host 测，不搬 cmocka）
 
 ---
 
@@ -203,10 +203,18 @@ GitHub（主干 + 短分支）
   CICD_TODO_zh.md
   NonFuncReq_zh.md
 qa/host/
-  test_light_dimming_spec.cpp
   run_host_tests.sh
+qa/cppcheck/
+  run_cppcheck.sh
+User/middlewares/test/
+  test_light_dimming_spec.cpp
 Srcipt/
   CiLocal.sh
+  ReadFirmwareVersion.sh
+  CheckReleaseTag.sh
+  PackRelease.sh
+  UpdateFirmwareVersion.sh
+  PublishOta.sh
 ```
 
 ---
@@ -245,7 +253,7 @@ Srcipt/
 | [NonFuncReq_zh.md](./NonFuncReq_zh.md) | 非功能 / DevOps 原文 |
 | [../docker/docker_zh.md](../docker/docker_zh.md) | Docker 镜像构建与 `generate`/`build` |
 | [../Srcipt/develop_zh.md](../Srcipt/develop_zh.md) | 开发：`.slcp`、引脚、脚本 |
-| [../Doc/demo/.../CICD_总结.md](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md) | 豪庭 MG301 固件 CI 对照与借鉴 |
+| [../Doc/CICD_总结.md](../Doc/CICD_总结.md) | 豪庭 MG301 固件 CI 对照与本仓落地 |
 
 ---
 

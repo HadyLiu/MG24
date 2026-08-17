@@ -1,7 +1,7 @@
 # GitHub 操作说明（CI/CD）
 
 仓库：`https://github.com/barryjim/KAJEN_T`  
-对应文档：[`CICD_TODO_zh.md`](./CICD_TODO_zh.md)、[`QA_PLAN_zh.md`](./QA_PLAN_zh.md)、[`docker/docker_zh.md`](../docker/docker_zh.md)、[豪庭 MG301 CI 总结](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)
+对应文档：[`CICD_TODO_zh.md`](./CICD_TODO_zh.md)、[`QA_PLAN_zh.md`](./QA_PLAN_zh.md)、[`docker/docker_zh.md`](../docker/docker_zh.md)、[CI/CD 总结](../Doc/CICD_总结.md)
 
 ## 0. 总览
 
@@ -10,7 +10,7 @@
 | **Lint** | shellcheck + yamllint + actionlint | **每次** push/PR（`main`/`develop`） |
 | **QA** | host 单测 + cppcheck | **每次** push/PR |
 | **CI Firmware** | 编固件 → Artifact | **每次** push/PR |
-| **Release Firmware** | 编固件 → GitHub Release | **仅 `v*` Tag** |
+| **Release Firmware** | 对 Tag → 编固件 → `pack` 带版本产物 + cppcheck → GitHub Release | **仅 `v*` Tag** |
 | **Docker Publish** | Dockerfile → GHCR | **仅手动**（镜像太大） |
 
 ```text
@@ -53,12 +53,25 @@ tag v*    → Release Firmware（+ 上面若同推也会跑）
 
 发版前按 [`ReleaseNotes_TEMPLATE_zh.md`](./ReleaseNotes_TEMPLATE_zh.md) 填测试报告。
 
+**Tag 必须等于** `MatterLightOverThread/config/sl_matter_config.h` 里的  
+`CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING`（当前 `"1.1.7"` → Tag `v1.1.7`）。  
+数字宏 `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION`（当前 `17`）一并递增。  
+本地可先校验：
+
 ```bash
-git tag -a v1.1.6 -m "firmware v1.1.6"
-git push origin v1.1.6
+eval "$(./Srcipt/ReadFirmwareVersion.sh)"
+./Srcipt/CheckReleaseTag.sh "v${FW_VERSION_STRING}"
+git tag -a "v${FW_VERSION_STRING}" -m "firmware v${FW_VERSION_STRING}"
+git push origin "v${FW_VERSION_STRING}"
 ```
 
-触发 **Release Firmware**。
+触发 **Release Firmware**：先对 Tag，再以 **release** 变体编固件（关调试日志），再 `pack` 出 `dist/`。
+
+CI Firmware 用 **dev** 变体（可留 UART 日志）。本地：
+
+```bash
+LI_BAT_BUILD_VARIANT=release ./Srcipt/CiLocal.sh --build-only
+```
 
 ---
 

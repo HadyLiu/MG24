@@ -35,6 +35,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check tag matches firmware version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          chmod +x Srcipt/ReadFirmwareVersion.sh Srcipt/CheckReleaseTag.sh
+          ./Srcipt/CheckReleaseTag.sh "${GITHUB_REF_NAME}"
+
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -68,32 +74,38 @@ jobs:
       - name: Build firmware
         run: |
           docker run --rm \
+            -e LI_BAT_BUILD_VARIANT=release \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             "${{ steps.image.outputs.ref }}" \
             build
 
+      - name: Pack versioned release assets
+        run: |
+          docker run --rm \
+            -e LI_BAT_BUILD_VARIANT=release \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            "${{ steps.image.outputs.ref }}" \
+            pack
+
       - name: Restore workspace ownership for runner
         if: always()
         run: sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}"
 
-      - name: Pack release assets
-        id: pack
+      - name: Attach cppcheck report
         run: |
           set -euo pipefail
-          mkdir -p dist
-          shopt -s nullglob
-          files=(artifact/*.s37 artifact/*.gbl)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "ERROR: no artifacts under artifact/"
-            exit 1
-          fi
-          cp -a "${files[@]}" dist/
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+          chmod +x qa/cppcheck/run_cppcheck.sh
+          CPPCHECK_XML=1 ./qa/cppcheck/run_cppcheck.sh
+          tar -C qa/cppcheck -czf dist/code_quality_report.tar.gz report
           (
             cd dist
-            sha256sum ./* > SHA256SUMS.txt
+            mapfile -t hashed < <(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt | sort)
+            sha256sum "${hashed[@]}" > SHA256SUMS.txt
           )
-          echo "count=${#files[@]}" >> "$GITHUB_OUTPUT"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -102,6 +114,14 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish to IKEA OTA if secrets exist
+        env:
+          IKEA_OTA_URL: ${{ secrets.IKEA_OTA_URL }}
+          IKEA_OTA_TOKEN: ${{ secrets.IKEA_OTA_TOKEN }}
+        run: |
+          chmod +x Srcipt/PublishOta.sh
+          ./Srcipt/PublishOta.sh
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')

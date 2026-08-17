@@ -3,7 +3,7 @@
 依据：[`NonFuncReq_zh.md`](./NonFuncReq_zh.md)「质量保证」段  
 借用：[`Doc/demo/rs-hs-cicd-templates/.github`](../Doc/demo/rs-hs-cicd-templates/.github)
 （**只借模式，不整包照搬**；无 Matter/固件构建）  
-固件 CI 对照：[`Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md`](../Doc/demo/rs-hs-external-haoting-fw-dev-support-code-mg301/CICD_总结.md)
+固件 CI 对照：[`Doc/CICD_总结.md`](../Doc/CICD_总结.md)
 
 GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 
@@ -43,7 +43,7 @@ GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 |-----------------|------|
 | Lint 进 CI | `lint.yml`（push/PR）：shellcheck + actionlint + yamllint |
 | 静态代码分析 | `qa.yml`（push/PR）：`cppcheck` 扫描 `User/` |
-| 单元测试 | `qa/host/`：host 侧测 `LightDimmingSpec`；`qa.yml` 编译运行 |
+| 单元测试 | `User/**/test/*.cpp` 自动发现；起步用例 `LightDimmingSpec` |
 | 人工 Code Review | PR 模板强制自检；Settings 开「Require PR + approvals」 |
 | 每版测试报告 | `ReleaseNotes_TEMPLATE_zh.md`：发 Tag 前/后填并贴进 Release |
 | 设计描述审查材料 | 发版勾选：已对照 `Doc/设计方案.md`（本地 Doc） |

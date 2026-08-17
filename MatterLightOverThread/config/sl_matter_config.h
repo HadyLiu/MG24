@@ -88,4 +88,20 @@
 
 // <<< end of configuration section >>>
 
+// LI_BAT release：关调试日志 / Matter CLI（由 -DLI_BAT_BUILD_RELEASE=1 注入）
+#if defined(LI_BAT_BUILD_RELEASE) && (LI_BAT_BUILD_RELEASE)
+#ifdef SL_MATTER_LOG_LEVEL
+#undef SL_MATTER_LOG_LEVEL
+#endif
+#define SL_MATTER_LOG_LEVEL SL_MATTER_LOG_ERROR
+#ifdef SILABS_LOG_ENABLED
+#undef SILABS_LOG_ENABLED
+#endif
+#define SILABS_LOG_ENABLED 0
+#ifdef SL_MATTER_CLI_ARG_PARSER
+#undef SL_MATTER_CLI_ARG_PARSER
+#endif
+#define SL_MATTER_CLI_ARG_PARSER 0
+#endif
+
 #endif // SL_MATTER_CONFIG_H

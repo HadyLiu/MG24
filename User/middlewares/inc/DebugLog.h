@@ -24,6 +24,10 @@
 #ifndef APP_LOG_ENABLED
 #define APP_LOG_ENABLED 1 ///< 1=启用全部分类日志；0=全部移除
 #endif
+#if defined(LI_BAT_BUILD_RELEASE) && (LI_BAT_BUILD_RELEASE)
+#undef APP_LOG_ENABLED
+#define APP_LOG_ENABLED 0
+#endif
 /** @} */
 
 /** @name 各业务分类开关（1=启用，0=编译期移除）

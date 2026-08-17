@@ -38,6 +38,7 @@ Usage: ./Srcipt/CiLocal.sh [--lint-only|--qa-only|--build-only]
 Env:
   IMAGE   Docker image (default: li-bat-matterlight:sdk-2025.12.2)
           slim: IMAGE=li-bat-matterlight:slim ./Srcipt/CiLocal.sh --build-only
+  LI_BAT_BUILD_VARIANT  dev (default) | release
 EOF
             exit 0
             ;;
@@ -56,6 +57,11 @@ RunLint()
         docker/build-image.sh
         docker/install-slt-packages.sh
         Srcipt/CiLocal.sh
+        Srcipt/ReadFirmwareVersion.sh
+        Srcipt/CheckReleaseTag.sh
+        Srcipt/PackRelease.sh
+        Srcipt/UpdateFirmwareVersion.sh
+        Srcipt/PublishOta.sh
         qa/host/run_host_tests.sh
         qa/cppcheck/run_cppcheck.sh
     )
@@ -120,14 +126,25 @@ RunBuild()
     fi
 
     docker run --rm \
+        -e LI_BAT_BUILD_VARIANT="${LI_BAT_BUILD_VARIANT:-dev}" \
         -v "${repo_root}:/workspace" \
         "${extra_mounts[@]}" \
         -w /workspace \
         "${IMAGE}" \
         build
 
+    docker run --rm \
+        -e LI_BAT_BUILD_VARIANT="${LI_BAT_BUILD_VARIANT:-dev}" \
+        -v "${repo_root}:/workspace" \
+        "${extra_mounts[@]}" \
+        -w /workspace \
+        "${IMAGE}" \
+        pack
+
     echo "Artifacts:"
     ls -lh artifact/*.{s37,gbl} 2>/dev/null || true
+    echo "Release dist:"
+    ls -lh dist/ 2>/dev/null || true
 }
 
 if [ "${DO_LINT}" -eq 1 ]; then
