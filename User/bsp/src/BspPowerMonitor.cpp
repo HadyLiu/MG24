@@ -126,7 +126,7 @@ void BspPowerMonitor::Init() {
   chargeSpeedIo_.Init(SL_GPIO_MODE_WIRED_AND, HalGpio::GpioPinStateEnum::GPIO_PIN_RESET);
 
   chargeStatExti_.RegisterCallback(BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl, this);
-  chargeStatExti_.Init(HalExti::PullMode::Down);
+  chargeStatExti_.Init(HalExti::PullMode::Up);  // 开启上拉
   chargeStatExti_.Enable(true);
 
   /* USB：EXTI 无上下拉（分压脚）；判定仍用 ADC 阈值 */
