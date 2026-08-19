@@ -39,6 +39,9 @@ static constexpr uint16_t kBatDischargeCriticalMv = 6200U;  ///< §6.2 临界：
 static constexpr uint16_t kUsbDetectLimitMv = 3000U;
 /** @brief EXTI 后 ADC 确认防抖时间 */
 static constexpr uint32_t kUsbDebounceMs = 50U;
+/** @brief 1.6Hz 故障方波半周期窗口 (ms) */
+static constexpr uint32_t kChargeStatPulseHalfMinMs = 300U;
+static constexpr uint32_t kChargeStatPulseHalfMaxMs = 600U;
 /** @} */
 
 /**
@@ -296,7 +299,7 @@ void BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl(uint8_t pin, bool pin_stat
     self->lastInterruptMs_ = currentMs;
 
     // 1.6Hz 方波半周期大约为 416ms。放宽硬件误差区间到 300ms ~ 600ms
-    if (deltaMs >= 300 && deltaMs <= 600) {
+    if ((deltaMs >= kChargeStatPulseHalfMinMs) && (deltaMs <= kChargeStatPulseHalfMaxMs)) {
       self->pulseCounter_++;
       if (self->pulseCounter_ >= 3) {
         // 连续检测到 3 次标准的交替脉冲，判定进入闪烁异常状态
@@ -320,25 +323,35 @@ void BspPowerMonitor::ChargeStatIsrBridgeCallbackImpl(uint8_t pin, bool pin_stat
 }
 
 /**
- * @brief 供应用层轮询获取状态的接口（带脉冲超时打破逻辑）
+ * @brief 从 LAMP_STATUS 采样静态电平：低=充电中，高=充满
+ */
+void BspPowerMonitor::ApplyChargeStatLevelFromGpioRaw() {
+  const HalGpio::GpioPinStateEnum pinState = chargeStatExti_.GetGpioPinState();
+  const bool levelHigh = (pinState == HalGpio::GpioPinStateEnum::GPIO_PIN_SET);
+  chargeStatus_ = levelHigh ? ChargeChipStatusEnum::CHARGE_DONE : ChargeChipStatusEnum::CHARGING;
+}
+
+/**
+ * @brief 供应用层轮询获取状态（脉冲超时 + 开充期间静态电平补读）
+ * @note 关充后 STAT 常被上拉拉高，禁止此时采样，否则误判充满。
  */
 ChargeChipStatusEnum BspPowerMonitor::GetChargeStatus() {
-  // 如果当前处于 m_is_pulsing 状态，但是距离上一次中断发生已经过去了超过
-  // 600ms， 说明方波已经停止（波形变稳），需要打破脉冲状态，更新为静态电平。
-  if (isPulsing_) {
-    uint32_t current_ms = BspSleepTimer::BspGetLowFrequencyMs();
-    uint32_t elapsed_ms = current_ms - lastInterruptMs_;
+  const uint32_t currentMs = BspSleepTimer::BspGetLowFrequencyMs();
+  const uint32_t elapsedMs = currentMs - lastInterruptMs_;
 
-    if (elapsed_ms > 600) {
+  if (isPulsing_) {
+    if (elapsedMs > kChargeStatPulseHalfMaxMs) {
       isPulsing_ = false;
       pulseCounter_ = 0;
-
-      // 重新读取引脚当前的真实物理电平
-      HalGpio::GpioPinStateEnum pinState = chargeStatExti_.GetGpioPinState();
-      bool current_level = (pinState == HalGpio::GpioPinStateEnum::GPIO_PIN_SET);
-
-      chargeStatus_ = (!current_level) ? ChargeChipStatusEnum::CHARGING : ChargeChipStatusEnum::CHARGE_DONE;
+      ApplyChargeStatLevelFromGpioRaw();
     }
+    return chargeStatus_;
+  }
+
+  // 仅开充时补读：无边沿（脚已是高/低）或边沿已停稳，避开 1.6Hz 半波中途
+  const bool noEdgeYet = (lastInterruptMs_ == 0U);
+  if (chargeState_ && (noEdgeYet || (elapsedMs > kChargeStatPulseHalfMaxMs))) {
+    ApplyChargeStatLevelFromGpioRaw();
   }
 
   return chargeStatus_;

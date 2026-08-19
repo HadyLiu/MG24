@@ -109,4 +109,7 @@ class BspPowerMonitor {
 
   HalStateEnum FetchNtcFromHardwareRaw(uint16_t* pRawMv, uint16_t* pFilteredMv);
   void ResetAdcAccumulatorsRaw();
+
+  /** @brief 唯一静态电平采样：低=充电中，高=充满 */
+  void ApplyChargeStatLevelFromGpioRaw();
 };
