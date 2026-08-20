@@ -1,0 +1,31 @@
+# CI — 主入口（调度器）
+# 对齐豪庭：CodeAnalysis → UnitTest → Build → Release（仅 Tag）
+# Docker 镜像不在此编，见 docker-publish.yml（仅手动）。
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  firmware:
+    name: Firmware
+    uses: ./.github/workflows/ci-template.yml
+    with:
+      build_variant: ${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'dev' }}
+      create_release: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    secrets: inherit
+    permissions:
+      contents: write
+      packages: read

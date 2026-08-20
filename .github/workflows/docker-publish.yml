@@ -82,5 +82,5 @@ jobs:
             echo "- Image: \`${{ steps.meta.outputs.full }}\`"
             echo "- Also tagged: \`${{ steps.meta.outputs.image }}:latest\`"
             echo
-            echo "Next: push/PR 将自动跑 CI Firmware（需本镜像已存在）"
+            echo "Next: push/PR 将自动跑 CI（Firmware / Build 需本镜像已存在）"
           } >> "$GITHUB_STEP_SUMMARY"

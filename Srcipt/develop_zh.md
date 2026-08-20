@@ -177,6 +177,9 @@ find "$(slt where matter_extension)" -name '*.slcc' | head
 | `Srcipt/Download.sh` | 用 Commander 烧录 `artifact/...-app-only.gbl` |
 | `Srcipt/CompileDownload.sh` | 编译成功后自动烧录 |
 | `Srcipt/ClearCache.sh` | 删除各工程 `build/` 缓存 |
+| `Srcipt/PackRelease.sh` | 打包 `dist/`（含宜家 `config.json`） |
+| `Srcipt/OtaUpgradeRange.conf` | OTA 可升级上下限（min/max） |
+| `Srcipt/ReadFirmwareVersion.sh` | 读 PID / 版本宏（pack 与 Tag 校验的单一来源） |
 
 示例：
 
@@ -207,6 +210,7 @@ find "$(slt where matter_extension)" -name '*.slcc' | head
 | `build`（默认） | 对齐 SDK 路径 + CMake 编译 |
 | `generate [all\|app\|bootloader]` | 对 `.slcp` 执行 `slc generate` |
 | `check-slc` | 检查 java / slc / zap-cli |
+| `pack` | 从 `artifact/` 打包 `dist/`（版本化文件名 + `config.json`） |
 | `shell` | 交互 bash |
 | `help` | 入口帮助 |
 
@@ -288,7 +292,7 @@ INSTALL_SLT_PACKAGES=0 IMAGE_TAG=li-bat-matterlight:slim ./docker/build-image.sh
 ```
 
 GitHub 上启用 Actions / 推 GHCR / 打 Tag 发布：见
-[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md)。
+[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md)（含宜家 `config.json` 与升级上下限）。
 
 ---
 
@@ -301,4 +305,22 @@ GitHub 上启用 Actions / 推 GHCR / 打 Tag 发布：见
 | Middlewares | `User/middlewares/` | 灯效引擎、Matter 桥接胶水 |
 | Service | `User/service/` | 按键/灯光/电源/指示灯策略 |
 | Entry | `User/entry.cpp` | 组装服务与回调 |
+
+---
+
+## 8. 发版：PID、版本、OTA 升级区间
+
+`pack` 生成 `dist/config.json`，字段不要手改产物，改源文件：
+
+| 要改的值 | 改哪里 |
+|----------|--------|
+| PID / `productId` | `MatterLightOverThread/include/CHIPProjectConfig.h` → `CHIP_DEVICE_CONFIG_DEVICE_PRODUCT_ID` |
+| 本包版本 / `version` | `MatterLightOverThread/config/sl_matter_config.h` → `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION` 与 `_STRING` |
+| 可升级下限 `minVersion` | `Srcipt/OtaUpgradeRange.conf` → `OTA_MIN_VERSION` |
+| 可升级上限 `maxVersion` | 同上 `OTA_MAX_VERSION`（留空 = 本包 version − 1） |
+
+编码：`A.B.C` → `0xAABB00CC`（`1.1.5` → `0x01010005`）。  
+设备当前版本落在 `[min, max]` 才允许升到本包；本包 version 必须大于 max。
+
+完整说明与 Tag 步骤：[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md) 第 4 节。
 

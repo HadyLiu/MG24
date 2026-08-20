@@ -22,6 +22,7 @@
 - [ ] `Li-Bat_MatterLight-vX.Y.Z-release-bootloader.s37`（若有）
 - [ ] `Li-Bat_MatterLight-vX.Y.Z-release-app-only.gbl`
 - [ ] `Li-Bat_MatterLight-vX.Y.Z-release-app-only.ota`
+- [ ] `config.json`（宜家 OTA：productId/version/minVersion/maxVersion）
 - [ ] `VERSION.txt` / `SHA256SUMS.txt`
 - [ ] `code_quality_report.tar.gz`
 - [ ] `unit_test_report.tar.gz`

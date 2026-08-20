@@ -133,6 +133,7 @@ Default command is `build` (configure + compile, same flow as `Srcipt/Compile.sh
 | `build` | Configure and build (default) |
 | `generate [target]` | SLC regenerate project files; `target` = `all` / `app` / `bootloader` |
 | `check-slc` | Verify java / slc / zap-cli |
+| `pack` | Pack `dist/` including `config.json` (see GITHUB_SETUP_zh.md §4) |
 | `shell` | Open interactive bash |
 | `help` | Show entrypoint help |
 | `<cmd...>` | Run an arbitrary command |

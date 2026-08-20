@@ -177,6 +177,9 @@ All scripts live under `Srcipt/` (typo kept as in repo). Run from **repository r
 | `Srcipt/Download.sh` | Flash `artifact/...-app-only.gbl` via Commander |
 | `Srcipt/CompileDownload.sh` | Compile, then flash if success |
 | `Srcipt/ClearCache.sh` | Delete CMake `build/` dirs |
+| `Srcipt/PackRelease.sh` | Pack `dist/` (including IKEA `config.json`) |
+| `Srcipt/OtaUpgradeRange.conf` | OTA upgrade min/max range |
+| `Srcipt/ReadFirmwareVersion.sh` | Read PID / version macros |
 
 Examples:
 
@@ -207,6 +210,7 @@ Image entrypoint: `docker/entrypoint.sh`.
 | `build` (default) | Align SDK paths + CMake build |
 | `generate [all\|app\|bootloader]` | `slc generate` on `.slcp` |
 | `check-slc` | Verify java / slc / zap-cli |
+| `pack` | Pack `dist/` from `artifact/` (versioned names + `config.json`) |
 | `shell` | Interactive bash |
 | `help` | Entrypoint help |
 
@@ -286,7 +290,7 @@ Edit config/*_config.h and/or BspIoConfig.h → build → hardware test
 ```
 
 GitHub Actions / GHCR setup (Chinese):
-[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md).
+[`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md) (IKEA `config.json` and upgrade range).
 
 ---
 
@@ -299,4 +303,22 @@ GitHub Actions / GHCR setup (Chinese):
 | Middlewares | `User/middlewares/` | Light engine, Matter bridge glue |
 | Service | `User/service/` | Button/light/power/indicator policy |
 | Entry | `User/entry.cpp` | Wire services / callbacks |
+
+---
+
+## 8. Release: PID, version, OTA range
+
+`pack` writes `dist/config.json`. Edit sources, not the generated file:
+
+| Value | Where to set it |
+|-------|-----------------|
+| PID / `productId` | `CHIPProjectConfig.h` → `CHIP_DEVICE_CONFIG_DEVICE_PRODUCT_ID` |
+| Package `version` | `sl_matter_config.h` → `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION(_STRING)` |
+| Upgrade floor `minVersion` | `Srcipt/OtaUpgradeRange.conf` → `OTA_MIN_VERSION` |
+| Upgrade ceiling `maxVersion` | Same file, `OTA_MAX_VERSION` (empty = package version − 1) |
+
+Encoding: `A.B.C` → `0xAABB00CC` (`1.1.5` → `0x01010005`).  
+Devices on `[min, max]` may upgrade to this package; package version must be greater than max.
+
+Full Tag / release steps: [`.github/GITHUB_SETUP_zh.md`](../.github/GITHUB_SETUP_zh.md) section 4.
 

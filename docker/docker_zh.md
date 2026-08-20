@@ -132,6 +132,7 @@ docker run --rm \
 | `build` | 配置并编译（默认） |
 | `generate [target]` | 用 SLC 重新 Generate 工程；`target` 为 `all` / `app` / `bootloader` |
 | `check-slc` | 检查 java / slc / zap-cli 是否可用 |
+| `pack` | 打包 `dist/`（含 `config.json`，见 [GITHUB_SETUP_zh.md](../.github/GITHUB_SETUP_zh.md) 第 4 节） |
 | `shell` | 进入交互式 bash |
 | `help` | 显示入口帮助 |
 | `<cmd...>` | 执行任意命令 |

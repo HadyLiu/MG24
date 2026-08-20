@@ -22,8 +22,8 @@ GitHub 操作步骤：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 
 ```text
 GitHub（主干 + 短分支）
-  ├─ PR / push  → lint + 固件编译 → Artifacts
-  └─ Tag        → 正式构建 → Release Notes + 产物包 → IKEA OTA API
+  ├─ PR / push / Tag → CI：CodeAnalysis → UnitTest → Build → Release（仅 Tag）
+  └─ 手动            → Docker Publish（GHCR 镜像）
                     ↑
          docker/entrypoint.sh + Srcipt/*.sh
 ```
@@ -87,7 +87,7 @@ GitHub（主干 + 短分支）
 
 | 要求 | 状态 | 待办 |
 |------|------|------|
-| 静态检查 / lint 进 CI | **已做** | `lint.yml`：shellcheck + actionlint |
+| 静态检查 / lint 进 CI | **已做** | `ci.yml` CodeAnalysis：shellcheck + actionlint + yamllint |
 | 单元测试 / 集成测试 | 未做 | `User/` 可 host 测的用例 + CI job |
 | 人工 Code Review | 流程未固化 | PR + required reviewers |
 | 诊断簇 / Assert / Fabric 数等 | 产品侧 | 不在本 CI 清单展开 |
@@ -144,8 +144,8 @@ GitHub（主干 + 短分支）
 
 ### 阶段 A — 最小可用 CI（优先）
 
-- [x] **A1** `.github/workflows/ci-firmware.yml`（PR/push → pull GHCR → build → Artifacts）
-- [x] **A2** `.github/workflows/lint.yml`（shellcheck + actionlint）
+- [x] **A1** `.github/workflows/ci.yml` + `ci-template.yml`（PR/push/Tag：四段主任务）
+- [x] **A2** CodeAnalysis：shellcheck + actionlint + yamllint
 - [x] **A3** `Srcipt/CiLocal.sh`
 - [x] **A4** 文档：`readme*_zh` / `develop_zh` / `GITHUB_SETUP_zh.md`
 - [x] **A5** Runner：`ubuntu-latest` + 预构建镜像推 GHCR（`docker-publish.yml`）
@@ -155,10 +155,11 @@ GitHub（主干 + 短分支）
 ### 阶段 B — 发布 CD（Tag）
 
 - [x] **B1** 约定版本号与 Tag：`vX.Y.Z`（见 GITHUB_SETUP）
-- [x] **B2** `.github/workflows/release-firmware.yml`
+- [x] **B2** `ci-template.yml` Release Job（仅 `v*` Tag）
 - [x] **B3** 发布交付清单模板：`.github/ReleaseNotes_TEMPLATE_zh.md`
 - [x] **B4** Tag `vX.Y.Z` 必须等于 `CHIP_DEVICE_CONFIG_DEVICE_SOFTWARE_VERSION_STRING`（`Srcipt/CheckReleaseTag.sh`）
-- [x] **B5** 产物清单：`Srcipt/PackRelease.sh` → App / BL+App / `.gbl` / 可选 `.ota` / `SHA256SUMS.txt` / `VERSION.txt`
+- [x] **B5** 产物清单：`Srcipt/PackRelease.sh` → App / BL+App / `.gbl` / 可选 `.ota` / `config.json` / `SHA256SUMS.txt` / `VERSION.txt`  
+      宜家 `config.json`：PID←`CHIPProjectConfig.h`；version←`sl_matter_config.h`；min/max←`Srcipt/OtaUpgradeRange.conf`（说明见 `GITHUB_SETUP_zh.md` 第 4 节）
 - [x] **B6** dev / release：`LI_BAT_BUILD_VARIANT`；CI=dev，Tag=release（关 APP/Matter 调试日志与 CLI）
 
 **验收：** 打 Tag 后自动出 GitHub Release 与完整产物包。
@@ -168,13 +169,13 @@ GitHub（主干 + 短分支）
 - [ ] **C1** 向宜家索取 OTA API / 凭证 / 产物格式要求
 - [x] **C2** `Srcipt/PublishOta.sh` 骨架（无 Secrets 则跳过；有 URL 无协议则失败）
 - [ ] **C3** 配置 GitHub Secrets（`IKEA_OTA_URL`、`IKEA_OTA_TOKEN`）
-- [x] **C4** Release workflow 调用 publish 脚本
+- [x] **C4** Release Job 调用 publish 脚本
 - [ ] **C5** 失败重试与审计日志约定（等 API）
 
 ### 阶段 D — 质量与合规加固
 
-- [x] **D1** `qa/host/` 单元测试骨架 + `qa.yml`
-- [x] **D2** cppcheck（`User/`）进 `qa.yml`；clang-tidy 可选后续
+- [x] **D1** `qa/host/` 单元测试骨架 + CI UnitTest Job
+- [x] **D2** cppcheck（`User/`）进 CodeAnalysis；clang-tidy 可选后续
 - [ ] **D3** Branch protection：Require PR + ≥1 Review（网页配置）
 - [ ] **D4** Inter IKEA 仓库镜像同步流程
 - [ ] **D5** Docker 镜像独立仓库 + GHCR；本仓只 `pull` + `run`
@@ -192,11 +193,9 @@ GitHub（主干 + 短分支）
 ```text
 .github/
   workflows/
-    ci-firmware.yml
-    lint.yml
-    qa.yml
-    docker-publish.yml
-    release-firmware.yml
+    ci.yml                 # 主入口（调度器）
+    ci-template.yml        # CodeAnalysis → UnitTest → Build → Release
+    docker-publish.yml     # 仅手动
   PULL_REQUEST_TEMPLATE.md
   ReleaseNotes_TEMPLATE_zh.md
   QA_PLAN_zh.md
@@ -224,6 +223,7 @@ Srcipt/
   ReadFirmwareVersion.sh
   CheckReleaseTag.sh
   PackRelease.sh
+  OtaUpgradeRange.conf
   UpdateFirmwareVersion.sh
   PublishOta.sh
 ```
@@ -235,7 +235,7 @@ Srcipt/
 | 顺序 | 任务 | 原因 |
 |------|------|------|
 | 1 | 推送 workflows + 推 GHCR 镜像 | 解锁 Actions 验收 |
-| 2 | 手动跑 Lint / CI Firmware | 确认 Artifacts |
+| 2 | 手动跑 CI | 确认四段 Job 与 Artifacts |
 | 3 | Branch protection（D3） | 保护主干 |
 | 4 | Tag 发布（B） | 正式交付物 |
 | 5 | B5 产物清单（OTA / BL 合体） | 对齐宜家/豪庭交付 |
@@ -274,7 +274,7 @@ Srcipt/
 2. 按 [`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)：
    - 打开 Actions 权限
    - **推送 GHCR 镜像**（本机 `docker push` 或跑 **Docker Publish**）
-   - 手动跑 **Lint**、**CI Firmware**，下载 Artifacts
+   - 手动跑 **CI**，下载 Artifacts
 3. （可选）给 `main` 加 Branch protection。
 4. 发版时：`git tag vX.Y.Z && git push origin vX.Y.Z`。
 5. 阶段 C 等宜家 OTA 文档后再做。

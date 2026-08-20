@@ -26,7 +26,7 @@ GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 | 模板内容 | 本仓用法 |
 |----------|----------|
 | `PULL_REQUEST_TEMPLATE.md` | → `.github/PULL_REQUEST_TEMPLATE.md`（改成固件清单） |
-| `rs-hs-lint.yaml` 的 yamllint / shellcheck / actionlint | → `lint.yml` 已有 shell+actionlint；**补 yamllint（仅 workflows）** |
+| `rs-hs-lint.yaml` 的 yamllint / shellcheck / actionlint | → `ci.yml` CodeAnalysis |
 | `rs-hs-release-service` 的 Release Notes 思路 | → `.github/ReleaseNotes_TEMPLATE_zh.md` |
 | Node/Go CI、Phrase、Splunk、S3、compliance NPM | **不借用** |
 | 整库 `.github/workflows` 复制 | **禁止** |
@@ -41,9 +41,9 @@ GitHub 操作见：[`GITHUB_SETUP_zh.md`](./GITHUB_SETUP_zh.md)
 
 | NonFuncReq 要求 | 落地 |
 |-----------------|------|
-| Lint 进 CI | `lint.yml`（push/PR）：shellcheck + actionlint + yamllint |
+| Lint 进 CI | `ci.yml` CodeAnalysis：shellcheck + actionlint + yamllint |
 | 单元测试 | `User/**/test/*.cpp`；报告 `qa/host/report/` + `unit_test_report.tar.gz`（含 gcovr HTML） |
-| 静态代码分析 | `qa.yml`：Google clang-format 门禁 + cpplint + cppcheck-htmlreport |
+| 静态代码分析 | CodeAnalysis：Google clang-format 门禁 + cpplint + cppcheck-htmlreport |
 | 人工 Code Review | PR 模板强制自检；Settings 开「Require PR + approvals」 |
 | 每版测试报告 | `ReleaseNotes_TEMPLATE_zh.md`：发 Tag 前/后填并贴进 Release |
 | 设计描述审查材料 | 发版勾选：已对照 `Doc/设计方案.md`（本地 Doc） |
@@ -102,10 +102,8 @@ IMAGE=li-bat-matterlight:slim ./Srcipt/CiLocal.sh --build-only
   PULL_REQUEST_TEMPLATE.md      # 借自模板，固件化
   ReleaseNotes_TEMPLATE_zh.md   # 发版 + 测试报告 + 板测
   workflows/
-    lint.yml                    # push/PR（+ yamllint）
-    qa.yml                      # push/PR：host 单测 + cppcheck
-    ci-firmware.yml             # push/PR：编固件
-    release-firmware.yml        # 仅 v* Tag
+    ci.yml                      # 主入口
+    ci-template.yml             # CodeAnalysis → UnitTest → Build → Release
     docker-publish.yml          # 仅手动
 qa/
   host/
@@ -118,7 +116,7 @@ Srcipt/CiLocal.sh               # --qa-only
 
 ## 5. 建议执行顺序
 
-1. Push 本批 QA 文件；Tag 或手动跑 **Lint** / **QA**  
+1. Push 本批 QA 文件；Tag 或手动跑 **CI**  
 2. GitHub：`main` 开 **Require pull request + 1 approval**  
 3. 每次发版：按 `ReleaseNotes_TEMPLATE_zh.md` 填报告再打 `v*`  
 4. 有板后：补齐诊断差距表与板测勾选  
