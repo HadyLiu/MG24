@@ -6,7 +6,7 @@ PROJ_PATH=$script_dir/../
 #echo ${PROJ_PATH}
 
 # 进入 CMake 目录
-cd ${PROJ_PATH}/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake
+cd "${PROJ_PATH}/Li-Bat_MatterLight_EFR32MG24B010F1536IM40_cmake" || exit
 
 # 定义 CMake 绝对路径
 CMAKE_BIN=${HOME}/.silabs/slt/installs/conan/p/cmake1c02712053792/p/bin/cmake
@@ -30,4 +30,4 @@ ${CMAKE_BIN} \
     --build \
     --preset default_config \
     --parallel \
-    $(nproc)
+    "$(nproc)"
